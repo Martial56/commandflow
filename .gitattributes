@@ -1,0 +1,7 @@
+# Fins de ligne LF partout : le code est exécuté dans des conteneurs Linux.
+* text=auto eol=lf
+
+*.docx binary
+*.png binary
+*.jpg binary
+*.pdf binary
