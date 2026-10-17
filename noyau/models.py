@@ -95,3 +95,36 @@ class ModeleTrace(models.Model):
             if kwargs.get("update_fields") is not None:
                 kwargs["update_fields"] = {*kwargs["update_fields"], "modifie_par", "modifie_le"}
         super().save(*args, **kwargs)
+
+
+class Compteur(models.Model):
+    """Dernier numéro métier attribué, par entreprise, préfixe et année.
+
+    `annee` est vide pour une numérotation continue (ex. CLI-000123).
+    Toujours passer par `noyau.services.prochain_numero()`.
+    """
+
+    entreprise = models.ForeignKey(
+        "entreprises.Entreprise",
+        on_delete=models.PROTECT,
+        related_name="+",
+        verbose_name="entreprise",
+    )
+    prefixe = models.CharField("préfixe", max_length=10)
+    annee = models.PositiveSmallIntegerField("année", null=True, blank=True)
+    dernier_numero = models.PositiveIntegerField("dernier numéro", default=0)
+
+    class Meta:
+        verbose_name = "compteur"
+        verbose_name_plural = "compteurs"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["entreprise", "prefixe", "annee"],
+                nulls_distinct=False,
+                name="compteur_unique_par_entreprise_prefixe_annee",
+            ),
+        ]
+
+    def __str__(self):
+        annee = f"-{self.annee}" if self.annee else ""
+        return f"{self.prefixe}{annee} : {self.dernier_numero}"

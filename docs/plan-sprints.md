@@ -16,7 +16,7 @@ Coche les cases au fur et à mesure.
 - [x] Docker Compose : PostgreSQL 16 + Redis
 - [x] Outillage : ruff, pre-commit, pytest-django, factory_boy, GitHub Actions
 - [ ] App `noyau` : `ModeleEntreprise`, `ModeleTrace`, `Compteur`, `Validation`, `PieceJointe`
-- [ ] App `entreprises` : `Entreprise` + middleware/utilitaire « entreprise courante »
+- [x] App `entreprises` : `Entreprise` + middleware/utilitaire « entreprise courante »
 - [ ] App `comptes` : `Utilisateur` personnalisé, groupes/rôles, django-rules, allauth, axes
 - [ ] django-pghistory configuré
 - [ ] Gabarit de base HTMX + Tailwind + navigation par rôle
