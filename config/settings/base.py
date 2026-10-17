@@ -56,6 +56,9 @@ ASGI_APPLICATION = "config.asgi.application"
 # Base de données : PostgreSQL 16, URL fournie par l'environnement.
 DATABASES = {"default": env.db("DATABASE_URL")}
 
+# Redis : file Celery et cache.
+REDIS_URL = env("REDIS_URL")
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 AUTH_PASSWORD_VALIDATORS = [

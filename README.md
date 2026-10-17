@@ -21,4 +21,11 @@ Projet pilote : Mie Doré.
 
 ## Démarrage
 
-Les instructions d'installation seront complétées au sprint 1.
+Prérequis : Docker Desktop. Python et Node ne sont pas nécessaires sur le poste : Django tourne dans le conteneur `web` (Python 3.12).
+
+```bash
+cp .env.example .env            # puis remplacer DJANGO_SECRET_KEY
+docker compose up -d --build    # PostgreSQL 16, Redis, Django sur http://localhost:8000 (port réglable via PORT_WEB)
+docker compose exec web pytest  # tests
+docker compose exec web python manage.py <commande>
+```
