@@ -12,7 +12,7 @@ Coche les cases au fur et à mesure.
 
 ## Sprint 1 — Socle
 
-- [ ] Projet Django, `config/settings/{base,dev,prod}.py`, variables d'environnement (django-environ)
+- [x] Projet Django, `config/settings/{base,dev,prod}.py`, variables d'environnement (django-environ)
 - [ ] Docker Compose : PostgreSQL 16 + Redis
 - [ ] Outillage : ruff, pre-commit, pytest-django, factory_boy, GitHub Actions
 - [ ] App `noyau` : `ModeleEntreprise`, `ModeleTrace`, `Compteur`, `Validation`, `PieceJointe`
