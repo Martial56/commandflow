@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plan de production</title>
+</head>
+<body>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1E3A8A}a:hover{color:#172554}
+</style>
+<div style="width: 100%; min-height: 1000px; display: flex; flex-wrap: wrap; background: #F6F4EF; color: #1C1B19; font-family: 'IBM Plex Sans', 'Helvetica Neue', sans-serif; font-size: 15px">
+  <div style="flex: 1 1 220px; max-width: 100%; display: flex"><nav aria-label="Navigation principale" style="width: 100%; box-sizing: border-box; background: #1C1B19; color: #F6F4EF; padding: 24px 16px; display: flex; flex-direction: column; gap: 4px; font-size: 15px">
+<div style="font-weight: 600; font-size: 18px; padding: 0 12px 4px">ComandFlow</div>
+<div style="font-size: 13px; color: #C9C5BC; padding: 0 12px 20px">Mie Doré</div>
+<a href="08-tableau-de-bord.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; text-decoration: none; background: transparent; color: #DDD9D0; font-weight: 400">Tableau de bord</a>
+<a href="09-liste-des-commandes.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; text-decoration: none; background: transparent; color: #DDD9D0; font-weight: 400">Commandes</a>
+<a href="11-recurrentes-a-confirmer.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; text-decoration: none; background: transparent; color: #DDD9D0; font-weight: 400">Récurrentes</a>
+<a href="12-fiche-client.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; text-decoration: none; background: transparent; color: #DDD9D0; font-weight: 400">Clients</a>
+<a href="13-plan-de-production.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; text-decoration: none; background: #3A3833; color: #F6F4EF; font-weight: 600">Production</a>
+<a href="14-tournees.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; text-decoration: none; background: transparent; color: #DDD9D0; font-weight: 400">Tournées</a>
+<a href="15-facturation-et-fne.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; text-decoration: none; background: transparent; color: #DDD9D0; font-weight: 400">Facturation</a>
+<a href="16-paiements-et-creances.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; text-decoration: none; background: transparent; color: #DDD9D0; font-weight: 400">Paiements</a>
+<a href="17-parametres.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; text-decoration: none; background: transparent; color: #DDD9D0; font-weight: 400">Paramètres</a>
+<div style="margin-top: auto; padding: 16px 12px 0; border-top: 1px solid #3A3833; display: flex; flex-direction: column; gap: 2px"><span style="font-weight: 500">Aminata K.</span><span style="font-size: 13px; color: #C9C5BC">Gestionnaire</span></div>
+</nav></div>
+  <main style="flex: 999 1 560px; min-width: 0; padding: 32px 40px; box-sizing: border-box; display: flex; flex-direction: column; gap: 20px">
+    <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap">
+          <h1 style="margin: 0; font-size: 28px; font-weight: 600">Plan de production · jeu. 15 oct.</h1>
+          <span style="font-size: 13px; font-weight: 600; color: #3D3A34; background: #E7E3DA; padding: 4px 12px; border-radius: 999px">Brouillon</span>
+        </div>
+        <span style="font-size: 14px; color: #5E5A52">Regroupe 91 commandes confirmées · mis à jour à chaque confirmation ou modification</span>
+      </div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap">
+        <button style="height: 44px; padding: 0 16px; border: 1px solid #B8B3A8; background: #FFFFFF; border-radius: 6px; font: inherit; cursor: pointer">Imprimer la fiche atelier</button>
+        <button style="height: 44px; padding: 0 18px; border: none; background: #1E3A8A; color: #FFFFFF; border-radius: 6px; font: inherit; font-weight: 600; cursor: pointer">Valider le plan</button>
+      </div>
+    </div>
+
+    <div role="status" style="background: #EEF2FF; border: 1px solid #BFDBFE; border-radius: 10px; padding: 12px 16px; font-size: 14px">5 commandes récurrentes sont encore à confirmer (limite 20h00) : le plan peut encore évoluer.</div>
+
+    <div style="background: #FFFFFF; border: 1px solid #E2DED5; border-radius: 10px; overflow-x: auto">
+      <table style="width: 100%; min-width: 760px; border-collapse: collapse; font-size: 14px">
+        <thead>
+          <tr style="text-align: left; color: #5E5A52; font-size: 13px">
+            <th style="padding: 12px 16px; border-bottom: 1px solid #E2DED5; font-weight: 500">Produit</th>
+            <th style="padding: 12px 16px; border-bottom: 1px solid #E2DED5; font-weight: 500; text-align: right">Commandé</th>
+            <th style="padding: 12px 16px; border-bottom: 1px solid #E2DED5; font-weight: 500; text-align: right">Marge</th>
+            <th style="padding: 12px 16px; border-bottom: 1px solid #E2DED5; font-weight: 500; text-align: right">À produire</th>
+            <th style="padding: 12px 16px; border-bottom: 1px solid #E2DED5; font-weight: 500; text-align: right">Produit</th>
+            <th style="padding: 12px 16px; border-bottom: 1px solid #E2DED5; font-weight: 500">Avancement</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #EFECE6; font-weight: 500">Pain baguette</td>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #EFECE6; text-align: right; font-family: 'IBM Plex Mono', monospace">1 330</td>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #EFECE6; text-align: right; font-family: 'IBM Plex Mono', monospace">+70</td>
+            <td style="padding: 8px 16px; border-bottom: 1px solid #EFECE6; text-align: right"><label for="ap1" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">À produire baguette</label><input id="ap1" value="1400" style="width: 88px; height: 38px; text-align: right; padding: 0 8px; border: 1px solid #B8B3A8; border-radius: 6px; font-family: 'IBM Plex Mono', monospace; font-size: 14px"></td>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #EFECE6; text-align: right; font-family: 'IBM Plex Mono', monospace">0</td>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #EFECE6"><span style="font-size: 12px; font-weight: 600; color: #3D3A34; background: #E7E3DA; padding: 4px 10px; border-radius: 999px">À lancer</span></td>
+          </tr>
+          <tr>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #EFECE6; font-weight: 500">Croissant</td>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #EFECE6; text-align: right; font-family: 'IBM Plex Mono', monospace">300</td>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #EFECE6; text-align: right; font-family: 'IBM Plex Mono', monospace">+20</td>
+            <td style="padding: 8px 16px; border-bottom: 1px solid #EFECE6; text-align: right"><label for="ap2" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">À produire croissant</label><input id="ap2" value="320" style="width: 88px; height: 38px; text-align: right; padding: 0 8px; border: 1px solid #B8B3A8; border-radius: 6px; font-family: 'IBM Plex Mono', monospace; font-size: 14px"></td>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #EFECE6; text-align: right; font-family: 'IBM Plex Mono', monospace">0</td>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #EFECE6"><span style="font-size: 12px; font-weight: 600; color: #3D3A34; background: #E7E3DA; padding: 4px 10px; border-radius: 999px">À lancer</span></td>
+          </tr>
+          <tr>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #EFECE6; font-weight: 500">Pain de mie</td>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #EFECE6; text-align: right; font-family: 'IBM Plex Mono', monospace">145</td>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #EFECE6; text-align: right; font-family: 'IBM Plex Mono', monospace">+5</td>
+            <td style="padding: 8px 16px; border-bottom: 1px solid #EFECE6; text-align: right"><label for="ap3" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">À produire pain de mie</label><input id="ap3" value="150" style="width: 88px; height: 38px; text-align: right; padding: 0 8px; border: 1px solid #B8B3A8; border-radius: 6px; font-family: 'IBM Plex Mono', monospace; font-size: 14px"></td>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #EFECE6; text-align: right; font-family: 'IBM Plex Mono', monospace">0</td>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #EFECE6"><span style="font-size: 12px; font-weight: 600; color: #3D3A34; background: #E7E3DA; padding: 4px 10px; border-radius: 999px">À lancer</span></td>
+          </tr>
+          <tr>
+            <td style="padding: 12px 16px; font-weight: 500">Pain au chocolat</td>
+            <td style="padding: 12px 16px; text-align: right; font-family: 'IBM Plex Mono', monospace">170</td>
+            <td style="padding: 12px 16px; text-align: right; font-family: 'IBM Plex Mono', monospace">+10</td>
+            <td style="padding: 8px 16px; text-align: right"><label for="ap4" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">À produire pain au chocolat</label><input id="ap4" value="180" style="width: 88px; height: 38px; text-align: right; padding: 0 8px; border: 1px solid #B8B3A8; border-radius: 6px; font-family: 'IBM Plex Mono', monospace; font-size: 14px"></td>
+            <td style="padding: 12px 16px; text-align: right; font-family: 'IBM Plex Mono', monospace">0</td>
+            <td style="padding: 12px 16px"><span style="font-size: 12px; font-weight: 600; color: #3D3A34; background: #E7E3DA; padding: 4px 10px; border-radius: 999px">À lancer</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <section aria-labelledby="pp-detail" style="background: #FFFFFF; border: 1px solid #E2DED5; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 10px; font-size: 14px">
+      <h2 id="pp-detail" style="margin: 0; font-size: 16px; font-weight: 600">Pain baguette · détail par commande</h2>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 24px">
+        <span>Prosuma Riviera · <span style="font-family: 'IBM Plex Mono', monospace">350</span></span>
+        <span>Hôtel Ivoire Lagune · <span style="font-family: 'IBM Plex Mono', monospace">200</span></span>
+        <span>Restaurant Le Baobab · <span style="font-family: 'IBM Plex Mono', monospace">120</span></span>
+        <span>Supérette Les Palmiers · <span style="font-family: 'IBM Plex Mono', monospace">100</span></span>
+        <span>Café Le Plateau · <span style="font-family: 'IBM Plex Mono', monospace">60</span></span>
+        <a href="09-liste-des-commandes.html">+ 46 autres commandes</a>
+      </div>
+    </section>
+  </main>
+</div>
+</body>
+</html>

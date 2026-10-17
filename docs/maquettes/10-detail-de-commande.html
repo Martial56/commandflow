@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Détail de commande</title>
+</head>
+<body>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1E3A8A}a:hover{color:#172554}
+</style>
+<div style="width: 100%; min-height: 1000px; display: flex; flex-wrap: wrap; background: #F6F4EF; color: #1C1B19; font-family: 'IBM Plex Sans', 'Helvetica Neue', sans-serif; font-size: 15px">
+  <div style="flex: 1 1 220px; max-width: 100%; display: flex"><nav aria-label="Navigation principale" style="width: 100%; box-sizing: border-box; background: #1C1B19; color: #F6F4EF; padding: 24px 16px; display: flex; flex-direction: column; gap: 4px; font-size: 15px">
+<div style="font-weight: 600; font-size: 18px; padding: 0 12px 4px">ComandFlow</div>
+<div style="font-size: 13px; color: #C9C5BC; padding: 0 12px 20px">Mie Doré</div>
+<a href="08-tableau-de-bord.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; text-decoration: none; background: transparent; color: #DDD9D0; font-weight: 400">Tableau de bord</a>
+<a href="09-liste-des-commandes.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; text-decoration: none; background: #3A3833; color: #F6F4EF; font-weight: 600">Commandes</a>
+<a href="11-recurrentes-a-confirmer.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; text-decoration: none; background: transparent; color: #DDD9D0; font-weight: 400">Récurrentes</a>
+<a href="12-fiche-client.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; text-decoration: none; background: transparent; color: #DDD9D0; font-weight: 400">Clients</a>
+<a href="13-plan-de-production.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; text-decoration: none; background: transparent; color: #DDD9D0; font-weight: 400">Production</a>
+<a href="14-tournees.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; text-decoration: none; background: transparent; color: #DDD9D0; font-weight: 400">Tournées</a>
+<a href="15-facturation-et-fne.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; text-decoration: none; background: transparent; color: #DDD9D0; font-weight: 400">Facturation</a>
+<a href="16-paiements-et-creances.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; text-decoration: none; background: transparent; color: #DDD9D0; font-weight: 400">Paiements</a>
+<a href="17-parametres.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; text-decoration: none; background: transparent; color: #DDD9D0; font-weight: 400">Paramètres</a>
+<div style="margin-top: auto; padding: 16px 12px 0; border-top: 1px solid #3A3833; display: flex; flex-direction: column; gap: 2px"><span style="font-weight: 500">Aminata K.</span><span style="font-size: 13px; color: #C9C5BC">Gestionnaire</span></div>
+</nav></div>
+  <main style="flex: 999 1 560px; min-width: 0; padding: 32px 40px; box-sizing: border-box; display: flex; flex-direction: column; gap: 20px">
+    <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <a href="09-liste-des-commandes.html" style="font-size: 13px">‹ Commandes</a>
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap">
+          <h1 style="margin: 0; font-size: 28px; font-weight: 600; font-family: 'IBM Plex Mono', monospace">CMD-2026-001284</h1>
+          <span style="font-size: 13px; font-weight: 600; color: #1E3A8A; background: #DBEAFE; padding: 4px 12px; border-radius: 999px">En préparation</span>
+        </div>
+        <div style="font-size: 14px; color: #5E5A52">Restaurant Le Baobab · livraison jeu. 15 oct., 06h–08h · générée depuis un modèle récurrent</div>
+      </div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap">
+        <button style="height: 44px; padding: 0 16px; border: 1px solid #B8B3A8; background: #FFFFFF; border-radius: 6px; font: inherit; cursor: pointer">Demander une modification</button>
+        <button style="height: 44px; padding: 0 16px; border: 1px solid #C2410C; color: #9A3412; background: #FFFFFF; border-radius: 6px; font: inherit; cursor: pointer">Demander l'annulation</button>
+      </div>
+    </div>
+
+    <ol aria-label="Parcours de la commande" style="list-style: none; margin: 0; padding: 16px 20px; background: #FFFFFF; border: 1px solid #E2DED5; border-radius: 10px; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; font-size: 13px">
+      <li style="display: flex; flex-direction: column; gap: 6px"><div style="height: 6px; border-radius: 3px; background: #1E3A8A"></div><strong style="font-weight: 600">Confirmée</strong><span style="color: #5E5A52">14 oct. 17h02</span></li>
+      <li style="display: flex; flex-direction: column; gap: 6px"><div style="height: 6px; border-radius: 3px; background: #1E3A8A"></div><strong style="font-weight: 600">Planifiée</strong><span style="color: #5E5A52">14 oct. 18h00</span></li>
+      <li style="display: flex; flex-direction: column; gap: 6px"><div style="height: 6px; border-radius: 3px; background: #1E3A8A"></div><strong style="font-weight: 600">En préparation</strong><span style="color: #5E5A52">15 oct. 02h30</span></li>
+      <li style="display: flex; flex-direction: column; gap: 6px"><div style="height: 6px; border-radius: 3px; background: #D6D2C9"></div><span>Prête à charger</span></li>
+      <li style="display: flex; flex-direction: column; gap: 6px"><div style="height: 6px; border-radius: 3px; background: #D6D2C9"></div><span>En livraison</span></li>
+      <li style="display: flex; flex-direction: column; gap: 6px"><div style="height: 6px; border-radius: 3px; background: #D6D2C9"></div><span>Livrée</span></li>
+    </ol>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+      <div style="flex: 3 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 20px">
+        <section aria-labelledby="d-lignes" style="background: #FFFFFF; border: 1px solid #E2DED5; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 12px">
+          <h2 id="d-lignes" style="margin: 0; font-size: 16px; font-weight: 600">Produits</h2>
+          <div style="overflow-x: auto">
+            <table style="width: 100%; min-width: 420px; border-collapse: collapse; font-size: 14px">
+              <thead><tr style="text-align: left; color: #5E5A52; font-size: 13px"><th style="padding: 8px; border-bottom: 1px solid #E2DED5; font-weight: 500">Produit</th><th style="padding: 8px; border-bottom: 1px solid #E2DED5; font-weight: 500; text-align: right">Qté</th><th style="padding: 8px; border-bottom: 1px solid #E2DED5; font-weight: 500; text-align: right">PU</th><th style="padding: 8px; border-bottom: 1px solid #E2DED5; font-weight: 500; text-align: right">Montant</th></tr></thead>
+              <tbody style="font-family: 'IBM Plex Mono', monospace">
+                <tr><td style="padding: 10px 8px; border-bottom: 1px solid #EFECE6; font-family: 'IBM Plex Sans', sans-serif">Pain baguette</td><td style="padding: 10px 8px; border-bottom: 1px solid #EFECE6; text-align: right">120</td><td style="padding: 10px 8px; border-bottom: 1px solid #EFECE6; text-align: right">250</td><td style="padding: 10px 8px; border-bottom: 1px solid #EFECE6; text-align: right">30 000</td></tr>
+                <tr><td style="padding: 10px 8px; border-bottom: 1px solid #EFECE6; font-family: 'IBM Plex Sans', sans-serif">Croissant</td><td style="padding: 10px 8px; border-bottom: 1px solid #EFECE6; text-align: right">40</td><td style="padding: 10px 8px; border-bottom: 1px solid #EFECE6; text-align: right">300</td><td style="padding: 10px 8px; border-bottom: 1px solid #EFECE6; text-align: right">12 000</td></tr>
+                <tr><td style="padding: 10px 8px; font-family: 'IBM Plex Sans', sans-serif">Pain de mie</td><td style="padding: 10px 8px; text-align: right">15</td><td style="padding: 10px 8px; text-align: right">700</td><td style="padding: 10px 8px; text-align: right">10 500</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="display: flex; justify-content: flex-end; gap: 12px; align-items: baseline"><span style="color: #5E5A52">Total</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 20px">52 500 FCFA</span></div>
+        </section>
+        <section aria-labelledby="d-suivi" style="background: #FFFFFF; border: 1px solid #E2DED5; border-radius: 10px; padding: 20px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; font-size: 14px">
+          <h2 id="d-suivi" style="grid-column: 1 / -1; margin: 0; font-size: 16px; font-weight: 600">Suivi lié</h2>
+          <div style="display: flex; flex-direction: column; gap: 4px"><span style="font-size: 13px; color: #5E5A52">Tournée</span><a href="14-tournees.html">TRN-0187 · arrêt 6</a></div>
+          <div style="display: flex; flex-direction: column; gap: 4px"><span style="font-size: 13px; color: #5E5A52">Facture</span><span>Pas encore facturée</span></div>
+          <div style="display: flex; flex-direction: column; gap: 4px"><span style="font-size: 13px; color: #5E5A52">Paiement</span><span>Fin de mois</span></div>
+        </section>
+      </div>
+
+      <section aria-labelledby="d-histo" style="flex: 2 1 280px; min-width: 0; background: #FFFFFF; border: 1px solid #E2DED5; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 12px">
+        <h2 id="d-histo" style="margin: 0; font-size: 16px; font-weight: 600">Historique</h2>
+        <div style="display: flex; flex-direction: column; gap: 2px; padding-bottom: 10px; border-bottom: 1px solid #EFECE6"><span style="font-size: 13px; color: #5E5A52">15 oct. 02h30 · Système</span><span>Plan de production validé : passage en préparation</span></div>
+        <div style="display: flex; flex-direction: column; gap: 2px; padding-bottom: 10px; border-bottom: 1px solid #EFECE6"><span style="font-size: 13px; color: #5E5A52">14 oct. 17h40 · Aminata K.</span><span>Croissant : 30 → 40, validé par Ibrahim T. (« demande client par WhatsApp »)</span></div>
+        <div style="display: flex; flex-direction: column; gap: 2px; padding-bottom: 10px; border-bottom: 1px solid #EFECE6"><span style="font-size: 13px; color: #5E5A52">14 oct. 17h02 · Aminata K.</span><span>Commande confirmée avec le client</span></div>
+        <div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 13px; color: #5E5A52">13 oct. 18h00 · Système</span><span>Générée depuis le modèle récurrent « Baobab lun–sam »</span></div>
+      </section>
+    </div>
+  </main>
+</div>
+</body>
+</html>

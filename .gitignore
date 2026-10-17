@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Django
+*.sqlite3
+/media/
+/staticfiles/
+
+# Environnement et secrets
+.env
+.env.*
+!.env.example
+
+# Éditeurs / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+
+# Claude Code (réglages locaux)
+.claude/settings.local.json
+
+# Node (Tailwind)
+node_modules/

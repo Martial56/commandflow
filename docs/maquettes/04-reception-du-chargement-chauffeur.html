@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chargement côté chauffeur</title>
+</head>
+<body>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1E3A8A}a:hover{color:#172554}
+</style>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F6F4EF; color: #1C1B19; font-family: 'IBM Plex Sans', 'Helvetica Neue', sans-serif; font-size: 15px; display: flex; flex-direction: column">
+  <header style="background: #1C1B19; color: #F6F4EF; padding: 20px 20px 16px; display: flex; flex-direction: column; gap: 4px">
+    <div style="font-size: 13px; color: #C9C5BC">Tournée TRN-2026-0187 · Konan K.</div>
+    <h1 style="margin: 0; font-size: 22px; font-weight: 600">Contrôle du chargement</h1>
+  </header>
+
+  <div style="padding: 16px; display: flex; flex-direction: column; gap: 12px; flex: 1; overflow: hidden">
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; text-align: center">
+      <div style="background: #FFFFFF; border: 1px solid #E2DED5; border-radius: 10px; padding: 10px 4px; display: flex; flex-direction: column; gap: 2px">
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 20px">8</span>
+        <span style="font-size: 11.5px; color: #5E5A52">Attendues</span>
+      </div>
+      <div style="background: #FFFFFF; border: 1px solid #E2DED5; border-radius: 10px; padding: 10px 4px; display: flex; flex-direction: column; gap: 2px">
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 20px">7</span>
+        <span style="font-size: 11.5px; color: #5E5A52">Vérifiées</span>
+      </div>
+      <div style="background: #FFF7ED; border: 1px solid #FDBA74; border-radius: 10px; padding: 10px 4px; display: flex; flex-direction: column; gap: 2px">
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 20px; color: #9A3412">1</span>
+        <span style="font-size: 11.5px; color: #9A3412">Écart</span>
+      </div>
+      <div style="background: #FFFFFF; border: 1px solid #E2DED5; border-radius: 10px; padding: 10px 4px; display: flex; flex-direction: column; gap: 2px">
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 20px">5</span>
+        <span style="font-size: 11.5px; color: #5E5A52">Reçues</span>
+      </div>
+    </div>
+
+    <div style="background: #FFFFFF; border: 2px solid #1E3A8A; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px">
+        <div style="display: flex; flex-direction: column; gap: 2px">
+          <span style="font-size: 13px; color: #5E5A52">Arrêt 6 · CMD-2026-001284</span>
+          <h2 style="margin: 0; font-size: 18px; font-weight: 600">Restaurant Le Baobab</h2>
+        </div>
+        <span style="font-size: 12px; font-weight: 500; color: #1E3A8A; background: #DBEAFE; padding: 4px 8px; border-radius: 999px; white-space: nowrap">Vérifiée préparation</span>
+      </div>
+      <div style="font-size: 13px; color: #5E5A52">Préparée par Awa D. à 05h42</div>
+
+      <div style="display: flex; flex-direction: column">
+        <div style="display: grid; grid-template-columns: minmax(0, 1fr) 64px 92px; gap: 8px; font-size: 12px; color: #5E5A52; padding-bottom: 6px; border-bottom: 1px solid #EFECE6">
+          <span>Produit</span><span style="text-align: right">Préparé</span><span style="text-align: right">Je reçois</span>
+        </div>
+        <div style="display: grid; grid-template-columns: minmax(0, 1fr) 64px 92px; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid #EFECE6">
+          <label for="r1">Pain baguette</label>
+          <span style="text-align: right; font-family: 'IBM Plex Mono', monospace">120</span>
+          <input id="r1" inputmode="numeric" value="120" style="height: 44px; width: 100%; box-sizing: border-box; text-align: right; padding: 0 10px; border: 1px solid #B8B3A8; border-radius: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 16px">
+        </div>
+        <div style="display: grid; grid-template-columns: minmax(0, 1fr) 64px 92px; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid #EFECE6">
+          <label for="r2">Croissant</label>
+          <span style="text-align: right; font-family: 'IBM Plex Mono', monospace">40</span>
+          <input id="r2" inputmode="numeric" value="40" style="height: 44px; width: 100%; box-sizing: border-box; text-align: right; padding: 0 10px; border: 1px solid #B8B3A8; border-radius: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 16px">
+        </div>
+        <div style="display: grid; grid-template-columns: minmax(0, 1fr) 64px 92px; gap: 8px; align-items: center; padding: 8px 0">
+          <label for="r3">Pain de mie</label>
+          <span style="text-align: right; font-family: 'IBM Plex Mono', monospace">15</span>
+          <input id="r3" inputmode="numeric" value="15" style="height: 44px; width: 100%; box-sizing: border-box; text-align: right; padding: 0 10px; border: 1px solid #B8B3A8; border-radius: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 16px">
+        </div>
+      </div>
+
+      <button style="height: 56px; border: none; background: #1E3A8A; color: #FFFFFF; border-radius: 8px; font: inherit; font-size: 16px; font-weight: 600; cursor: pointer">Je confirme avoir reçu cette commande</button>
+      <button style="height: 48px; border: 1px solid #C2410C; background: #FFFFFF; color: #9A3412; border-radius: 8px; font: inherit; font-weight: 500; cursor: pointer">Signaler un écart</button>
+    </div>
+
+    <a href="#" style="text-decoration: none; color: inherit; background: #FFF7ED; border: 1px solid #FDBA74; border-radius: 12px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; min-height: 44px">
+      <div style="display: flex; flex-direction: column; gap: 2px">
+        <span style="font-weight: 600">Arrêt 7 · Supérette Les Palmiers</span>
+        <span style="font-size: 13px; color: #9A3412">Écart : 30 croissants manquants</span>
+      </div>
+      <span style="font-size: 13px; color: #9A3412; font-weight: 500">En attente</span>
+    </a>
+
+    <button disabled="" style="margin-top: auto; height: 56px; border: none; background: #D6D2C9; color: #3D3A34; border-radius: 8px; font: inherit; font-size: 16px; font-weight: 600">Démarrer la tournée · 3 commandes restantes</button>
+  </div>
+</div>
+</body>
+</html>

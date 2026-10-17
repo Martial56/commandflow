@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Facturation</title>
+</head>
+<body>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1E3A8A}a:hover{color:#172554}
+</style>
+<div style="width: 100%; min-height: 1000px; display: flex; flex-wrap: wrap; background: #F6F4EF; color: #1C1B19; font-family: 'IBM Plex Sans', 'Helvetica Neue', sans-serif; font-size: 15px">
+  <div style="flex: 1 1 220px; max-width: 100%; display: flex"><nav aria-label="Navigation principale" style="width: 100%; box-sizing: border-box; background: #1C1B19; color: #F6F4EF; padding: 24px 16px; display: flex; flex-direction: column; gap: 4px; font-size: 15px">
+<div style="font-weight: 600; font-size: 18px; padding: 0 12px 4px">ComandFlow</div>
+<div style="font-size: 13px; color: #C9C5BC; padding: 0 12px 20px">Mie Doré</div>
+<a href="08-tableau-de-bord.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; text-decoration: none; background: transparent; color: #DDD9D0; font-weight: 400">Tableau de bord</a>
+<a href="09-liste-des-commandes.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; text-decoration: none; background: transparent; color: #DDD9D0; font-weight: 400">Commandes</a>
+<a href="11-recurrentes-a-confirmer.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; text-decoration: none; background: transparent; color: #DDD9D0; font-weight: 400">Récurrentes</a>
+<a href="12-fiche-client.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; text-decoration: none; background: transparent; color: #DDD9D0; font-weight: 400">Clients</a>
+<a href="13-plan-de-production.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; text-decoration: none; background: transparent; color: #DDD9D0; font-weight: 400">Production</a>
+<a href="14-tournees.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; text-decoration: none; background: transparent; color: #DDD9D0; font-weight: 400">Tournées</a>
+<a href="15-facturation-et-fne.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; text-decoration: none; background: #3A3833; color: #F6F4EF; font-weight: 600">Facturation</a>
+<a href="16-paiements-et-creances.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; text-decoration: none; background: transparent; color: #DDD9D0; font-weight: 400">Paiements</a>
+<a href="17-parametres.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; text-decoration: none; background: transparent; color: #DDD9D0; font-weight: 400">Paramètres</a>
+<div style="margin-top: auto; padding: 16px 12px 0; border-top: 1px solid #3A3833; display: flex; flex-direction: column; gap: 2px"><span style="font-weight: 500">Aminata K.</span><span style="font-size: 13px; color: #C9C5BC">Gestionnaire</span></div>
+</nav></div>
+  <main style="flex: 999 1 560px; min-width: 0; padding: 32px 40px; box-sizing: border-box; display: flex; flex-direction: column; gap: 20px">
+    <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px">
+      <h1 style="margin: 0; font-size: 28px; font-weight: 600">Facturation</h1>
+      <div role="tablist" aria-label="Vue" style="display: flex; gap: 8px; flex-wrap: wrap">
+        <button role="tab" aria-selected="true" style="height: 40px; padding: 0 14px; border: none; border-radius: 999px; background: #1C1B19; color: #F6F4EF; font: inherit; font-size: 14px; cursor: pointer">À facturer · 23</button>
+        <button role="tab" aria-selected="false" style="height: 40px; padding: 0 14px; border: 1px solid #B8B3A8; border-radius: 999px; background: #FFFFFF; font: inherit; font-size: 14px; cursor: pointer">Documents émis</button>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+      <div style="flex: 3 1 420px; min-width: 0; background: #FFFFFF; border: 1px solid #E2DED5; border-radius: 10px; overflow-x: auto">
+        <table style="width: 100%; min-width: 520px; border-collapse: collapse; font-size: 14px">
+          <thead>
+            <tr style="text-align: left; color: #5E5A52; font-size: 13px">
+              <th style="padding: 12px 16px; border-bottom: 1px solid #E2DED5; width: 40px"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Sélection</span></th>
+              <th style="padding: 12px 16px; border-bottom: 1px solid #E2DED5; font-weight: 500">Livraison</th>
+              <th style="padding: 12px 16px; border-bottom: 1px solid #E2DED5; font-weight: 500">Client</th>
+              <th style="padding: 12px 16px; border-bottom: 1px solid #E2DED5; font-weight: 500; text-align: right">Montant livré</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="background: #EEF2FF"><td style="padding: 12px 16px; border-bottom: 1px solid #EFECE6"><input type="checkbox" checked aria-label="Sélectionner CMD-001251" style="width: 18px; height: 18px"></td><td style="padding: 12px 16px; border-bottom: 1px solid #EFECE6"><span style="font-family: 'IBM Plex Mono', monospace">CMD-001251</span> · 14 oct.</td><td style="padding: 12px 16px; border-bottom: 1px solid #EFECE6">Restaurant Le Baobab</td><td style="padding: 12px 16px; border-bottom: 1px solid #EFECE6; text-align: right; font-family: 'IBM Plex Mono', monospace">52 500</td></tr>
+            <tr style="background: #EEF2FF"><td style="padding: 12px 16px; border-bottom: 1px solid #EFECE6"><input type="checkbox" checked aria-label="Sélectionner CMD-001219" style="width: 18px; height: 18px"></td><td style="padding: 12px 16px; border-bottom: 1px solid #EFECE6"><span style="font-family: 'IBM Plex Mono', monospace">CMD-001219</span> · 13 oct.</td><td style="padding: 12px 16px; border-bottom: 1px solid #EFECE6">Restaurant Le Baobab</td><td style="padding: 12px 16px; border-bottom: 1px solid #EFECE6; text-align: right; font-family: 'IBM Plex Mono', monospace">48 000</td></tr>
+            <tr><td style="padding: 12px 16px; border-bottom: 1px solid #EFECE6"><input type="checkbox" aria-label="Sélectionner CMD-001279" style="width: 18px; height: 18px"></td><td style="padding: 12px 16px; border-bottom: 1px solid #EFECE6"><span style="font-family: 'IBM Plex Mono', monospace">CMD-001279</span> · 14 oct.</td><td style="padding: 12px 16px; border-bottom: 1px solid #EFECE6">Prosuma Riviera</td><td style="padding: 12px 16px; border-bottom: 1px solid #EFECE6; text-align: right; font-family: 'IBM Plex Mono', monospace">231 000</td></tr>
+            <tr><td style="padding: 12px 16px; border-bottom: 1px solid #EFECE6"><input type="checkbox" aria-label="Sélectionner CMD-001277" style="width: 18px; height: 18px"></td><td style="padding: 12px 16px; border-bottom: 1px solid #EFECE6"><span style="font-family: 'IBM Plex Mono', monospace">CMD-001277</span> · 14 oct. <span style="font-size: 12px; color: #9A3412">partielle</span></td><td style="padding: 12px 16px; border-bottom: 1px solid #EFECE6">Café Le Plateau</td><td style="padding: 12px 16px; border-bottom: 1px solid #EFECE6; text-align: right; font-family: 'IBM Plex Mono', monospace">29 000</td></tr>
+            <tr><td style="padding: 12px 16px"><input type="checkbox" aria-label="Sélectionner CMD-001268" style="width: 18px; height: 18px"></td><td style="padding: 12px 16px"><span style="font-family: 'IBM Plex Mono', monospace">CMD-001268</span> · 13 oct.</td><td style="padding: 12px 16px">Mme Bamba (particulier)</td><td style="padding: 12px 16px; text-align: right; font-family: 'IBM Plex Mono', monospace">15 000</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <section aria-labelledby="f-doc" style="flex: 2 1 300px; min-width: 0; background: #FFFFFF; border: 1px solid #E2DED5; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+        <h2 id="f-doc" style="margin: 0; font-size: 16px; font-weight: 600">Document pour la sélection</h2>
+        <div style="font-size: 14px; color: #3D3A34">Restaurant Le Baobab · 2 livraisons · <span style="font-family: 'IBM Plex Mono', monospace">100 500 FCFA</span></div>
+        <fieldset style="margin: 0; border: none; padding: 0; display: flex; flex-direction: column; gap: 8px">
+          <legend style="font-size: 13px; font-weight: 500; padding-bottom: 6px">Type de document</legend>
+          <label style="display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 12px; border: 2px solid #1E3A8A; background: #EEF2FF; border-radius: 8px; font-weight: 600"><input type="radio" name="doc" checked> Facture normalisée (FNE)</label>
+          <label style="display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 12px; border: 1px solid #B8B3A8; border-radius: 8px"><input type="radio" name="doc"> Autre document (reçu, bon)</label>
+        </fieldset>
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <label for="num-fne" style="font-size: 13px; font-weight: 500">N° FNE (plateforme DGI)</label>
+          <input id="num-fne" value="" style="height: 44px; padding: 0 12px; border: 1px solid #B8B3A8; border-radius: 6px; font: inherit">
+        </div>
+        <button style="min-height: 64px; border: 1px dashed #8F897D; border-radius: 6px; background: #FAF9F6; color: #3D3A34; font: inherit; cursor: pointer">Joindre le PDF de la FNE</button>
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <label for="echeance" style="font-size: 13px; font-weight: 500">Échéance de paiement</label>
+          <input id="echeance" type="date" value="2026-10-31" style="height: 44px; padding: 0 12px; border: 1px solid #B8B3A8; border-radius: 6px; font: inherit">
+        </div>
+        <button style="height: 48px; border: none; background: #1E3A8A; color: #FFFFFF; border-radius: 6px; font: inherit; font-weight: 600; cursor: pointer">Enregistrer le document</button>
+        <p style="margin: 0; font-size: 12px; color: #5E5A52">La FNE est émise sur la plateforme de la DGI ; ComandFlow archive le document et suit le paiement.</p>
+      </section>
+    </div>
+  </main>
+</div>
+</body>
+</html>

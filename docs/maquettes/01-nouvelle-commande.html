@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nouvelle commande</title>
+</head>
+<body>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1E3A8A}a:hover{color:#172554}
+</style>
+<div style="width: 100%; min-height: 980px; display: flex; flex-wrap: wrap; background: #F6F4EF; color: #1C1B19; font-family: 'IBM Plex Sans', 'Helvetica Neue', sans-serif; font-size: 15px">
+  <nav aria-label="Navigation principale" style="flex: 1 1 220px; max-width: 100%; background: #1C1B19; color: #F6F4EF; padding: 24px 16px; box-sizing: border-box; display: flex; flex-direction: column; gap: 4px">
+    <div style="font-weight: 600; font-size: 18px; padding: 0 12px 4px">ComandFlow</div>
+    <div style="font-size: 13px; color: #C9C5BC; padding: 0 12px 20px">Mie Doré</div>
+    <a href="#" style="color: #F6F4EF; text-decoration: none; padding: 10px 12px; border-radius: 6px; background: #3A3833; font-weight: 500">Commandes</a>
+    <a href="#" style="color: #DDD9D0; text-decoration: none; padding: 10px 12px; border-radius: 6px">Clients</a>
+    <a href="#" style="color: #DDD9D0; text-decoration: none; padding: 10px 12px; border-radius: 6px">Production</a>
+    <a href="#" style="color: #DDD9D0; text-decoration: none; padding: 10px 12px; border-radius: 6px">Tournées</a>
+    <a href="#" style="color: #DDD9D0; text-decoration: none; padding: 10px 12px; border-radius: 6px">Facturation</a>
+    <a href="#" style="color: #DDD9D0; text-decoration: none; padding: 10px 12px; border-radius: 6px">Paiements</a>
+    <a href="#" style="color: #DDD9D0; text-decoration: none; padding: 10px 12px; border-radius: 6px">Tableau de bord</a>
+  </nav>
+  <main style="flex: 999 1 560px; min-width: 0; padding: 32px 40px; box-sizing: border-box; display: flex; flex-direction: column; gap: 24px">
+    <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px">
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <div style="font-size: 13px; color: #5E5A52">Commandes › Nouvelle</div>
+        <h1 style="margin: 0; font-size: 28px; font-weight: 600">Nouvelle commande</h1>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #5E5A52">
+        <span style="padding: 4px 10px; border-radius: 999px; background: #E7E3DA; color: #1C1B19; font-weight: 500">Brouillon</span>
+        <span>N° attribué à l'enregistrement</span>
+      </div>
+    </div>
+
+    <section aria-labelledby="sec-client" style="background: #FFFFFF; border: 1px solid #E2DED5; border-radius: 10px; padding: 24px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 20px">
+      <h2 id="sec-client" style="grid-column: 1 / -1; margin: 0; font-size: 16px; font-weight: 600">Client et livraison</h2>
+      <div style="grid-column: span 2; display: flex; flex-direction: column; gap: 6px">
+        <label for="client" style="font-size: 13px; font-weight: 500">Client</label>
+        <input id="client" value="Restaurant Le Baobab — CLI-000042" style="height: 44px; padding: 0 12px; border: 1px solid #B8B3A8; border-radius: 6px; font: inherit">
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="canal" style="font-size: 13px; font-weight: 500">Canal de réception</label>
+        <select id="canal" style="height: 44px; padding: 0 12px; border: 1px solid #B8B3A8; border-radius: 6px; font: inherit; background: #FFFFFF">
+          <option>WhatsApp</option>
+          <option>Téléphone</option>
+          <option>Sur place</option>
+          <option>Commercial</option>
+          <option>Bon de commande écrit</option>
+        </select>
+      </div>
+      <div style="grid-column: span 2; display: flex; flex-direction: column; gap: 6px">
+        <label for="adresse" style="font-size: 13px; font-weight: 500">Adresse de livraison</label>
+        <select id="adresse" style="height: 44px; padding: 0 12px; border: 1px solid #B8B3A8; border-radius: 6px; font: inherit; background: #FFFFFF">
+          <option>Cuisine principale — [adresse du client]</option>
+        </select>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="date" style="font-size: 13px; font-weight: 500">Date et créneau</label>
+        <div style="display: flex; gap: 8px">
+          <input id="date" type="date" value="2026-10-15" style="flex: 1; min-width: 0; height: 44px; padding: 0 12px; border: 1px solid #B8B3A8; border-radius: 6px; font: inherit">
+          <select aria-label="Créneau" style="height: 44px; padding: 0 8px; border: 1px solid #B8B3A8; border-radius: 6px; font: inherit; background: #FFFFFF">
+            <option>06h–08h</option>
+            <option>08h–10h</option>
+          </select>
+        </div>
+      </div>
+      <label style="grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px">
+        <input type="checkbox" style="width: 20px; height: 20px">
+        <span><strong style="font-weight: 600">Commande urgente</strong> — déclenche une alerte et exige la validation d'un responsable</span>
+      </label>
+    </section>
+
+    <section aria-labelledby="sec-lignes" style="background: #FFFFFF; border: 1px solid #E2DED5; border-radius: 10px; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap">
+        <h2 id="sec-lignes" style="margin: 0; font-size: 16px; font-weight: 600">Produits</h2>
+        <button style="height: 44px; padding: 0 16px; border: 1px solid #1E3A8A; color: #1E3A8A; background: #FFFFFF; border-radius: 6px; font: inherit; font-weight: 500; cursor: pointer">+ Ajouter un produit</button>
+      </div>
+      <div style="overflow-x: auto">
+        <table style="width: 100%; min-width: 560px; border-collapse: collapse; font-size: 14px">
+          <thead>
+            <tr style="text-align: left; color: #5E5A52; font-size: 13px">
+              <th style="padding: 10px 8px; border-bottom: 1px solid #E2DED5; font-weight: 500">Produit</th>
+              <th style="padding: 10px 8px; border-bottom: 1px solid #E2DED5; font-weight: 500">Unité</th>
+              <th style="padding: 10px 8px; border-bottom: 1px solid #E2DED5; font-weight: 500; text-align: right">Quantité</th>
+              <th style="padding: 10px 8px; border-bottom: 1px solid #E2DED5; font-weight: 500; text-align: right">Prix unitaire (FCFA)</th>
+              <th style="padding: 10px 8px; border-bottom: 1px solid #E2DED5; font-weight: 500; text-align: right">Montant (FCFA)</th>
+            </tr>
+          </thead>
+          <tbody style="font-family: 'IBM Plex Mono', monospace">
+            <tr>
+              <td style="padding: 12px 8px; border-bottom: 1px solid #EFECE6; font-family: 'IBM Plex Sans', sans-serif">Pain baguette</td>
+              <td style="padding: 12px 8px; border-bottom: 1px solid #EFECE6; font-family: 'IBM Plex Sans', sans-serif">pièce</td>
+              <td style="padding: 12px 8px; border-bottom: 1px solid #EFECE6; text-align: right">120</td>
+              <td style="padding: 12px 8px; border-bottom: 1px solid #EFECE6; text-align: right">[PRIX]</td>
+              <td style="padding: 12px 8px; border-bottom: 1px solid #EFECE6; text-align: right">—</td>
+            </tr>
+            <tr>
+              <td style="padding: 12px 8px; border-bottom: 1px solid #EFECE6; font-family: 'IBM Plex Sans', sans-serif">Croissant</td>
+              <td style="padding: 12px 8px; border-bottom: 1px solid #EFECE6; font-family: 'IBM Plex Sans', sans-serif">pièce</td>
+              <td style="padding: 12px 8px; border-bottom: 1px solid #EFECE6; text-align: right">40</td>
+              <td style="padding: 12px 8px; border-bottom: 1px solid #EFECE6; text-align: right">[PRIX]</td>
+              <td style="padding: 12px 8px; border-bottom: 1px solid #EFECE6; text-align: right">—</td>
+            </tr>
+            <tr>
+              <td style="padding: 12px 8px; border-bottom: 1px solid #EFECE6; font-family: 'IBM Plex Sans', sans-serif">Pain de mie</td>
+              <td style="padding: 12px 8px; border-bottom: 1px solid #EFECE6; font-family: 'IBM Plex Sans', sans-serif">pièce</td>
+              <td style="padding: 12px 8px; border-bottom: 1px solid #EFECE6; text-align: right">15</td>
+              <td style="padding: 12px 8px; border-bottom: 1px solid #EFECE6; text-align: right">[PRIX]</td>
+              <td style="padding: 12px 8px; border-bottom: 1px solid #EFECE6; text-align: right">—</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="font-size: 13px; color: #5E5A52">Le prix est figé sur chaque ligne à l'enregistrement : un changement de catalogue ne modifie pas cette commande.</div>
+    </section>
+
+    <section aria-labelledby="sec-pj" style="background: #FFFFFF; border: 1px solid #E2DED5; border-radius: 10px; padding: 24px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 20px">
+      <h2 id="sec-pj" style="grid-column: 1 / -1; margin: 0; font-size: 16px; font-weight: 600">Instructions et justificatif</h2>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="instr" style="font-size: 13px; font-weight: 500">Instructions de livraison</label>
+        <textarea id="instr" rows="3" style="padding: 10px 12px; border: 1px solid #B8B3A8; border-radius: 6px; font: inherit; resize: vertical">Livrer par l'entrée de service</textarea>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <span style="font-size: 13px; font-weight: 500">Bon de commande, photo ou capture WhatsApp</span>
+        <button style="min-height: 88px; border: 1px dashed #8F897D; border-radius: 6px; background: #FAF9F6; color: #3D3A34; font: inherit; cursor: pointer">Déposer un fichier ou prendre une photo</button>
+      </div>
+    </section>
+
+    <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px; padding: 4px 0 24px">
+      <div style="display: flex; align-items: baseline; gap: 12px">
+        <span style="color: #5E5A52">Total commande</span>
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 22px; font-weight: 500">[TOTAL] FCFA</span>
+      </div>
+      <div style="display: flex; gap: 12px; flex-wrap: wrap">
+        <button style="height: 48px; padding: 0 20px; border: 1px solid #B8B3A8; background: #FFFFFF; color: #1C1B19; border-radius: 6px; font: inherit; font-weight: 500; cursor: pointer">Enregistrer le brouillon</button>
+        <button style="height: 48px; padding: 0 24px; border: none; background: #1E3A8A; color: #FFFFFF; border-radius: 6px; font: inherit; font-weight: 600; cursor: pointer">Soumettre pour confirmation</button>
+      </div>
+    </div>
+  </main>
+</div>
+</body>
+</html>
