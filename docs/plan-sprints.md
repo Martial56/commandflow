@@ -15,7 +15,7 @@ Coche les cases au fur et à mesure.
 - [x] Projet Django, `config/settings/{base,dev,prod}.py`, variables d'environnement (django-environ)
 - [x] Docker Compose : PostgreSQL 16 + Redis
 - [x] Outillage : ruff, pre-commit, pytest-django, factory_boy, GitHub Actions
-- [ ] App `noyau` : `ModeleEntreprise`, `ModeleTrace`, `Compteur`, `Validation`, `PieceJointe`
+- [x] App `noyau` : `ModeleEntreprise`, `ModeleTrace`, `Compteur`, `Validation`, `PieceJointe`
 - [x] App `entreprises` : `Entreprise` + middleware/utilitaire « entreprise courante »
 - [ ] App `comptes` : `Utilisateur` personnalisé, groupes/rôles, django-rules, allauth, axes
 - [ ] django-pghistory configuré

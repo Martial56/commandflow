@@ -20,6 +20,10 @@ class AutreEntreprise(Exception):
     """Écriture d'un objet rattaché à une autre entreprise que l'entreprise courante."""
 
 
+class AucunUtilisateurCourant(Exception):
+    """Action qui doit être attribuée à un utilisateur, lancée sans utilisateur courant."""
+
+
 def entreprise_courante():
     return _entreprise_courante.get()
 

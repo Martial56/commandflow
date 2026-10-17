@@ -2,3 +2,4 @@ Django>=5.2,<5.3
 django-environ>=0.12,<0.13
 psycopg[binary]>=3.2,<4
 redis>=5.2,<7
+django-fsm-2>=4.2,<5

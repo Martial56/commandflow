@@ -1,8 +1,14 @@
 from django.db import transaction
 from django.utils import timezone
 
-from .contexte import AucuneEntrepriseCourante, entreprise_courante
-from .models import Compteur
+from .contexte import (
+    AucuneEntrepriseCourante,
+    AucunUtilisateurCourant,
+    AutreEntreprise,
+    entreprise_courante,
+    utilisateur_courant,
+)
+from .models import Compteur, PieceJointe, Validation
 
 
 @transaction.atomic
@@ -28,3 +34,52 @@ def prochain_numero(prefixe, *, annuel=True, entreprise=None, date_reference=Non
     if annuel:
         return f"{prefixe}-{annee}-{compteur.dernier_numero:06d}"
     return f"{prefixe}-{compteur.dernier_numero:06d}"
+
+
+def _verifier_meme_entreprise(objet):
+    entreprise = entreprise_courante()
+    if entreprise is None:
+        raise AucuneEntrepriseCourante("Action sur un objet métier sans entreprise courante.")
+    if getattr(objet, "entreprise_id", None) != entreprise.pk:
+        raise AutreEntreprise(f"{objet!r} n'appartient pas à l'entreprise courante.")
+
+
+def _utilisateur_obligatoire():
+    utilisateur = utilisateur_courant()
+    if utilisateur is None:
+        raise AucunUtilisateurCourant("Action à attribuer à un utilisateur.")
+    return utilisateur
+
+
+@transaction.atomic
+def demander_validation(objet, action, motif=""):
+    """Crée une demande de validation (en attente) sur un objet de l'entreprise courante."""
+    _verifier_meme_entreprise(objet)
+    return Validation.objects.create(
+        objet=objet, action=action, motif=motif, demandee_par=_utilisateur_obligatoire()
+    )
+
+
+@transaction.atomic
+def decider_validation(validation, *, accepter):
+    """Accepte ou refuse une validation en attente, au nom de l'utilisateur courant.
+
+    Les profils habilités à décider (§23) seront contrôlés ici avec django-rules.
+    """
+    utilisateur = _utilisateur_obligatoire()
+    validation = Validation.objects.select_for_update().get(pk=validation.pk)
+    if accepter:
+        validation.accepter(par=utilisateur)
+    else:
+        validation.refuser(par=utilisateur)
+    validation.save()
+    return validation
+
+
+@transaction.atomic
+def joindre_fichier(objet, fichier, type):
+    """Enregistre un fichier privé lié à un objet de l'entreprise courante."""
+    _verifier_meme_entreprise(objet)
+    return PieceJointe.objects.create(
+        objet=objet, fichier=fichier, nom_original=fichier.name, type=type
+    )

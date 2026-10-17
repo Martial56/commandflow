@@ -84,3 +84,20 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
+
+# Stockage. « prive » : pièces jointes, bordereaux, photos, signatures. Jamais servi
+# directement : accès uniquement par lien signé (noyau.fichiers). En production, ce
+# stockage passera sur un service S3 (Cloudflare R2 ou Backblaze B2).
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    "prive": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "OPTIONS": {
+            "location": env("DOSSIER_FICHIERS_PRIVES", default=BASE_DIR / "fichiers_prives")
+        },
+    },
+}
+
+# Durée de validité d'un lien signé vers un fichier privé, en secondes.
+DUREE_LIEN_FICHIER = env.int("DUREE_LIEN_FICHIER", default=300)
