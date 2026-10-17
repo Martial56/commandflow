@@ -13,6 +13,6 @@ extend-exclude = ["*/migrations/*"]
 select = ["E", "F", "W", "I", "B", "UP", "DJ"]
 
 [tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "config.settings.dev"
+DJANGO_SETTINGS_MODULE = "config.settings.test"
 python_files = ["test_*.py"]
 addopts = "--strict-markers"
