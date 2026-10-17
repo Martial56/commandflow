@@ -3,6 +3,7 @@ from django.contrib.auth import authenticate, get_user_model
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.db.models import ProtectedError
+from django.test import RequestFactory
 
 from comptes.models import Utilisateur
 from comptes.tests.factories import UtilisateurFactory
@@ -46,7 +47,10 @@ def test_telephone_format_international():
 
 def test_utilisateur_desactive_ne_peut_pas_se_connecter():
     utilisateur = UtilisateurFactory(username="awa")
-    assert authenticate(username="awa", password="motdepasse-test") == utilisateur
+    # django-axes exige la requête lors de l'authentification.
+    requete = RequestFactory().post("/")
+    identifiants = {"username": "awa", "password": "motdepasse-test"}
+    assert authenticate(requete, **identifiants) == utilisateur
     utilisateur.is_active = False
     utilisateur.save()
-    assert authenticate(username="awa", password="motdepasse-test") is None
+    assert authenticate(requete, **identifiants) is None

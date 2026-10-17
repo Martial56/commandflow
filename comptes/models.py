@@ -23,6 +23,10 @@ class Role(models.TextChoices):
     PRESTATAIRE = "prestataire", "Prestataire"
 
 
+# Profils pour lesquels le code de vérification (2FA) est obligatoire (maquette 07).
+ROLES_DOUBLE_AUTHENTIFICATION = [Role.DIRECTION, Role.COMPTABILITE]
+
+
 class Utilisateur(AbstractUser):
     """Compte individuel. Désactivé (is_active=False) au lieu d'être supprimé."""
 

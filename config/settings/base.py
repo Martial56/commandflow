@@ -1,5 +1,6 @@
 """Réglages communs à tous les environnements."""
 
+from datetime import timedelta
 from pathlib import Path
 
 import environ
@@ -20,6 +21,12 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    # Bibliothèques
+    "rules.apps.AutodiscoverRulesConfig",
+    "allauth",
+    "allauth.account",
+    "allauth.mfa",
+    "axes",
     # ComandFlow
     "noyau",
     "entreprises",
@@ -35,9 +42,13 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "allauth.account.middleware.AccountMiddleware",
     "entreprises.middleware.EntrepriseCouranteMiddleware",
+    "comptes.middleware.DoubleAuthentificationObligatoireMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # En dernier : transforme un blocage en réponse « compte bloqué ».
+    "axes.middleware.AxesMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -67,6 +78,42 @@ DATABASES = {"default": env.db("DATABASE_URL")}
 REDIS_URL = env("REDIS_URL")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Authentification : django-axes (blocage) en premier, puis permissions objet
+# (django-rules), admin Django (identifiant) et allauth (téléphone ou e-mail).
+AUTHENTICATION_BACKENDS = [
+    "axes.backends.AxesStandaloneBackend",
+    "rules.permissions.ObjectPermissionBackend",
+    "django.contrib.auth.backends.ModelBackend",
+    "allauth.account.auth_backends.AuthenticationBackend",
+]
+
+LOGIN_URL = "account_login"
+LOGIN_REDIRECT_URL = "accueil"
+ACCOUNT_LOGOUT_REDIRECT_URL = "account_login"
+
+# django-allauth : connexion par téléphone ou e-mail + mot de passe, sans inscription
+# publique (adaptateur), sans vérification par e-mail ni SMS au MVP.
+ACCOUNT_ADAPTER = "comptes.adaptateurs.AdaptateurCompte"
+ACCOUNT_LOGIN_METHODS = {"phone", "email"}
+ACCOUNT_SIGNUP_FIELDS = ["phone*", "email", "password1*", "password2*"]
+ACCOUNT_EMAIL_VERIFICATION = "none"
+ACCOUNT_PHONE_VERIFICATION_ENABLED = False
+ACCOUNT_SESSION_REMEMBER = False
+# Le blocage après échecs est assuré par django-axes seul (règle unique de 15 minutes).
+ACCOUNT_RATE_LIMITS = {"login_failed": None}
+MFA_SUPPORTED_TYPES = ["totp", "recovery_codes"]
+MFA_TOTP_ISSUER = "ComandFlow"
+
+# django-axes : compte bloqué 15 minutes après 5 échecs (maquette 07).
+AXES_FAILURE_LIMIT = 5
+AXES_COOLOFF_TIME = timedelta(minutes=15)
+AXES_LOCKOUT_PARAMETERS = ["username"]
+AXES_USERNAME_CALLABLE = "comptes.axes.identifiant_connexion"
+AXES_RESET_ON_SUCCESS = True
+# Blocage par compte uniquement, pas par adresse IP : le personnel d'une entreprise
+# partage souvent la même connexion, un blocage par IP couperait toute l'équipe.
+SILENCED_SYSTEM_CHECKS = ["axes.W006"]
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},

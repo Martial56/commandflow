@@ -3,3 +3,6 @@ django-environ>=0.12,<0.13
 psycopg[binary]>=3.2,<4
 redis>=5.2,<7
 django-fsm-2>=4.2,<5
+rules>=3.5,<4
+django-allauth[mfa]>=65.20,<66
+django-axes>=8.3,<9
