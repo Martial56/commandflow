@@ -38,5 +38,29 @@ services:
       redis:
         condition: service_healthy
 
+  # Tâches de fond (Celery).
+  worker:
+    build: .
+    command: celery -A config worker -l info
+    env_file: .env
+    volumes:
+      - .:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Tâches planifiées (Celery Beat) ; fichier d'état hors du dossier du projet.
+  beat:
+    build: .
+    command: celery -A config beat -l info --schedule /tmp/celerybeat-schedule
+    env_file: .env
+    volumes:
+      - .:/app
+    depends_on:
+      redis:
+        condition: service_healthy
+
 volumes:
   donnees_postgres:

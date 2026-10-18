@@ -140,6 +140,13 @@ TIME_ZONE = "Africa/Abidjan"
 USE_I18N = True
 USE_TZ = True
 
+# Celery : tâches de fond (Redis) et tâches planifiées (Celery Beat), à l'heure d'Abidjan.
+CELERY_BROKER_URL = REDIS_URL
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_ENABLE_UTC = True
+CELERY_TASK_TIME_LIMIT = 10 * 60
+CELERY_BEAT_SCHEDULE = {}
+
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]

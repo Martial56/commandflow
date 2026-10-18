@@ -283,10 +283,29 @@ Ces choix de modélisation dépendent des arbitrages du §23. Chacun modifie un 
 
 - [ ] Contrôle du chargement par ligne de produit (modèle actuel, `LigneChargement`) ou par commande entière seulement
 - [ ] Double validation imposée aussi aux prestataires externes, ou preuve transmise par le gestionnaire à leur place
-- [ ] Sort d'une commande récurrente non confirmée à l'heure limite : annulation automatique ou maintien en `a_confirmer` avec alerte
-- [ ] Heure limite de confirmation des récurrentes et heure de génération (proposée : la veille à 18 h)
-- [ ] Profils autorisés à valider les modifications, les urgences et les annulations
+- [x] Sort d'une commande récurrente non confirmée à l'heure limite : maintien en `a_confirmer` avec alerte (voir 8.1)
+- [x] Heure limite de confirmation des récurrentes et heure de génération : génération la veille à 18 h, limite à 20 h, réglables par entreprise (voir 8.1)
+- [x] Profils autorisés à valider les modifications, les urgences et les annulations : Direction et Gestionnaire (voir 8.1)
 - [ ] Preuves obligatoires par catégorie de client
 - [ ] Une facture peut-elle couvrir plusieurs livraisons (modèle actuel, M2M) ou une seule
 - [ ] TVA appliquée et produits exonérés, pour fixer `montant_ht` / `montant_ttc`
-- [ ] Quantités entières uniquement ou décimales (vente au poids)
+- [x] Quantités entières uniquement ou décimales (vente au poids) : décimales seulement pour les produits vendus au kg (voir 8.1)
+
+### 8.1 Décisions validées le 18 octobre 2026 (Sprint 2)
+
+| Sujet | Décision |
+| --- | --- |
+| Validation des modifications après confirmation, des urgences et des annulations tardives | Direction et Gestionnaire |
+| Quantités | Décimales autorisées uniquement si l'unité du produit est le kg ; entières sinon |
+| Récurrentes : heures | Génération la veille à 18 h 00, heure limite de confirmation 20 h 00, réglables par entreprise |
+| Récurrente non confirmée à l'heure limite | Reste `a_confirmer`, avec alerte ; elle n'est pas intégrée au plan de production |
+| « Pas de livraison demain » (maquette 11) | Transition `annuler`, motif « Pas de livraison » |
+| Confirmation client | Tracée par l'auteur et l'heure de la transition `confirmer` (historique), avec une note facultative |
+| Fiche client : champs obligatoires | Nom, catégorie, téléphone ; NCC facultatif |
+| Doublons de clients (même nom et même téléphone) | Avertissement, création possible en confirmant |
+| Créneaux de livraison | Liste réglable par entreprise ; par défaut 06h–08h, 08h–10h, 10h–12h, 16h–18h |
+| Prix du catalogue | Prix affiché aux clients ; le traitement de la TVA est fixé au Sprint 6 (à confirmer avec la comptabilité) |
+| Arrondi d'un montant de ligne (quantité × prix) | Au franc le plus proche, la moitié vers le haut |
+| Gestion du catalogue et des modèles récurrents | Import Excel et administration Django (Direction, Gestionnaire) en attendant des écrans dédiés |
+| Import initial | Fichiers de Mie Doré s'ils sont fournis, sinon modèle Excel à remplir |
+| Alerte « commande urgente » | Repère « URGENTE » et filtre dans la liste, demande de validation créée automatiquement ; notification réelle au Sprint 6 |
