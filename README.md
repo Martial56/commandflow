@@ -28,6 +28,7 @@ cp .env.example .env            # puis remplacer DJANGO_SECRET_KEY
 docker compose up -d --build    # PostgreSQL 16, Redis, Django sur http://localhost:8000 (port réglable via PORT_WEB)
 docker compose exec web pytest  # tests
 docker compose exec web python manage.py <commande>
+docker compose exec web python manage.py charger_demo   # comptes de démonstration (développement)
 ```
 
 Le CSS (Tailwind, sans Node) est compilé au démarrage du conteneur `web`, puis à chaque modification sous Linux et macOS. **Sous Windows**, Docker ne transmet pas les modifications de fichiers au conteneur : après avoir ajouté des classes Tailwind dans un gabarit, relancer la compilation :
