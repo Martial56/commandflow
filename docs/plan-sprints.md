@@ -17,7 +17,7 @@ Coche les cases au fur et à mesure.
 - [x] Outillage : ruff, pre-commit, pytest-django, factory_boy, GitHub Actions
 - [x] App `noyau` : `ModeleEntreprise`, `ModeleTrace`, `Compteur`, `Validation`, `PieceJointe`
 - [x] App `entreprises` : `Entreprise` + middleware/utilitaire « entreprise courante »
-- [ ] App `comptes` : `Utilisateur` personnalisé, groupes/rôles, django-rules, allauth, axes
+- [x] App `comptes` : `Utilisateur` personnalisé, groupes/rôles, django-rules, allauth, axes
 - [ ] django-pghistory configuré
 - [ ] Gabarit de base HTMX + Tailwind + navigation par rôle
 - [ ] Commande de données de démo (`python manage.py charger_demo`)

@@ -4,6 +4,8 @@ from datetime import timedelta
 from pathlib import Path
 
 import environ
+import pghistory
+from django.db import models
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -27,6 +29,8 @@ INSTALLED_APPS = [
     "allauth.account",
     "allauth.mfa",
     "axes",
+    "pgtrigger",
+    "pghistory",
     # ComandFlow
     "noyau",
     "entreprises",
@@ -114,6 +118,12 @@ AXES_RESET_ON_SUCCESS = True
 # Blocage par compte uniquement, pas par adresse IP : le personnel d'une entreprise
 # partage souvent la même connexion, un blocage par IP couperait toute l'équipe.
 SILENCED_SYSTEM_CHECKS = ["axes.W006"]
+
+# django-pghistory : historique par triggers PostgreSQL (insertions et modifications).
+# Tables d'historique en ajout seul : un événement ne peut être ni modifié ni supprimé.
+PGHISTORY_APPEND_ONLY = True
+PGHISTORY_CONTEXT_FIELD = pghistory.ContextForeignKey(on_delete=models.PROTECT)
+PGHISTORY_OBJ_FIELD = pghistory.ObjForeignKey(on_delete=models.PROTECT)
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},

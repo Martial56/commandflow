@@ -1,6 +1,7 @@
 import uuid
 from pathlib import Path
 
+import pghistory
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
@@ -138,6 +139,7 @@ class Compteur(models.Model):
         return f"{self.prefixe}{annee} : {self.dernier_numero}"
 
 
+@pghistory.track(model_name="HistoriqueValidation")
 class Validation(FSMModelMixin, ModeleEntreprise, ModeleTrace):
     """Décision d'un responsable sur un objet métier (§8, §10), tracée.
 
@@ -218,6 +220,7 @@ def _chemin_piece_jointe(piece_jointe, nom_fichier):
     return f"{piece_jointe.entreprise_id}/{date:%Y/%m}/{uuid.uuid4().hex}{extension}"
 
 
+@pghistory.track(model_name="HistoriquePieceJointe")
 class PieceJointe(ModeleEntreprise, ModeleTrace):
     """Fichier privé lié à un objet métier. Accès uniquement par lien signé."""
 
