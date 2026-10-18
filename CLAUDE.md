@@ -1,5 +1,7 @@
 # CLAUDE.md — ComandFlow
 
+Ce fichier guide Claude Code (claude.ai/code) pour travailler dans ce dépôt.
+
 ## Projet
 
 ComandFlow est une application web de gestion des commandes, de la production groupée, du chargement, des livraisons, de la facturation (FNE ou non) et des encaissements. Le client pilote est Mie Doré, une boulangerie en Côte d'Ivoire (50 à 150 commandes par jour). Le produit doit devenir un SaaS multi-entreprises.
@@ -11,6 +13,12 @@ Documents de référence, à lire avant toute tâche qui les concerne :
 - `docs/stack-technique.md` : bibliothèques retenues et découpage en applications.
 - `docs/maquettes/` : maquettes HTML des 17 écrans (ouvrir `index.html`). Elles fixent la disposition et les libellés attendus ; le code reprend ces libellés.
 - `docs/plan-sprints.md` : découpage du MVP et état d'avancement.
+
+## État du projet
+
+Sprint 1 (socle) terminé : `noyau`, `entreprises`, `comptes`, gabarits et navigation par rôle. Les apps métier (`clients`, `catalogue`, `commandes`…) n'existent pas encore. Les écrans du menu sont des pages « en préparation » déclarées dans `comptes/navigation.py`.
+
+Tout tourne dans Docker : le poste Windows n'a ni Python 3.12 ni Node. Les commandes passent par `docker compose exec web …` (voir « Commandes utiles »).
 
 ## Règles de travail (obligatoires)
 
@@ -32,10 +40,12 @@ Documents de référence, à lire avant toute tâche qui les concerne :
 
 Python 3.12, Django 5.2 LTS, PostgreSQL 16, Redis, Celery + Celery Beat, HTMX + Alpine.js + Tailwind CSS, django-fsm-2, django-pghistory, django-rules, django-allauth, django-axes, django-storages (S3), django-import-export, WeasyPrint. Tests : pytest-django + factory_boy. Qualité : ruff + pre-commit. Environnement : Docker Compose.
 
+Précisions : réglages par variables d'environnement avec django-environ ; Tailwind via `django-tailwind-cli` (exécutable autonome, sans Node), source `assets/css/source.css` ; htmx et Alpine copiés dans `static/vendor/` (pas de CDN, exclus des hooks pre-commit). Stockage des fichiers privés : disque en développement, S3 managé (Cloudflare R2 ou Backblaze B2) en production ; pas de MinIO, qui n'est plus distribué.
+
 ## Règles d'architecture (non négociables)
 
 - **Multi-entreprise** : chaque modèle métier hérite de `noyau.models.ModeleEntreprise` (FK `entreprise` + manager filtré). Aucune requête métier ne doit pouvoir lire les données d'une autre entreprise. Chaque vue et chaque service filtre par l'entreprise de l'utilisateur.
-- **Traçabilité** : chaque modèle métier hérite de `noyau.models.ModeleTrace` (`cree_le`, `cree_par`, `modifie_le`, `modifie_par`). Les modèles sensibles (commande, lignes, chargement, livraison, facture, paiement, saisie de production) sont suivis par `django-pghistory`.
+- **Traçabilité** : chaque modèle métier hérite de `noyau.models.ModeleTrace` (`cree_le`, `cree_par`, `modifie_le`, `modifie_par`). Les modèles sensibles (commande, lignes, chargement, livraison, facture, paiement, saisie de production, ainsi que `Validation` et `PieceJointe`) sont suivis par `django-pghistory`.
 - **Aucune suppression physique** : `on_delete=models.PROTECT` partout ; annulation par statut ; référentiels désactivés via `actif=False`.
 - **Statuts** : `FSMField(protected=True)`. Un statut ne change **que** par une transition décorée `@transition`, avec ses conditions et permissions, conformément aux tables de `docs/modele-donnees.md`.
 - **Couche services** : la logique métier et les effets en cascade vivent dans `<app>/services.py`, dans `transaction.atomic()`. Une vue appelle un service ; le service appelle les transitions. **Pas de signaux Django** pour la logique métier. Une vue ne modifie jamais un statut directement.
@@ -48,6 +58,20 @@ Python 3.12, Django 5.2 LTS, PostgreSQL 16, Redis, Celery + Celery Beat, HTMX + 
 - **Fichiers** (bordereaux, photos, signatures) : stockage privé, accès par URL signée.
 - **Fuseau** : `USE_TZ = True`, `TIME_ZONE = "Africa/Abidjan"`, `LANGUAGE_CODE = "fr"`.
 
+## Mécanismes du socle (à réutiliser, ne pas réinventer)
+
+- **Entreprise et utilisateur courants** (`noyau/contexte.py`) : variables de contexte fixées par `entreprises.middleware.EntrepriseCouranteMiddleware` pour chaque requête. Hors requête (Celery, commande de gestion, test), les activer avec `activer_entreprise(...)` et `activer_utilisateur(...)`.
+- **`ModeleEntreprise.objects`** filtre sur l'entreprise courante et **lève `AucuneEntrepriseCourante`** s'il n'y en a pas. Enregistrer un objet d'une autre entreprise lève `AutreEntreprise`. `toutes_entreprises` est sans filtre et réservé aux traitements système. `QuerySet.update()` et `bulk_create()` contournent `save()`, donc les auteurs et le contrôle d'entreprise : à éviter sur les modèles métier.
+- **Services du noyau** (`noyau/services.py`) : `prochain_numero(prefixe, annuel=True)` ; `demander_validation()` et `decider_validation()` ; `joindre_fichier()`. Un fichier privé s'ouvre uniquement par `noyau.fichiers.url_signee(piece, utilisateur)` : lien personnel, limité à l'entreprise, qui expire après `DUREE_LIEN_FICHIER`.
+- **Historique** : `@pghistory.track(model_name="Historique<Modele>")`. Les tables d'historique sont en ajout seul. Le contexte contient l'URL, l'utilisateur et l'entreprise ; l'auteur exact d'un événement est le champ `modifie_par` de l'instantané.
+- **Rôles et écrans** : un rôle correspond à un groupe Django (`comptes.models.Role`). Les prédicats `a_le_role(...)`, `meme_entreprise` et `peut_gerer_utilisateurs` sont dans `comptes/rules.py`. Les écrans et la grille par rôle sont dans `comptes/navigation.py` (permission `ecrans.<code>`, URL nommée `ecran_<code>`), et la grille est documentée dans `docs/modele-donnees.md` §3.1. Quand un sprint livre un écran, il remplace l'URL « en préparation » de `comptes/urls.py` par celles de son app, **en gardant le nom `ecran_<code>`**, et la vue vérifie `ecrans.<code>`.
+- **Code de vérification (2FA)** imposé à Direction et Comptabilité par `comptes.middleware.DoubleAuthentificationObligatoireMiddleware`. Le blocage après 5 échecs est géré par django-axes seul.
+- **Gabarits** : `base_bureau.html` (barre de menus), `base_terrain.html` (mobile, sans menu) et `base_connexion.html` (pages d'allauth).
+
+## Enchaînements entre objets
+
+La commande est le pivot. Elle peut avoir plusieurs chargements et plusieurs livraisons, ce qui permet de livrer un reliquat sans la dupliquer. Les cascades passent par les services listés en §7 de `docs/modele-donnees.md` : `production.services.integrer_commande / recalculer_besoin / valider_plan / enregistrer_saisie`, `logistique.services.affecter_commande / demarrer_tournee / cloturer_livraison`, `facturation.services.enregistrer_choix`, `paiements.services.affecter_paiement`. Un retour n'est pas un statut mais un objet `Retour`. Les preuves obligatoires sont lues dans `Entreprise.options` par une condition FSM.
+
 ## Structure
 
 ```
@@ -55,9 +79,11 @@ config/          settings/{base,dev,prod}.py, urls.py, celery.py
 noyau/           classes abstraites, Compteur, Validation, PieceJointe, utilitaires
 entreprises/ comptes/ clients/ catalogue/ commandes/ production/
 logistique/ facturation/ paiements/ notifications/ pilotage/
-templates/       gabarits HTMX ; static/ ; tests/ dans chaque app
+templates/       gabarits HTMX ; static/ (vendor/) ; assets/css/ (source Tailwind) ; tests/ dans chaque app
 docs/            documentation de conception
 ```
+
+Les tests utilisent `config/settings/test.py`, qui installe l'app `noyau.tests` (modèle concret `ObjetTest` pour tester les classes abstraites). Les fixtures communes (`entreprise`, `utilisateur`) sont dans `conftest.py`, et `UtilisateurFactory(roles=[Role.X])` place l'utilisateur dans les groupes voulus.
 
 ## Tests
 
@@ -69,10 +95,13 @@ docs/            documentation de conception
 ## Commandes utiles
 
 ```bash
-docker compose up -d                       # PostgreSQL + Redis
-python manage.py runserver
-python manage.py makemigrations && python manage.py migrate
-pytest                                     # tous les tests
-pytest commandes/ -k transition            # ciblé
-ruff check . && ruff format .
+docker compose up -d --build                         # PostgreSQL, Redis, Django (port PORT_WEB, 8001 sur ce poste)
+docker compose exec web python manage.py makemigrations && docker compose exec web python manage.py migrate
+docker compose exec web pytest                       # tous les tests
+docker compose exec web pytest noyau/tests/test_compteur.py::test_numerotation_annuelle   # un seul test
+docker compose exec web pytest commandes/ -k transition                                    # ciblé
+docker compose exec web ruff check . && docker compose exec web ruff format .
+docker compose exec web python manage.py tailwind build   # sous Windows, après ajout de classes Tailwind
+docker compose exec web python manage.py charger_demo     # comptes de démonstration (mot de passe affiché)
+py -m pre_commit run --all-files                     # hooks (installés côté Windows)
 ```

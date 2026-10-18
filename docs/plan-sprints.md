@@ -18,7 +18,7 @@ Coche les cases au fur et à mesure.
 - [x] App `noyau` : `ModeleEntreprise`, `ModeleTrace`, `Compteur`, `Validation`, `PieceJointe`
 - [x] App `entreprises` : `Entreprise` + middleware/utilitaire « entreprise courante »
 - [x] App `comptes` : `Utilisateur` personnalisé, groupes/rôles, django-rules, allauth, axes
-- [ ] django-pghistory configuré
+- [x] django-pghistory configuré
 - [x] Gabarit de base HTMX + Tailwind + navigation par rôle
 - [x] Commande de données de démo (`python manage.py charger_demo`)
 
