@@ -58,6 +58,8 @@ class Utilisateur(AbstractUser):
     class Meta:
         verbose_name = "utilisateur"
         verbose_name_plural = "utilisateurs"
+        # Attribuée utilisateur par utilisateur, indépendamment du rôle.
+        permissions = [("gerer_utilisateurs", "Peut gérer les utilisateurs")]
         constraints = [
             models.CheckConstraint(
                 condition=Q(entreprise__isnull=False) | Q(is_superuser=True),

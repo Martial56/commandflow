@@ -33,3 +33,7 @@ node_modules/
 
 # Fichiers privés (pièces jointes) en développement
 /fichiers_prives/
+
+# Tailwind : exécutable téléchargé et CSS généré
+/.django_tailwind_cli/
+/static/css/comandflow.css

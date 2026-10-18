@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% comment %}Écrans de bureau : barre de menus latérale (maquettes 8 à 17).{% endcomment %}
+{% block corps %}
+<div class="flex min-h-screen flex-col md:flex-row" x-data="{ menuOuvert: false }">
+  <nav aria-label="Navigation principale"
+       class="flex flex-col gap-1 bg-encre px-4 py-4 text-papier md:w-56 md:shrink-0 md:py-6">
+    <div class="flex items-center justify-between md:block">
+      <div>
+        <div class="px-3 pb-1 text-lg font-semibold">ComandFlow</div>
+        <div class="px-3 text-[13px] text-nav-secondaire md:pb-5">{{ user.entreprise|default:"" }}</div>
+      </div>
+      <button type="button" class="min-h-11 rounded-md px-3 text-nav-texte md:hidden"
+              x-on:click="menuOuvert = !menuOuvert" x-bind:aria-expanded="menuOuvert">Menu</button>
+    </div>
+    <div class="hidden flex-1 flex-col gap-1 md:flex" x-bind:class="menuOuvert ? '!flex' : ''">
+      {% for menu in menus %}
+        {% url menu.nom_url as url_menu %}
+        <a href="{{ url_menu }}"
+           class="flex min-h-11 items-center rounded-md px-3 no-underline {% if request.path == url_menu %}bg-nav-actif font-semibold text-papier hover:text-papier{% else %}text-nav-texte hover:bg-nav-actif hover:text-papier{% endif %}"
+           {% if request.path == url_menu %}aria-current="page"{% endif %}>{{ menu.libelle }}</a>
+      {% endfor %}
+      <div class="mt-auto flex flex-col gap-0.5 border-t border-nav-actif px-3 pt-4">
+        <span class="font-medium">{{ user }}</span>
+        <span class="text-[13px] text-nav-secondaire">{{ user.get_role_principal_display }}</span>
+        <form method="post" action="{% url 'account_logout' %}" class="pt-2">
+          {% csrf_token %}
+          <button type="submit" class="cursor-pointer text-[13px] text-nav-texte underline hover:text-papier">Se déconnecter</button>
+        </form>
+      </div>
+    </div>
+  </nav>
+  <main class="flex min-w-0 flex-1 flex-col gap-6 px-4 py-6 md:px-10 md:py-8">
+    {% block contenu %}{% endblock %}
+  </main>
+</div>
+{% endblock %}

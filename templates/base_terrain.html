@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% comment %}Écrans de terrain, sur téléphone : pas de menu (maquettes 2 à 6).{% endcomment %}
+{% block corps %}
+<div class="mx-auto flex min-h-screen max-w-md flex-col">
+  <header class="flex flex-col gap-1 bg-encre px-5 pt-5 pb-4 text-papier">
+    <div class="flex items-center justify-between text-[13px] text-nav-secondaire">
+      <span>{{ user.entreprise|default:"" }} · {{ user }}</span>
+      <form method="post" action="{% url 'account_logout' %}">
+        {% csrf_token %}
+        <button type="submit" class="min-h-11 cursor-pointer px-2 text-nav-texte underline">Se déconnecter</button>
+      </form>
+    </div>
+    <h1 class="text-[22px] font-semibold">{% block titre_terrain %}{% endblock %}</h1>
+  </header>
+  <div class="flex flex-1 flex-col gap-3 p-4">
+    {% block contenu %}{% endblock %}
+  </div>
+</div>
+{% endblock %}

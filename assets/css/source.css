@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+@source "../../templates";
+@source "../../*/templates";
+@source "../../comptes";
+
+/* Couleurs et polices des maquettes (docs/maquettes). */
+@theme {
+  --font-sans: "IBM Plex Sans", "Helvetica Neue", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  --color-encre: #1c1b19;
+  --color-papier: #f6f4ef;
+  --color-lien: #1e3a8a;
+  --color-lien-survol: #172554;
+  --color-bordure: #b8b3a8;
+  --color-trait: #e2ded5;
+  --color-texte-secondaire: #5e5a52;
+  --color-nav-actif: #3a3833;
+  --color-nav-texte: #ddd9d0;
+  --color-nav-secondaire: #c9c5bc;
+  --color-alerte: #9a3412;
+  --color-alerte-fond: #fff7ed;
+  --color-alerte-bordure: #fdba74;
+}
+
+@layer base {
+  body {
+    @apply bg-papier font-sans text-[15px] text-encre;
+  }
+  a {
+    @apply text-lien hover:text-lien-survol;
+  }
+}
+
+/* Classes réutilisables (déclarées en @utility pour pouvoir être reprises par @apply). */
+@utility champ {
+  @apply h-12 w-full rounded-md border border-bordure bg-white px-3.5 text-[15px];
+}
+@utility bouton-principal {
+  @apply flex h-13 w-full cursor-pointer items-center justify-center rounded-md bg-lien font-semibold text-white hover:bg-lien-survol;
+}
+@utility carte {
+  @apply rounded-[10px] border border-trait bg-white p-5;
+}
+
+@layer components {
+
+  /* Pages d'allauth (code de vérification, mot de passe oublié…) : éléments sans classes. */
+  .page-allauth h1 {
+    @apply text-[26px] font-semibold;
+  }
+  .page-allauth form {
+    @apply flex flex-col gap-4;
+  }
+  .page-allauth label {
+    @apply text-[13px] font-medium;
+  }
+  .page-allauth input:not([type="checkbox"]):not([type="hidden"]) {
+    @apply champ;
+  }
+  .page-allauth button[type="submit"] {
+    @apply bouton-principal;
+  }
+  .page-allauth ul.errorlist {
+    @apply text-sm text-alerte;
+  }
+}

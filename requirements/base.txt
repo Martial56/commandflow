@@ -7,3 +7,4 @@ rules>=3.5,<4
 django-allauth[mfa]>=65.20,<66
 django-axes>=8.3,<9
 django-pghistory>=3.9,<4
+django-tailwind-cli>=4.8,<5

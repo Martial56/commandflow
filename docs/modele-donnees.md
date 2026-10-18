@@ -67,6 +67,20 @@ Chaque modèle hérite de `ModeleEntreprise` et de `ModeleTrace` (section 1). Ce
 
 Les rôles sont des groupes Django (Direction, Gestionnaire, Commercial, Production, Préparation, Chauffeur, Facturation, Comptabilité, Prestataire) ; les règles objet passent par `django-rules`.
 
+**Écrans par rôle** (validé le 18 octobre 2026). Un utilisateur qui a plusieurs rôles voit l'union de leurs écrans ; il arrive sur l'écran de son rôle principal. Le contrôle est fait côté serveur (`comptes/navigation.py`) : un écran non autorisé renvoie 403.
+
+| Rôle | Écrans de bureau | Écran de terrain | Écran d'arrivée |
+| --- | --- | --- | --- |
+| Direction, Gestionnaire | Tableau de bord, Commandes, Récurrentes, Clients, Production, Tournées, Facturation, Paiements, Paramètres | — | Tableau de bord |
+| Commercial | Tableau de bord (limité à ses commandes), Commandes, Récurrentes, Clients | — | Tableau de bord |
+| Production | Production (plan groupé uniquement) | — | Production |
+| Préparation | — | Contrôle du chargement | Contrôle du chargement |
+| Chauffeur, Prestataire | — | Ma tournée (ses affectations uniquement) | Ma tournée |
+| Facturation | Commandes, Clients, Facturation | — | Facturation |
+| Comptabilité | Tableau de bord, Clients, Facturation, Paiements | — | Paiements |
+
+La gestion des utilisateurs est une permission individuelle (`comptes.gerer_utilisateurs`), attribuée à l'utilisateur choisi quel que soit son rôle ; elle donne accès à Paramètres.
+
 ### 3.2 `clients` et `catalogue`
 
 | Modèle | Champs principaux | Contraintes |

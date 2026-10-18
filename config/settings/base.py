@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     "axes",
     "pgtrigger",
     "pghistory",
+    "django_tailwind_cli",
     # ComandFlow
     "noyau",
     "entreprises",
@@ -67,6 +68,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "comptes.context_processors.navigation",
             ],
         },
     },
@@ -141,6 +143,12 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
+
+# Tailwind CSS (exécutable autonome, sans Node). Source : assets/css/source.css ;
+# fichier généré : static/css/comandflow.css (non versionné).
+TAILWIND_CLI_VERSION = "4.1.3"
+TAILWIND_CLI_SRC_CSS = "assets/css/source.css"
+TAILWIND_CLI_DIST_CSS = "css/comandflow.css"
 
 # Stockage. « prive » : pièces jointes, bordereaux, photos, signatures. Jamais servi
 # directement : accès uniquement par lien signé (noyau.fichiers). En production, ce

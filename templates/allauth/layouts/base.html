@@ -1,0 +1,7 @@
+{% extends "base_connexion.html" %}
+{% comment %}
+Habillage de toutes les pages d'allauth (code de vérification, mot de passe oublié,
+activation 2FA…). Les blocs `head_title` et `content` sont ceux qu'utilise allauth.
+{% endcomment %}
+{% block titre %}{% block head_title %}{% endblock head_title %}{% endblock titre %}
+{% block formulaire %}{% block content %}{% endblock content %}{% endblock formulaire %}

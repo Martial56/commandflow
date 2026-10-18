@@ -23,6 +23,10 @@ services:
 
   web:
     build: .
+    # Serveur de développement + recompilation du CSS Tailwind à chaque modification.
+    command: python manage.py tailwind runserver 0.0.0.0:8000
+    # La surveillance de Tailwind s'arrête si l'entrée standard se ferme.
+    stdin_open: true
     env_file: .env
     ports:
       - "${PORT_WEB:-8000}:8000"

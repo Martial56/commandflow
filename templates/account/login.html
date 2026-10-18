@@ -1,0 +1,27 @@
+{% extends "base_connexion.html" %}
+{% block titre %}Connexion{% endblock %}
+{% block formulaire %}
+  <h1 class="text-[26px] font-semibold">Connexion</h1>
+  <form method="post" action="{% url 'account_login' %}" class="flex flex-col gap-5">
+    {% csrf_token %}
+    {{ redirect_field }}
+    {% if form.non_field_errors %}
+      <div role="alert" class="rounded-md border border-alerte-bordure bg-alerte-fond px-3.5 py-2.5 text-sm text-alerte">
+        {% for erreur in form.non_field_errors %}<p>{{ erreur }}</p>{% endfor %}
+      </div>
+    {% endif %}
+    <div class="flex flex-col gap-1.5">
+      <label for="id_login" class="text-[13px] font-medium">Téléphone ou e-mail</label>
+      <input id="id_login" name="login" value="{{ form.login.value|default:'' }}" required
+             autocomplete="username" autofocus class="champ">
+    </div>
+    <div class="flex flex-col gap-1.5">
+      <label for="id_password" class="text-[13px] font-medium">Mot de passe</label>
+      <input id="id_password" name="password" type="password" required
+             autocomplete="current-password" class="champ">
+    </div>
+    <button type="submit" class="bouton-principal">Se connecter</button>
+  </form>
+  <a href="{% url 'account_reset_password' %}" class="inline-flex min-h-8 items-center self-start text-sm">Mot de passe oublié ?</a>
+  <p class="text-[13px] leading-normal text-texte-secondaire">Un code de vérification est demandé aux profils Direction et Comptabilité. Après 5 échecs, le compte est bloqué 15 minutes.</p>
+{% endblock %}

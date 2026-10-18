@@ -1,0 +1,8 @@
+{% extends "base_terrain.html" %}
+{% block titre %}{{ ecran.libelle }}{% endblock %}
+{% block titre_terrain %}{{ ecran.libelle }}{% endblock %}
+{% block contenu %}
+  <div class="carte text-texte-secondaire">
+    Cet écran est en préparation{% if ecran.sprint %} (sprint {{ ecran.sprint }}){% endif %}.
+  </div>
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block titre %}Aucun accès{% endblock %}
+{% block corps %}
+<main class="mx-auto flex max-w-md flex-col gap-4 px-6 py-16">
+  <h1 class="text-[26px] font-semibold">Aucun écran disponible</h1>
+  <p class="text-texte-secondaire">Votre compte n'a encore aucun rôle. Demandez à un responsable de vous en attribuer un.</p>
+  <form method="post" action="{% url 'account_logout' %}">
+    {% csrf_token %}
+    <button type="submit" class="cursor-pointer underline">Se déconnecter</button>
+  </form>
+</main>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% comment %}Pages de connexion : panneau de présentation + formulaire (maquette 07).{% endcomment %}
+{% block corps %}
+<div class="flex min-h-screen flex-wrap">
+  <section class="flex flex-[1_1_420px] flex-col justify-between gap-10 bg-encre p-8 text-papier md:p-16">
+    <div class="text-[22px] font-semibold">ComandFlow</div>
+    <div class="flex max-w-[460px] flex-col gap-4">
+      <p class="text-[32px] leading-tight font-semibold md:text-[40px]">De la commande au paiement, chaque étape tracée.</p>
+      <p class="text-[17px] leading-normal text-nav-secondaire">Commandes, production, chargement, livraisons, facturation et encaissements dans un seul outil.</p>
+    </div>
+    <div class="text-[13px] text-nav-secondaire">Espace sécurisé</div>
+  </section>
+  <main class="flex flex-[1_1_420px] items-center justify-center px-6 py-12">
+    <div class="page-allauth flex w-full max-w-[400px] flex-col gap-5">
+      {% if messages %}
+        <ul class="flex flex-col gap-1 text-sm">
+          {% for message in messages %}<li>{{ message }}</li>{% endfor %}
+        </ul>
+      {% endif %}
+      {% block formulaire %}{% endblock %}
+    </div>
+  </main>
+</div>
+{% endblock %}

@@ -33,3 +33,9 @@ def meme_entreprise(utilisateur, objet):
         and entreprise_id is not None
         and getattr(objet, "entreprise_id", None) == entreprise_id
     )
+
+
+@rules.predicate
+def peut_gerer_utilisateurs(utilisateur):
+    """Permission attribuée individuellement (admin Django, puis écran Paramètres)."""
+    return utilisateur.has_perm("comptes.gerer_utilisateurs")

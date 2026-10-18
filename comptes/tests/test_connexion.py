@@ -118,7 +118,10 @@ def test_activation_2fa_imposee(client, role):
 
 def test_2fa_non_imposee_au_chauffeur(client, chauffeur):
     client.force_login(chauffeur)
-    assert client.get(reverse("accueil")).status_code == 200
+    # Pas de détour par l'activation : le chauffeur arrive directement sur sa tournée.
+    reponse = client.get(reverse("accueil"), follow=True)
+    assert reponse.redirect_chain == [(reverse("ecran_ma_tournee"), 302)]
+    assert reponse.status_code == 200
 
 
 def test_code_demande_a_la_connexion_quand_2fa_active(client):
@@ -134,4 +137,6 @@ def test_acces_apres_activation_2fa(client):
     direction = UtilisateurFactory(roles=[Role.DIRECTION])
     TOTP.activate(direction, generate_totp_secret())
     client.force_login(direction)
-    assert client.get(reverse("accueil")).status_code == 200
+    reponse = client.get(reverse("accueil"), follow=True)
+    assert reponse.redirect_chain == [(reverse("ecran_tableau_de_bord"), 302)]
+    assert reponse.status_code == 200

@@ -29,3 +29,9 @@ docker compose up -d --build    # PostgreSQL 16, Redis, Django sur http://localh
 docker compose exec web pytest  # tests
 docker compose exec web python manage.py <commande>
 ```
+
+Le CSS (Tailwind, sans Node) est compilé au démarrage du conteneur `web`, puis à chaque modification sous Linux et macOS. **Sous Windows**, Docker ne transmet pas les modifications de fichiers au conteneur : après avoir ajouté des classes Tailwind dans un gabarit, relancer la compilation :
+
+```bash
+docker compose exec web python manage.py tailwind build
+```

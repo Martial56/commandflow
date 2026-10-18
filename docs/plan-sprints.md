@@ -19,7 +19,7 @@ Coche les cases au fur et à mesure.
 - [x] App `entreprises` : `Entreprise` + middleware/utilitaire « entreprise courante »
 - [x] App `comptes` : `Utilisateur` personnalisé, groupes/rôles, django-rules, allauth, axes
 - [ ] django-pghistory configuré
-- [ ] Gabarit de base HTMX + Tailwind + navigation par rôle
+- [x] Gabarit de base HTMX + Tailwind + navigation par rôle
 - [ ] Commande de données de démo (`python manage.py charger_demo`)
 
 ## Sprint 2 — Clients, catalogue, commandes

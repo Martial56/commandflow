@@ -3,10 +3,11 @@ repos:
     rev: v5.0.0
     hooks:
       # docs/ exclu : les doubles espaces en fin de ligne sont des retours à la ligne Markdown.
+      # static/vendor/ exclu : bibliothèques copiées telles quelles, jamais modifiées.
       - id: trailing-whitespace
-        exclude: ^docs/
+        exclude: ^(docs|static/vendor)/
       - id: end-of-file-fixer
-        exclude: ^docs/
+        exclude: ^(docs|static/vendor)/
       - id: check-yaml
       - id: check-merge-conflict
       - id: check-added-large-files
