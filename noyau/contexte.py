@@ -37,6 +37,14 @@ def utilisateur_courant():
     return _utilisateur_courant.get()
 
 
+def entreprise_obligatoire():
+    """Entreprise courante, ou `AucuneEntrepriseCourante` s'il n'y en a pas."""
+    entreprise = _entreprise_courante.get()
+    if entreprise is None:
+        raise AucuneEntrepriseCourante("Action métier lancée sans entreprise courante.")
+    return entreprise
+
+
 @contextmanager
 def activer_entreprise(entreprise):
     jeton = _entreprise_courante.set(entreprise)

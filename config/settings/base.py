@@ -17,7 +17,7 @@ DEBUG = env.bool("DJANGO_DEBUG", default=False)
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=[])
 
 INSTALLED_APPS = [
-    "django.contrib.admin",
+    "config.apps.AdminComandflowConfig",  # django.contrib.admin avec le site ComandFlow
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     "noyau",
     "entreprises",
     "comptes",
+    "catalogue",
 ]
 
 AUTH_USER_MODEL = "comptes.Utilisateur"
