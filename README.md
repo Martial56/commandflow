@@ -31,6 +31,21 @@ docker compose exec web python manage.py <commande>
 docker compose exec web python manage.py charger_demo   # comptes de démonstration (développement)
 ```
 
+### Import des clients et des produits (Excel ou CSV)
+
+```bash
+# 1. Obtenir un fichier modèle à remplir (en-têtes + une ligne d'exemple)
+docker compose exec web python manage.py importer_produits modele-produits.xlsx --modele
+docker compose exec web python manage.py importer_clients modele-clients.xlsx --modele
+# 2. Vérifier le fichier rempli sans rien enregistrer, puis importer
+docker compose exec web python manage.py importer_produits produits.xlsx --entreprise mie-dore --utilisateur aminata.k --simulation
+docker compose exec web python manage.py importer_produits produits.xlsx --entreprise mie-dore --utilisateur aminata.k
+```
+
+- **Produits** : colonnes obligatoires `code`, `nom`, `unite` (pièce, kg, carton), `prix` (FCFA entier). Un code existant est mis à jour.
+- **Clients** : colonnes obligatoires `nom`, `categorie`, `telephone`. Sans `code`, le client est créé avec son adresse et son contact ; un client de même nom et même téléphone est ignoré. Avec `code`, la fiche est mise à jour (les cellules vides n'effacent rien).
+- Une ligne en erreur est rejetée avec son motif, sans bloquer les autres ; relancer le même fichier ne crée pas de doublon. Les fichiers sont lus dans le dossier du projet (monté dans le conteneur).
+
 Le CSS (Tailwind, sans Node) est compilé au démarrage du conteneur `web`, puis à chaque modification sous Linux et macOS. **Sous Windows**, Docker ne transmet pas les modifications de fichiers au conteneur : après avoir ajouté des classes Tailwind dans un gabarit, relancer la compilation :
 
 ```bash

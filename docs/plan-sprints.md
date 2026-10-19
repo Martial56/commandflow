@@ -24,7 +24,7 @@ Coche les cases au fur et à mesure.
 
 ## Sprint 2 — Clients, catalogue, commandes
 
-- [ ] Apps `clients` et `catalogue` + import Excel/CSV
+- [x] Apps `clients` et `catalogue` + import Excel/CSV
 - [ ] App `commandes` : modèles, FSM, services, écrans (maquette 1)
 - [ ] Modèles récurrents + tâche Celery de génération quotidienne
 
