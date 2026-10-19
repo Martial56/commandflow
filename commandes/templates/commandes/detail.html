@@ -1,37 +1,123 @@
 {% extends "base_bureau.html" %}
 {% load format_fr %}
-{% comment %}Fiche commande (version minimale ; complétée selon la maquette 10 à l'étape suivante).{% endcomment %}
+{% comment %}Fiche commande (maquette 10).{% endcomment %}
 {% block titre %}{{ commande.numero }}{% endblock %}
 {% block contenu %}
-<div class="flex flex-col gap-1">
-  <a href="{% url 'ecran_commandes' %}" class="text-sm">‹ Commandes</a>
-  <div class="flex flex-wrap items-center gap-3">
-    <h1 class="font-mono text-[26px] font-semibold">{{ commande.numero }}</h1>
-    <span class="rounded-full border border-bordure bg-white px-3 py-1 text-sm">{{ commande.get_statut_display }}</span>
-    {% if commande.urgente %}<span class="rounded-full border border-alerte-bordure bg-alerte-fond px-3 py-1 text-sm font-semibold text-alerte">URGENTE</span>{% endif %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div class="flex flex-col gap-1">
+    <a href="{% url 'ecran_commandes' %}" class="text-sm">‹ Commandes</a>
+    <div class="flex flex-wrap items-center gap-3">
+      <h1 class="font-mono text-[26px] font-semibold">{{ commande.numero }}</h1>
+      {% include "commandes/_statut.html" with statut=commande.statut libelle=commande.get_statut_display %}
+      {% if commande.urgente %}<span class="text-xs font-bold text-alerte">URGENTE</span>{% endif %}
+    </div>
+    <p class="text-texte-secondaire">
+      {{ commande.client }} · livraison {{ commande.date_livraison|date_courte }}, {{ commande.creneau }} ·
+      {% if commande.modele_recurrent_id %}générée depuis un modèle récurrent{% else %}{{ commande.get_canal_display }}{% endif %}
+    </p>
   </div>
-  <p class="text-texte-secondaire">{{ commande.client }} · livraison {{ commande.date_livraison|date:"D j M" }}, {{ commande.creneau }} · {{ commande.libelle_canal }}</p>
+  <div class="flex flex-wrap gap-2">
+    {% if peut_modifier %}<a href="{% url 'commande_modifier' commande.pk %}" class="inline-flex h-11 items-center rounded-md border border-bordure bg-white px-4 text-encre no-underline">Modifier</a>{% endif %}
+    {% if peut_soumettre %}
+      <form method="post" action="{% url 'commande_soumettre' commande.pk %}">{% csrf_token %}<button type="submit" class="bouton-principal h-11 w-auto px-4">Soumettre pour confirmation</button></form>
+    {% endif %}
+    {% if peut_demander %}
+      <a href="{% url 'commande_demander_modification' commande.pk %}" class="inline-flex h-11 items-center rounded-md border border-bordure bg-white px-4 text-encre no-underline">Demander une modification</a>
+    {% endif %}
+  </div>
 </div>
 
-<section class="carte flex flex-col gap-2 text-sm">
-  <h2 class="text-base font-semibold">Produits</h2>
-  <table class="w-full">
-    <thead><tr class="text-left text-[13px] text-texte-secondaire"><th class="pb-2 font-medium">Produit</th><th class="pb-2 text-right font-medium">Qté</th><th class="pb-2 text-right font-medium">PU</th><th class="pb-2 text-right font-medium">Montant</th></tr></thead>
-    <tbody>
-      {% for ligne in lignes %}
-        <tr class="border-t border-trait"><td class="py-2">{{ ligne.produit.nom }}</td><td class="py-2 text-right font-mono">{{ ligne.quantite|quantite }}</td><td class="py-2 text-right font-mono">{{ ligne.prix_unitaire|fcfa }}</td><td class="py-2 text-right font-mono">{{ ligne.montant|fcfa }}</td></tr>
-      {% empty %}
-        <tr><td colspan="4" class="py-2 text-texte-secondaire">Aucun produit.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  <p class="text-right">Total <span class="font-mono text-lg">{{ commande.montant_total|fcfa }}</span> FCFA</p>
-</section>
+{% if commande.statut == "annulee" %}
+  <p role="status" class="rounded-md border border-trait bg-white px-4 py-3 text-sm">Commande annulée — motif : « {{ commande.motif_annulation }} »</p>
+{% endif %}
 
-<section class="carte flex flex-col gap-2 text-sm">
-  <h2 class="text-base font-semibold">Livraison</h2>
-  <p>{{ commande.adresse }}</p>
-  {% if commande.instructions %}<p class="text-texte-secondaire">{{ commande.instructions }}</p>{% endif %}
-  {% for piece, lien in pieces %}<p><a href="{{ lien }}">{{ piece.get_type_display }} : {{ piece.nom_original }}</a></p>{% endfor %}
-</section>
+<ol aria-label="Parcours de la commande" class="grid grid-cols-3 gap-3 text-[13px] md:grid-cols-6">
+  {% for etape in etapes %}
+    <li class="flex flex-col gap-1.5">
+      <div class="h-1.5 rounded {% if etape.atteinte %}bg-lien{% else %}bg-[#D6D2C9]{% endif %}"></div>
+      {% if etape.atteinte %}<strong class="font-semibold">{{ etape.libelle }}</strong><span class="text-texte-secondaire">{{ etape.date|jour_mois }} {{ etape.date|heure }}</span>{% else %}<span>{{ etape.libelle }}</span>{% endif %}
+    </li>
+  {% endfor %}
+</ol>
+
+{% if peut_confirmer or peut_annuler or peut_demander %}
+  <section aria-labelledby="titre-actions" class="carte flex flex-col gap-4 text-sm">
+    <h2 id="titre-actions" class="text-base font-semibold">Actions</h2>
+    {% if peut_confirmer %}
+      <form method="post" action="{% url 'commande_confirmer' commande.pk %}" class="flex flex-wrap items-end gap-3">
+        {% csrf_token %}
+        <div class="flex min-w-60 flex-1 flex-col gap-1.5">
+          <label for="id_note" class="text-[13px] font-medium">{{ formulaire_note.note.label }}</label>{{ formulaire_note.note }}
+        </div>
+        <button type="submit" class="bouton-principal h-12 w-auto px-5">Confirmer avec le client</button>
+      </form>
+    {% endif %}
+    {% if peut_annuler or peut_demander %}
+      <form method="post" action="{% if peut_annuler %}{% url 'commande_annuler' commande.pk %}{% else %}{% url 'commande_demander_annulation' commande.pk %}{% endif %}" class="flex flex-wrap items-end gap-3">
+        {% csrf_token %}
+        <div class="flex min-w-60 flex-1 flex-col gap-1.5">
+          <label for="id_motif" class="text-[13px] font-medium">Motif de l'annulation</label>{{ formulaire_motif.motif }}
+        </div>
+        <button type="submit" class="h-12 cursor-pointer rounded-md border border-alerte-bordure bg-white px-5 text-alerte">{% if peut_annuler %}Annuler la commande{% else %}Demander l'annulation{% endif %}</button>
+      </form>
+    {% endif %}
+  </section>
+{% endif %}
+
+{% if demandes %}
+  <section aria-labelledby="titre-demandes" class="flex flex-col gap-3 rounded-[10px] border border-alerte-bordure bg-alerte-fond p-5 text-sm">
+    <h2 id="titre-demandes" class="text-base font-semibold">Demandes en attente de validation</h2>
+    {% for demande in demandes %}
+      <div class="flex flex-wrap items-center justify-between gap-3 border-t border-alerte-bordure pt-3 first-of-type:border-0 first-of-type:pt-0">
+        <span><strong>{{ demande.get_action_display }}</strong> demandée par {{ demande.demandee_par }} le {{ demande.cree_le|jour_mois }} à {{ demande.cree_le|heure }}{% if demande.motif %} — « {{ demande.motif }} »{% endif %}</span>
+        {% if peut_decider %}
+          <form method="post" action="{% url 'commande_decider' commande.pk demande.pk %}" class="flex gap-2">
+            {% csrf_token %}
+            <button type="submit" name="decision" value="accepter" class="h-10 cursor-pointer rounded-md bg-lien px-4 font-semibold text-white">Accepter</button>
+            <button type="submit" name="decision" value="refuser" class="h-10 cursor-pointer rounded-md border border-bordure bg-white px-4">Refuser</button>
+          </form>
+        {% else %}
+          <span class="text-texte-secondaire">En attente d'un responsable</span>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </section>
+{% endif %}
+
+<div class="flex flex-wrap items-start gap-5">
+  <div class="flex min-w-0 flex-[2_1_420px] flex-col gap-5">
+    <section aria-labelledby="titre-produits" class="carte flex flex-col gap-2 text-sm">
+      <h2 id="titre-produits" class="text-base font-semibold">Produits</h2>
+      <table class="w-full">
+        <thead><tr class="text-left text-[13px] text-texte-secondaire"><th class="pb-2 font-medium">Produit</th><th class="pb-2 text-right font-medium">Qté</th><th class="pb-2 text-right font-medium">PU</th><th class="pb-2 text-right font-medium">Montant</th></tr></thead>
+        <tbody>
+          {% for ligne in lignes %}
+            <tr class="border-t border-trait"><td class="py-2">{{ ligne.produit.nom }}</td><td class="py-2 text-right font-mono">{{ ligne.quantite|quantite }}</td><td class="py-2 text-right font-mono">{{ ligne.prix_unitaire|fcfa }}</td><td class="py-2 text-right font-mono">{{ ligne.montant|fcfa }}</td></tr>
+          {% empty %}
+            <tr><td colspan="4" class="py-2 text-texte-secondaire">Aucun produit.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p class="flex justify-end gap-3"><span class="text-texte-secondaire">Total</span><span class="font-mono text-lg">{{ commande.montant_total|fcfa }} FCFA</span></p>
+    </section>
+    <section aria-labelledby="titre-suivi" class="carte flex flex-col gap-2 text-sm">
+      <h2 id="titre-suivi" class="text-base font-semibold">Suivi lié</h2>
+      <div class="flex justify-between gap-3"><span class="text-texte-secondaire">Livraison</span><span class="text-right">{{ commande.adresse }}</span></div>
+      {% if commande.instructions %}<div class="flex justify-between gap-3"><span class="text-texte-secondaire">Instructions</span><span class="text-right">{{ commande.instructions }}</span></div>{% endif %}
+      <div class="flex justify-between gap-3"><span class="text-texte-secondaire">Tournée</span><span>Non affectée</span></div>
+      <div class="flex justify-between gap-3"><span class="text-texte-secondaire">Facture</span><span>Pas encore facturée</span></div>
+      <div class="flex justify-between gap-3"><span class="text-texte-secondaire">Paiement</span><span>{{ commande.client.libelle_conditions }}</span></div>
+      {% for piece, lien in pieces %}<div class="flex justify-between gap-3"><span class="text-texte-secondaire">{{ piece.get_type_display }}</span><a href="{{ lien }}">{{ piece.nom_original }}</a></div>{% endfor %}
+    </section>
+  </div>
+  <section aria-labelledby="titre-historique" class="carte flex min-w-0 flex-[1_1_320px] flex-col gap-2.5 text-sm">
+    <h2 id="titre-historique" class="text-base font-semibold">Historique</h2>
+    {% for entree in historique %}
+      <div class="flex flex-col gap-0.5 border-b border-trait pb-2.5 last:border-0">
+        <span class="text-[13px] text-texte-secondaire">{{ entree.date|jour_mois }} {{ entree.date|heure }} · {{ entree.auteur }}</span>
+        <span>{{ entree.texte }}</span>
+      </div>
+    {% endfor %}
+  </section>
+</div>
 {% endblock %}

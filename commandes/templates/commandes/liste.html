@@ -1,0 +1,39 @@
+{% extends "base_bureau.html" %}
+{% comment %}Liste des commandes (maquette 9).{% endcomment %}
+{% block titre %}Commandes{% endblock %}
+{% block contenu %}
+<div class="flex flex-wrap items-center justify-between gap-3">
+  <h1 class="text-[28px] font-semibold">Commandes</h1>
+  {% if peut_creer %}
+    <a href="{% url 'commande_nouvelle' %}" class="inline-flex h-11 items-center rounded-md bg-lien px-4 font-semibold text-white no-underline hover:bg-lien-survol hover:text-white">+ Nouvelle commande</a>
+  {% endif %}
+</div>
+
+<form id="filtres-commandes" method="get" action="{% url 'ecran_commandes' %}"
+      hx-get="{% url 'ecran_commandes' %}" hx-trigger="change, input delay:300ms from:#recherche-commande"
+      hx-target="#liste-commandes" hx-swap="outerHTML" hx-push-url="true"
+      class="flex flex-col gap-4">
+  <input type="hidden" name="statut" value="{{ onglet }}">
+  <div class="flex flex-wrap items-end gap-3">
+    <div class="flex min-w-60 flex-[2_1_260px] flex-col gap-1.5">
+      <label for="recherche-commande" class="text-[13px] font-medium">Rechercher</label>
+      <input id="recherche-commande" type="search" name="q" value="{{ filtres.q }}" placeholder="N° de commande, client, téléphone" class="champ h-11">
+    </div>
+    <div class="flex flex-col gap-1.5">
+      <label for="filtre-date" class="text-[13px] font-medium">Date de livraison</label>
+      <input id="filtre-date" type="date" name="date" value="{{ filtres.date }}" class="champ h-11">
+    </div>
+    <div class="flex flex-col gap-1.5">
+      <label for="filtre-canal" class="text-[13px] font-medium">Canal</label>
+      <select id="filtre-canal" name="canal" class="champ h-11">
+        <option value="">Tous</option>
+        {% for valeur, libelle in canaux %}<option value="{{ valeur }}" {% if filtres.canal == valeur %}selected{% endif %}>{{ libelle }}</option>{% endfor %}
+      </select>
+    </div>
+    <label class="flex h-11 items-center gap-2 text-sm"><input type="checkbox" name="urgentes" value="1" {% if filtres.urgentes %}checked{% endif %} class="h-5 w-5"> Urgentes uniquement</label>
+    <noscript><button type="submit" class="h-11 rounded-md border border-bordure bg-white px-4">Filtrer</button></noscript>
+  </div>
+</form>
+
+{% include "commandes/_liste.html" %}
+{% endblock %}

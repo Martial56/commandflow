@@ -2,7 +2,7 @@
 <template>
 {% for ligne in lignes %}
   <td id="unite-{{ ligne.index }}" hx-swap-oob="true" class="py-2 pr-3 pt-4 text-texte-secondaire">{{ ligne.produit.get_unite_display|default:"—" }}</td>
-  <td id="prix-{{ ligne.index }}" hx-swap-oob="true" class="py-2 pr-3 pt-4 text-right font-mono">{% if ligne.produit %}{{ ligne.produit.prix_reference|fcfa }}{% else %}—{% endif %}</td>
+  <td id="prix-{{ ligne.index }}" hx-swap-oob="true" class="py-2 pr-3 pt-4 text-right font-mono">{% if ligne.produit %}{{ ligne.prix_unitaire|fcfa }}{% else %}—{% endif %}</td>
   <td id="montant-{{ ligne.index }}" hx-swap-oob="true" class="py-2 pr-3 pt-4 text-right font-mono">{% if ligne.montant is not None %}{{ ligne.montant|fcfa }}{% else %}—{% endif %}</td>
 {% endfor %}
 </template>

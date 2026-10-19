@@ -7,7 +7,7 @@ urlpatterns = [path("", views.accueil, name="accueil")]
 
 # Écrans livrés : leurs URL sont dans leur app (config/urls.py), sous le même nom
 # `ecran_<code>`, qui sert à la navigation.
-ECRANS_LIVRES = {"clients"}
+ECRANS_LIVRES = {"clients", "commandes"}
 
 # Écrans en attente de leur sprint : page « en préparation ».
 urlpatterns += [

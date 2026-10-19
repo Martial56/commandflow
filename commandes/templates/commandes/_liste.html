@@ -1,0 +1,54 @@
+{% load format_fr %}
+{% comment %}Onglets par statut et tableau des commandes (rechargés par htmx).{% endcomment %}
+<div id="liste-commandes" class="flex flex-col gap-4">
+  <div role="tablist" aria-label="Filtrer par statut" class="flex flex-wrap gap-2">
+    {% for code, libelle, nombre in onglets %}
+      <button type="button" role="tab" aria-selected="{% if code == onglet %}true{% else %}false{% endif %}"
+              hx-get="{% url 'ecran_commandes' %}" hx-include="#filtres-commandes" hx-vals='{"statut": "{{ code }}"}'
+              hx-target="#liste-commandes" hx-swap="outerHTML" hx-push-url="true"
+              hx-on::after-request="document.querySelector('#filtres-commandes [name=statut]').value = '{{ code }}'"
+              class="h-9 cursor-pointer rounded-full border px-3.5 text-[13px] {% if code == onglet %}border-encre bg-encre text-papier{% else %}border-bordure bg-white{% endif %}">{{ libelle }} · {{ nombre }}</button>
+    {% endfor %}
+  </div>
+
+  <div class="carte overflow-x-auto p-0">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-left text-[13px] text-texte-secondaire">
+          <th class="px-4 py-3 font-medium">N°</th>
+          <th class="px-4 py-3 font-medium">Client</th>
+          <th class="px-4 py-3 font-medium">Livraison</th>
+          <th class="px-4 py-3 font-medium">Canal</th>
+          <th class="px-4 py-3 text-right font-medium">Montant (FCFA)</th>
+          <th class="px-4 py-3 font-medium">Statut</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for commande in page %}
+          <tr class="border-t border-trait">
+            <td class="px-4 py-3 whitespace-nowrap"><a href="{% url 'commande_detail' commande.pk %}" class="font-mono">{{ commande.numero }}</a>{% if commande.urgente %} <span class="ml-1.5 text-[11px] font-bold text-alerte">URGENTE</span>{% endif %}</td>
+            <td class="px-4 py-3">{{ commande.client.nom }}</td>
+            <td class="px-4 py-3 whitespace-nowrap">{{ commande.date_livraison|jour_mois }} · {{ commande.creneau }}</td>
+            <td class="px-4 py-3">{{ commande.libelle_canal }}</td>
+            <td class="px-4 py-3 text-right font-mono">{{ commande.total|fcfa }}</td>
+            <td class="px-4 py-3">{% include "commandes/_statut.html" with statut=commande.statut libelle=commande.get_statut_display %}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6" class="px-4 py-6 text-center text-texte-secondaire">Aucune commande ne correspond à ces critères.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="flex flex-wrap items-center justify-between gap-3 text-sm text-texte-secondaire">
+    <span>{{ page|length }} sur {{ page.paginator.count }} commande{{ page.paginator.count|pluralize }}</span>
+    <div class="flex gap-2">
+      {% if page.has_previous %}
+        <a hx-get="{% url 'ecran_commandes' %}?page={{ page.previous_page_number }}" hx-include="#filtres-commandes" hx-target="#liste-commandes" hx-swap="outerHTML" href="?page={{ page.previous_page_number }}" class="inline-flex h-9 items-center rounded-md border border-bordure bg-white px-3 text-encre no-underline">Précédent</a>
+      {% endif %}
+      {% if page.has_next %}
+        <a hx-get="{% url 'ecran_commandes' %}?page={{ page.next_page_number }}" hx-include="#filtres-commandes" hx-target="#liste-commandes" hx-swap="outerHTML" href="?page={{ page.next_page_number }}" class="inline-flex h-9 items-center rounded-md border border-bordure bg-white px-3 text-encre no-underline">Suivant</a>
+      {% endif %}
+    </div>
+  </div>
+</div>

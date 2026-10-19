@@ -2,6 +2,7 @@ import re
 from decimal import Decimal, InvalidOperation
 
 from django import forms
+from django.db.models import Q
 
 from catalogue.models import Produit
 from clients.models import Adresse, Client
@@ -49,10 +50,16 @@ class EnTeteCommandeForm(FormulaireStyle, forms.Form):
         widget=forms.ClearableFileInput(attrs={"accept": "image/*,application/pdf"}),
     )
 
-    def __init__(self, *args, entreprise, **kwargs):
+    def __init__(self, *args, entreprise, client_fixe=None, **kwargs):
+        """`client_fixe` : modification d'une commande existante (le client ne change pas)."""
         super().__init__(*args, **kwargs)
+        self.client_fixe = client_fixe
         self.fields["creneau"].choices = [(c, c) for c in creneaux(entreprise)]
-        client = trouver_client(self.data.get("client") or self.initial.get("client"))
+        if client_fixe is not None:
+            del self.fields["client"]
+            client = client_fixe
+        else:
+            client = trouver_client(self.data.get("client") or self.initial.get("client"))
         if client is not None:
             self.fields["adresse"].queryset = client.adresses.filter(actif=True)
             self.fields["adresse"].initial = client.adresse_par_defaut
@@ -62,6 +69,33 @@ class EnTeteCommandeForm(FormulaireStyle, forms.Form):
         if client is None:
             raise forms.ValidationError("Choisir un client actif dans la liste.")
         return client
+
+
+class DemandeModificationForm(EnTeteCommandeForm):
+    """Demande de modification d'une commande confirmée (validée par un responsable)."""
+
+    motif = forms.CharField(
+        label="Motif de la demande",
+        widget=forms.TextInput(attrs={"placeholder": "Demande du client par WhatsApp"}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for champ in ("canal", "urgente", "justificatif"):
+            del self.fields[champ]
+
+
+class MotifForm(FormulaireStyle, forms.Form):
+    motif = forms.CharField(label="Motif", max_length=500)
+
+
+class NoteConfirmationForm(FormulaireStyle, forms.Form):
+    note = forms.CharField(
+        label="Note de confirmation (facultative)",
+        required=False,
+        max_length=500,
+        widget=forms.TextInput(attrs={"placeholder": "Confirmé par téléphone avec M. Koffi"}),
+    )
 
 
 def lire_quantite(texte):
@@ -76,34 +110,47 @@ def lire_quantite(texte):
 class LigneSaisie:
     """Ligne du tableau de saisie (index, produit choisi, quantité, montant affiché)."""
 
-    def __init__(self, index, produit=None, quantite_texte="", erreur=""):
+    def __init__(self, index, produit=None, quantite_texte="", erreur="", prix_fige=None):
         self.index = index
         self.produit = produit
         self.quantite_texte = quantite_texte
         self.quantite = lire_quantite(quantite_texte)
         self.erreur = erreur
+        self.prix_fige = prix_fige
+
+    @property
+    def prix_unitaire(self):
+        """Prix figé d'une ligne existante, sinon prix actuel du catalogue."""
+        if self.prix_fige is not None:
+            return self.prix_fige
+        return self.produit.prix_reference if self.produit is not None else None
 
     @property
     def montant(self):
-        if self.produit is None or self.quantite is None:
+        if self.prix_unitaire is None or self.quantite is None:
             return None
-        return arrondir_fcfa(self.quantite * self.produit.prix_reference)
+        return arrondir_fcfa(self.quantite * self.prix_unitaire)
 
 
-def lire_lignes(donnees):
-    """Lignes postées (`produit_<i>`, `quantite_<i>`), dans l'ordre d'affichage."""
+def lire_lignes(donnees, prix_figes=None):
+    """Lignes postées (`produit_<i>`, `quantite_<i>`), dans l'ordre d'affichage.
+
+    `prix_figes` : {produit_id: prix} des lignes existantes d'une commande modifiée
+    (leur produit reste accepté même s'il a été retiré du catalogue depuis).
+    """
+    prix_figes = prix_figes or {}
     index = sorted(
         {cle.split("_", 1)[1] for cle in donnees if re.fullmatch(r"(produit|quantite)_\d+", cle)},
         key=int,
     )
-    produits = Produit.objects.filter(actif=True).in_bulk(
-        [donnees[f"produit_{i}"] for i in index if donnees.get(f"produit_{i}", "").isdigit()]
-    )
+    demandes = [donnees[f"produit_{i}"] for i in index if donnees.get(f"produit_{i}", "").isdigit()]
+    produits = Produit.objects.filter(Q(actif=True) | Q(pk__in=prix_figes)).in_bulk(demandes)
     lignes = []
     for i in index:
         identifiant = donnees.get(f"produit_{i}", "")
         produit = produits.get(int(identifiant)) if identifiant.isdigit() else None
-        lignes.append(LigneSaisie(i, produit, donnees.get(f"quantite_{i}", "")))
+        prix = prix_figes.get(produit.pk) if produit is not None else None
+        lignes.append(LigneSaisie(i, produit, donnees.get(f"quantite_{i}", ""), prix_fige=prix))
     return lignes
 
 

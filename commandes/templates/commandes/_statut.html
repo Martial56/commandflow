@@ -1,0 +1,6 @@
+{% comment %}Pastille de statut (couleurs de la maquette 9). Paramètres : statut, libelle.{% endcomment %}
+<span class="inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold
+  {% if statut == 'livree' or statut == 'partiellement_livree' %}bg-[#DCFCE7] text-[#166534]
+  {% elif statut == 'en_anomalie' %}bg-[#FFEDD5] text-alerte
+  {% elif statut == 'brouillon' or statut == 'a_confirmer' or statut == 'annulee' %}bg-[#E7E3DA] text-[#3D3A34]{% if statut == 'annulee' %} line-through{% endif %}
+  {% else %}bg-[#DBEAFE] text-lien{% endif %}">{{ libelle }}</span>
