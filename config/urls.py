@@ -7,5 +7,6 @@ urlpatterns = [
     path("", include("noyau.urls")),
     path("clients/", include("clients.urls")),
     path("commandes/", include("commandes.urls")),
+    path("recurrentes/", include("commandes.urls_recurrentes")),
     path("", include("comptes.urls")),
 ]

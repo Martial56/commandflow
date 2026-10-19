@@ -5,6 +5,7 @@ from pathlib import Path
 
 import environ
 import pghistory
+from celery.schedules import crontab
 from django.db import models
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -149,7 +150,13 @@ CELERY_BROKER_URL = REDIS_URL
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_ENABLE_UTC = True
 CELERY_TASK_TIME_LIMIT = 10 * 60
-CELERY_BEAT_SCHEDULE = {}
+CELERY_BEAT_SCHEDULE = {
+    # Commandes récurrentes du lendemain, dès l'heure de génération de chaque entreprise.
+    "generer-recurrentes": {
+        "task": "commandes.tasks.generer_recurrentes",
+        "schedule": crontab(minute="*/15"),
+    },
+}
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"

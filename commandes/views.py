@@ -1,3 +1,4 @@
+import datetime
 import time
 
 from django.contrib import messages
@@ -8,13 +9,18 @@ from django.db import transaction
 from django.db.models import Count, DecimalField, Q, Sum, Value
 from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_GET, require_POST
 
 from catalogue.models import Produit
 from clients.models import Client
+from entreprises.parametres import heure_limite_confirmation
 from noyau.contexte import entreprise_obligatoire
 from noyau.fichiers import url_signee
 from noyau.models import PieceJointe, Validation
+from noyau.templatetags.format_fr import date_courte, quantite
 
 from . import services
 from .forms import (
@@ -357,6 +363,7 @@ def modifier(request, pk):
         return redirect("commande_detail", pk=pk)
     entreprise = entreprise_obligatoire()
     prix_figes = _prix_figes(commande)
+    suivant = _suivant(request)
     if request.method == "POST":
         formulaire = _formulaire_modification(
             commande, request.POST, request.FILES, entreprise=entreprise
@@ -375,15 +382,29 @@ def modifier(request, pk):
                 _erreurs_service(formulaire, erreur)
             else:
                 messages.success(request, f"Commande {commande.numero} modifiée.")
-                return redirect("commande_detail", pk=pk)
+                return redirect(suivant or reverse("commande_detail", args=[pk]))
     else:
         formulaire = _formulaire_modification(
             commande, initial=_initial(commande), entreprise=entreprise
         )
         lignes = _lignes_de(commande)
     return _editeur(
-        request, formulaire, lignes, mode="modification", commande=commande, inclure=prix_figes
+        request,
+        formulaire,
+        lignes,
+        mode="modification",
+        commande=commande,
+        inclure=prix_figes,
+        suivant=suivant,
     )
+
+
+def _suivant(request):
+    """Page de retour après enregistrement (par exemple l'écran des récurrentes)."""
+    suivant = request.POST.get("suivant") or request.GET.get("suivant") or ""
+    if suivant and url_has_allowed_host_and_scheme(suivant, allowed_hosts={request.get_host()}):
+        return suivant
+    return ""
 
 
 def _formulaire_modification(commande, *args, **kwargs):
@@ -483,3 +504,113 @@ def calcul(request):
         prix_figes = _prix_figes(commande)
     lignes = lire_lignes(request.POST, prix_figes)
     return render(request, "commandes/_calcul.html", {"lignes": lignes, "total": _total(lignes)})
+
+
+# --- Récurrentes à confirmer (maquette 11) ------------------------------------------
+
+
+def _jour_relatif(moment):
+    jour = timezone.localtime(moment).date()
+    aujourd_hui = timezone.localdate()
+    if jour == aujourd_hui:
+        return "aujourd'hui"
+    if jour == aujourd_hui - datetime.timedelta(days=1):
+        return "hier"
+    return date_courte(jour)
+
+
+def _quantites(commande):
+    """Lignes « Baguette 100 · Croissant 60 », avec « 300 → 350 » si ajustée."""
+    habituelles = {
+        ligne.produit_id: ligne.quantite for ligne in commande.modele_recurrent.lignes.all()
+    }
+    morceaux, ajustee = [], False
+    for ligne in commande.lignes_actives.select_related("produit"):
+        habituelle = habituelles.get(ligne.produit_id)
+        if habituelle is not None and habituelle != ligne.quantite:
+            ajustee = True
+            morceaux.append((ligne.produit.nom, quantite(habituelle), quantite(ligne.quantite)))
+        else:
+            ajustee = ajustee or habituelle is None
+            morceaux.append((ligne.produit.nom, None, quantite(ligne.quantite)))
+    ajustee = ajustee or len(morceaux) != len(habituelles)
+    return morceaux, ajustee
+
+
+@login_required
+def recurrentes(request):
+    """Commandes récurrentes générées pour une date, à confirmer (maquette 11)."""
+    _exiger(request, "ecrans.recurrentes")
+    entreprise = entreprise_obligatoire()
+    try:
+        date = datetime.date.fromisoformat(request.GET.get("date", ""))
+    except ValueError:
+        date = timezone.localdate() + datetime.timedelta(days=1)
+    commandes = list(
+        Commande.objects.filter(modele_recurrent__isnull=False, date_livraison=date)
+        .select_related("client", "modele_recurrent")
+        .order_by("client__nom")
+    )
+    lignes = []
+    for commande in commandes:
+        quantites, ajustee = _quantites(commande)
+        lignes.append({"commande": commande, "quantites": quantites, "ajustee": ajustee})
+    actives = [c for c in commandes if c.statut != Statut.ANNULEE]
+    limite = heure_limite_confirmation(entreprise)
+    veille = date - datetime.timedelta(days=1)
+    return render(
+        request,
+        "commandes/recurrentes.html",
+        {
+            "date": date,
+            "lignes": lignes,
+            "generees_le": min((c.cree_le for c in commandes), default=None),
+            "jour_generation": _jour_relatif(min(c.cree_le for c in commandes))
+            if commandes
+            else "",
+            "heure_limite": limite,
+            "limite_depassee": timezone.localtime()
+            >= timezone.make_aware(datetime.datetime.combine(veille, limite)),
+            "nb_confirmees": sum(c.statut != Statut.A_CONFIRMER for c in actives),
+            "nb_total": len(actives),
+            "motif_pas_de_livraison": services.MOTIF_PAS_DE_LIVRAISON,
+            # Mêmes rôles que la confirmation (Commercial, Gestionnaire) ; le service
+            # vérifie ensuite chaque commande.
+            "peut_confirmer": request.user.has_perm("commandes.creer_commande"),
+            "peut_gerer_modeles": request.user.has_perm("commandes.view_modelerecurrent"),
+            "retour": f"{reverse('ecran_recurrentes')}?date={date.isoformat()}",
+        },
+    )
+
+
+@login_required
+@require_POST
+def recurrentes_action(request):
+    """Confirmer ou marquer « pas de livraison » une ou plusieurs commandes récurrentes."""
+    _exiger(request, "ecrans.recurrentes")
+    # Bouton d'une ligne : opération et commande dans l'URL ; boutons du bas : sélection.
+    operation = request.GET.get("operation") or request.POST.get("operation", "")
+    une = request.GET.get("une")
+    identifiants = [une] if une else request.POST.getlist("commande")
+    commandes = list(
+        Commande.objects.filter(
+            pk__in=[i for i in identifiants if i.isdigit()], modele_recurrent__isnull=False
+        )
+    )
+    if not commandes:
+        messages.error(request, "Sélectionner au moins une commande.")
+    elif operation == "confirmer":
+        faites, refus = services.confirmer_selection(commandes)
+        if faites:
+            messages.success(request, f"{len(faites)} commande(s) confirmée(s).")
+        for commande, raison in refus:
+            messages.error(request, f"{commande.client} : {raison}")
+    elif operation == "pas_de_livraison":
+        faites, refus = services.marquer_pas_de_livraison(commandes)
+        if faites:
+            messages.success(request, f"{len(faites)} commande(s) marquée(s) « pas de livraison ».")
+        for commande, raison in refus:
+            messages.error(request, f"{commande.client} : {raison}")
+    retour = reverse("ecran_recurrentes")
+    date = request.POST.get("date", "")
+    return redirect(f"{retour}?date={date}" if date else retour)

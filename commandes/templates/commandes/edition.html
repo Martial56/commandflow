@@ -32,6 +32,7 @@ création, modification avant confirmation, demande de modification après confi
 <form id="formulaire-commande" method="post" enctype="multipart/form-data" class="flex flex-col gap-5">
   {% csrf_token %}
   {% if commande %}<input type="hidden" name="commande" value="{{ commande.pk }}">{% endif %}
+  {% if suivant %}<input type="hidden" name="suivant" value="{{ suivant }}">{% endif %}
   {% for erreur in formulaire.non_field_errors %}
     <p role="alert" class="rounded-md border border-alerte-bordure bg-alerte-fond px-3.5 py-2.5 text-sm text-alerte">{{ erreur }}</p>
   {% endfor %}
@@ -109,7 +110,7 @@ création, modification avant confirmation, demande de modification après confi
         <button type="submit" name="action" value="brouillon" class="h-12 cursor-pointer rounded-md border border-bordure bg-white px-5">Enregistrer le brouillon</button>
         <button type="submit" name="action" value="soumettre" class="bouton-principal h-12 w-auto px-5">Soumettre pour confirmation</button>
       {% else %}
-        <a href="{% url 'commande_detail' commande.pk %}" class="inline-flex h-12 items-center rounded-md border border-bordure bg-white px-5 text-encre no-underline">Annuler</a>
+        <a href="{% if suivant %}{{ suivant }}{% else %}{% url 'commande_detail' commande.pk %}{% endif %}" class="inline-flex h-12 items-center rounded-md border border-bordure bg-white px-5 text-encre no-underline">Annuler</a>
         <button type="submit" class="bouton-principal h-12 w-auto px-5">{% if mode == "demande" %}Envoyer la demande{% else %}Enregistrer les modifications{% endif %}</button>
       {% endif %}
     </div>

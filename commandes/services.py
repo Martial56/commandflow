@@ -6,11 +6,13 @@ besoin, alerte) : Sprint 3.
 """
 
 import datetime
+from dataclasses import dataclass, field
 from decimal import Decimal
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
+from django.db.models import Q
 from django_fsm import can_proceed
 
 from catalogue.models import Produit
@@ -32,6 +34,7 @@ from .models import (
     STATUTS_MODIFICATION_VALIDEE,
     Commande,
     LigneCommande,
+    ModeleRecurrent,
     Statut,
 )
 
@@ -157,6 +160,28 @@ def creer_commande(*, client, lignes, canal, date_livraison, creneau, adresse=No
     `justificatif` : bon de commande, photo ou capture (image ou PDF), stocké en privé.
     """
     _exiger("commandes.creer_commande")
+    commande = _construire_commande(
+        client=client,
+        adresse=adresse,
+        lignes=lignes,
+        canal=canal,
+        date_livraison=date_livraison,
+        creneau=creneau,
+        urgente=urgente,
+        instructions=instructions,
+        **({"recue_le": recue_le} if recue_le else {}),
+    )
+    if justificatif is not None:
+        joindre_justificatif(commande, justificatif)
+    return commande
+
+
+def _construire_commande(*, client, adresse, lignes, creneau, **champs):
+    """Crée la commande et ses lignes (numéro, prix figés), sans contrôle de rôle.
+
+    Appelée par `creer_commande` (saisie, droits vérifiés) et par la génération
+    des récurrentes (action du système).
+    """
     if not client.actif:
         raise ValidationError({"client": "Ce client est désactivé."})
     adresse = _verifier_adresse(client, adresse)
@@ -165,19 +190,13 @@ def creer_commande(*, client, lignes, canal, date_livraison, creneau, adresse=No
         entreprise=entreprise_obligatoire(),
         client=client,
         adresse=adresse,
-        canal=canal,
-        date_livraison=date_livraison,
         creneau=creneau,
-        urgente=urgente,
-        instructions=instructions,
-        **({"recue_le": recue_le} if recue_le else {}),
+        **champs,
     )
     commande.full_clean(exclude=["numero"])
     commande.numero = prochain_numero("CMD", date_reference=commande.recue_le.date())
     commande.save()
     _appliquer_lignes(commande, lignes)
-    if justificatif is not None:
-        joindre_justificatif(commande, justificatif)
     return commande
 
 
@@ -407,3 +426,93 @@ def decider_validation_commande(validation, *, accepter):
         _transition(commande, "annuler", "Annulation impossible.")()
         commande.save()
     return validation
+
+
+# --- Commandes récurrentes ----------------------------------------------------------
+
+
+@dataclass
+class RapportGeneration:
+    creees: list = field(default_factory=list)
+    ignorees: list = field(default_factory=list)  # (modèle, raison)
+
+
+def modeles_du_jour(date_livraison):
+    """Modèles actifs de l'entreprise courante à livrer à cette date."""
+    return (
+        ModeleRecurrent.objects.filter(
+            actif=True,
+            date_debut__lte=date_livraison,
+            jours_semaine__contains=[date_livraison.weekday()],
+        )
+        .filter(Q(date_fin__isnull=True) | Q(date_fin__gte=date_livraison))
+        .select_related("client", "adresse")
+        .order_by("client__nom")
+    )
+
+
+def generer_commandes_recurrentes(date_livraison):
+    """Génère, pour la date, une commande « à confirmer » par modèle récurrent (§4).
+
+    Action du système (tâche Celery). Une seule commande par modèle et par date :
+    une nouvelle exécution ne crée pas de doublon. Chaque modèle est traité dans sa
+    propre transaction ; un modèle en erreur est signalé sans bloquer les autres.
+    """
+    rapport = RapportGeneration()
+    for modele in modeles_du_jour(date_livraison):
+        if Commande.objects.filter(modele_recurrent=modele, date_livraison=date_livraison).exists():
+            continue
+        lignes = [
+            (ligne.produit, ligne.quantite)
+            for ligne in modele.lignes.select_related("produit")
+            if ligne.produit.actif
+        ]
+        if not lignes:
+            rapport.ignorees.append((modele, "aucun produit actif"))
+            continue
+        adresse = modele.adresse if modele.adresse.actif else None
+        try:
+            with transaction.atomic():
+                commande = _construire_commande(
+                    client=modele.client,
+                    adresse=adresse,
+                    lignes=lignes,
+                    creneau=modele.creneau,
+                    date_livraison=date_livraison,
+                    modele_recurrent=modele,
+                    statut=Statut.A_CONFIRMER,
+                )
+        except ValidationError as erreur:
+            rapport.ignorees.append((modele, " ".join(erreur.messages)))
+            continue
+        rapport.creees.append(commande)
+    return rapport
+
+
+@transaction.atomic
+def confirmer_selection(commandes, note=""):
+    """Confirmation par lot (maquette 11). Renvoie (confirmées, refus [(commande, raison)])."""
+    confirmees, refus = [], []
+    for commande in commandes:
+        try:
+            with transaction.atomic():
+                confirmees.append(confirmer_commande(commande, note=note))
+        except (ActionImpossible, PermissionDenied) as erreur:
+            refus.append((commande, str(erreur) or "Action non autorisée."))
+    return confirmees, refus
+
+
+MOTIF_PAS_DE_LIVRAISON = "Pas de livraison"
+
+
+@transaction.atomic
+def marquer_pas_de_livraison(commandes):
+    """« Pas de livraison » (maquette 11) : annulation, motif « Pas de livraison » (8.1)."""
+    annulees, refus = [], []
+    for commande in commandes:
+        try:
+            with transaction.atomic():
+                annulees.append(annuler_commande(commande, MOTIF_PAS_DE_LIVRAISON))
+        except (ActionImpossible, PermissionDenied) as erreur:
+            refus.append((commande, str(erreur) or "Action non autorisée."))
+    return annulees, refus

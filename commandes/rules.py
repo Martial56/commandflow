@@ -42,3 +42,10 @@ rules.add_perm(
 )
 # Décider des validations (modification, urgence, annulation) : décision 8.1.
 rules.add_perm("commandes.valider_commande", responsable & meme_entreprise)
+
+# Modèles récurrents : gérés par la Direction et le Gestionnaire (décision 8.1),
+# dans l'administration en attendant un écran dédié. Pas de suppression.
+rules.add_perm("commandes", responsable)
+for _modele in ("modelerecurrent", "lignemodelerecurrent"):
+    for _action in ("view", "add", "change"):
+        rules.add_perm(f"commandes.{_action}_{_modele}", responsable)

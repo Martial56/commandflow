@@ -26,7 +26,7 @@ Coche les cases au fur et à mesure.
 
 - [x] Apps `clients` et `catalogue` + import Excel/CSV
 - [x] App `commandes` : modèles, FSM, services, écrans (maquette 1)
-- [ ] Modèles récurrents + tâche Celery de génération quotidienne
+- [x] Modèles récurrents + tâche Celery de génération quotidienne
 
 ## Sprint 3 — Production groupée
 

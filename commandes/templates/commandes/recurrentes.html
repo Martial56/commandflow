@@ -1,0 +1,90 @@
+{% extends "base_bureau.html" %}
+{% load format_fr %}
+{% comment %}Récurrentes à confirmer (maquette 11).{% endcomment %}
+{% block titre %}Récurrentes à confirmer{% endblock %}
+{% block contenu %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div class="flex flex-col gap-1">
+    <div class="text-[13px] text-texte-secondaire">
+      {% if generees_le %}Générées automatiquement {{ jour_generation }} à {{ generees_le|heure }}{% else %}Aucune commande générée pour cette date{% endif %}
+    </div>
+    <h1 class="text-[28px] font-semibold">Récurrentes à confirmer · {{ date|date_courte }}</h1>
+  </div>
+  <div class="flex flex-wrap items-end gap-3">
+    <form method="get" class="flex items-end gap-2">
+      <label for="date-recurrentes" class="sr-only">Date de livraison</label>
+      <input id="date-recurrentes" type="date" name="date" value="{{ date|date:'Y-m-d' }}" class="champ h-11" onchange="this.form.submit()">
+    </form>
+    {% if peut_gerer_modeles %}<a href="{% url 'admin:commandes_modelerecurrent_changelist' %}" class="inline-flex h-11 items-center rounded-md border border-bordure bg-white px-4 text-encre no-underline">Gérer les modèles récurrents</a>{% endif %}
+  </div>
+</div>
+
+<div role="status" class="flex flex-wrap items-center justify-between gap-3 rounded-md border px-4 py-3 text-sm {% if limite_depassee %}border-alerte-bordure bg-alerte-fond text-alerte{% else %}border-trait bg-white{% endif %}">
+  <span><strong class="font-semibold">Heure limite : {{ heure_limite|time:"H\hi" }}{% if limite_depassee %} (dépassée){% endif %}.</strong> Les commandes non confirmées ne seront pas intégrées au plan de production.</span>
+  <span class="font-mono">{{ nb_confirmees }} / {{ nb_total }} confirmées</span>
+</div>
+
+<form method="post" action="{% url 'recurrentes_action' %}" x-data="{ choisies: [] }" class="flex flex-col gap-4">
+  {% csrf_token %}
+  <input type="hidden" name="date" value="{{ date|date:'Y-m-d' }}">
+  <div class="carte overflow-x-auto p-0">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-left text-[13px] text-texte-secondaire">
+          <th class="w-10 px-4 py-3">
+            {% if peut_confirmer %}<input type="checkbox" aria-label="Tout sélectionner" class="h-5 w-5"
+              x-on:change="choisies = $event.target.checked ? [...$root.querySelectorAll('input[name=commande]')].map(c => c.value) : []">{% endif %}
+          </th>
+          <th class="px-4 py-3 font-medium">Client</th>
+          <th class="px-4 py-3 font-medium">Quantités habituelles</th>
+          <th class="px-4 py-3 font-medium">Créneau</th>
+          <th class="px-4 py-3 font-medium">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ligne in lignes %}
+          {% with commande=ligne.commande %}
+            <tr class="border-t border-trait {% if commande.statut != 'a_confirmer' %}text-texte-secondaire{% endif %}">
+              <td class="px-4 py-3">
+                {% if peut_confirmer and commande.statut == "a_confirmer" %}
+                  <input type="checkbox" name="commande" value="{{ commande.pk }}" x-model="choisies" class="h-5 w-5" aria-label="Sélectionner {{ commande.client }}">
+                {% endif %}
+              </td>
+              <td class="px-4 py-3"><a href="{% url 'commande_detail' commande.pk %}" class="text-encre">{{ commande.client }}</a></td>
+              <td class="px-4 py-3">
+                {% for nom, avant, apres in ligne.quantites %}{% if not forloop.first %} · {% endif %}{{ nom }} {% if avant %}{{ avant }} → <strong class="font-semibold text-encre">{{ apres }}</strong>{% else %}{{ apres }}{% endif %}{% endfor %}
+              </td>
+              <td class="px-4 py-3 whitespace-nowrap">{{ commande.creneau }}</td>
+              <td class="px-4 py-3 whitespace-nowrap">
+                {% if commande.statut == "a_confirmer" %}
+                  {% if peut_confirmer %}
+                    <div class="flex gap-2">
+                      <button type="submit" formaction="{% url 'recurrentes_action' %}?operation=confirmer&une={{ commande.pk }}" class="h-9 cursor-pointer rounded-md bg-lien px-3 text-[13px] font-semibold text-white">Confirmer</button>
+                      <a href="{% url 'commande_modifier' commande.pk %}?suivant={{ retour|urlencode }}" class="inline-flex h-9 items-center rounded-md border border-bordure bg-white px-3 text-[13px] text-encre no-underline">Ajuster</a>
+                    </div>
+                  {% else %}À confirmer{% endif %}
+                {% elif commande.statut == "annulee" %}
+                  {% if commande.motif_annulation == motif_pas_de_livraison %}Pas de livraison demain{% else %}Annulée{% endif %}
+                {% else %}
+                  <span class="font-medium text-[#166534]">Confirmée{% if ligne.ajustee %} · ajustée{% endif %}</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endwith %}
+        {% empty %}
+          <tr><td colspan="5" class="px-4 py-6 text-center text-texte-secondaire">Aucune commande récurrente pour le {{ date|date_courte }}.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if peut_confirmer %}
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <span class="text-sm text-texte-secondaire" x-text="choisies.length + ' commande' + (choisies.length > 1 ? 's' : '') + ' sélectionnée' + (choisies.length > 1 ? 's' : '')">0 commande sélectionnée</span>
+      <div class="flex flex-wrap gap-2">
+        <button type="submit" name="operation" value="pas_de_livraison" class="h-11 cursor-pointer rounded-md border border-bordure bg-white px-4">Marquer « pas de livraison »</button>
+        <button type="submit" name="operation" value="confirmer" class="bouton-principal h-11 w-auto px-4">Confirmer la sélection</button>
+      </div>
+    </div>
+  {% endif %}
+</form>
+{% endblock %}
