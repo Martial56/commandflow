@@ -30,15 +30,18 @@
           <h2 class="text-[28px] font-semibold">{{ client.nom }}</h2>
           {% if not client.actif %}<span class="text-sm text-alerte">Client désactivé</span>{% endif %}
         </div>
-        {% if peut_gerer %}
-          <div class="flex flex-wrap gap-2">
+        <div class="flex flex-wrap gap-2">
+          {% if peut_gerer %}
             <a href="{% url 'client_modifier' client.pk %}" class="inline-flex h-11 items-center rounded-md border border-bordure bg-white px-4 text-encre no-underline">Modifier</a>
             <form method="post" action="{% if client.actif %}{% url 'client_desactiver' client.pk %}{% else %}{% url 'client_reactiver' client.pk %}{% endif %}">
               {% csrf_token %}
               <button type="submit" class="h-11 cursor-pointer rounded-md border border-bordure bg-white px-4">{% if client.actif %}Désactiver{% else %}Réactiver{% endif %}</button>
             </form>
-          </div>
-        {% endif %}
+          {% endif %}
+          {% if peut_commander and client.actif %}
+            <a href="{% url 'commande_nouvelle' %}?client={{ client.pk }}" class="inline-flex h-11 items-center rounded-md bg-lien px-4 font-semibold text-white no-underline hover:bg-lien-survol hover:text-white">Nouvelle commande</a>
+          {% endif %}
+        </div>
       </div>
 
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">

@@ -12,6 +12,7 @@ class FormulaireStyle:
                 widget.attrs.setdefault("class", "h-5 w-5")
             elif isinstance(widget, forms.Textarea):
                 widget.attrs.setdefault("class", "champ h-auto py-2.5")
-                widget.attrs.setdefault("rows", 3)
+                if widget.attrs.get("rows") in (None, "10", 10):  # 10 : valeur par défaut de Django
+                    widget.attrs["rows"] = 3
             else:
                 widget.attrs.setdefault("class", "champ")

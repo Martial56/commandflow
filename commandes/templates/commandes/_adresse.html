@@ -1,0 +1,4 @@
+<div id="champ-adresse">
+  {% include "composants/champ.html" with champ=champ %}
+  {% if not champ.field.queryset.exists %}<p class="text-[13px] text-texte-secondaire">Choisir d'abord le client.</p>{% endif %}
+</div>

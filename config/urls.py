@@ -6,5 +6,6 @@ urlpatterns = [
     path("comptes/", include("allauth.urls")),
     path("", include("noyau.urls")),
     path("clients/", include("clients.urls")),
+    path("commandes/", include("commandes.urls")),
     path("", include("comptes.urls")),
 ]

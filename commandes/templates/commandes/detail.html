@@ -1,0 +1,37 @@
+{% extends "base_bureau.html" %}
+{% load format_fr %}
+{% comment %}Fiche commande (version minimale ; complétée selon la maquette 10 à l'étape suivante).{% endcomment %}
+{% block titre %}{{ commande.numero }}{% endblock %}
+{% block contenu %}
+<div class="flex flex-col gap-1">
+  <a href="{% url 'ecran_commandes' %}" class="text-sm">‹ Commandes</a>
+  <div class="flex flex-wrap items-center gap-3">
+    <h1 class="font-mono text-[26px] font-semibold">{{ commande.numero }}</h1>
+    <span class="rounded-full border border-bordure bg-white px-3 py-1 text-sm">{{ commande.get_statut_display }}</span>
+    {% if commande.urgente %}<span class="rounded-full border border-alerte-bordure bg-alerte-fond px-3 py-1 text-sm font-semibold text-alerte">URGENTE</span>{% endif %}
+  </div>
+  <p class="text-texte-secondaire">{{ commande.client }} · livraison {{ commande.date_livraison|date:"D j M" }}, {{ commande.creneau }} · {{ commande.libelle_canal }}</p>
+</div>
+
+<section class="carte flex flex-col gap-2 text-sm">
+  <h2 class="text-base font-semibold">Produits</h2>
+  <table class="w-full">
+    <thead><tr class="text-left text-[13px] text-texte-secondaire"><th class="pb-2 font-medium">Produit</th><th class="pb-2 text-right font-medium">Qté</th><th class="pb-2 text-right font-medium">PU</th><th class="pb-2 text-right font-medium">Montant</th></tr></thead>
+    <tbody>
+      {% for ligne in lignes %}
+        <tr class="border-t border-trait"><td class="py-2">{{ ligne.produit.nom }}</td><td class="py-2 text-right font-mono">{{ ligne.quantite|quantite }}</td><td class="py-2 text-right font-mono">{{ ligne.prix_unitaire|fcfa }}</td><td class="py-2 text-right font-mono">{{ ligne.montant|fcfa }}</td></tr>
+      {% empty %}
+        <tr><td colspan="4" class="py-2 text-texte-secondaire">Aucun produit.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="text-right">Total <span class="font-mono text-lg">{{ commande.montant_total|fcfa }}</span> FCFA</p>
+</section>
+
+<section class="carte flex flex-col gap-2 text-sm">
+  <h2 class="text-base font-semibold">Livraison</h2>
+  <p>{{ commande.adresse }}</p>
+  {% if commande.instructions %}<p class="text-texte-secondaire">{{ commande.instructions }}</p>{% endif %}
+  {% for piece, lien in pieces %}<p><a href="{{ lien }}">{{ piece.get_type_display }} : {{ piece.nom_original }}</a></p>{% endfor %}
+</section>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% load format_fr %}
+<tr id="ligne-{{ ligne.index }}" class="border-t border-trait align-top">
+  <td class="py-2 pr-3">
+    <label for="produit-{{ ligne.index }}" class="sr-only">Produit</label>
+    <select id="produit-{{ ligne.index }}" name="produit_{{ ligne.index }}" class="champ h-11 min-w-48">
+      <option value="">— Choisir —</option>
+      {% for produit in produits %}
+        <option value="{{ produit.pk }}" {% if ligne.produit and produit.pk == ligne.produit.pk %}selected{% endif %}>{{ produit.nom }}</option>
+      {% endfor %}
+    </select>
+    {% if ligne.erreur %}<p class="pt-1 text-sm text-alerte">{{ ligne.erreur }}</p>{% endif %}
+  </td>
+  <td id="unite-{{ ligne.index }}" class="py-2 pr-3 pt-4 text-texte-secondaire">{{ ligne.produit.get_unite_display|default:"—" }}</td>
+  <td class="py-2 pr-3">
+    <label for="quantite-{{ ligne.index }}" class="sr-only">Quantité</label>
+    <input id="quantite-{{ ligne.index }}" name="quantite_{{ ligne.index }}" value="{{ ligne.quantite_texte }}" inputmode="decimal" class="champ h-11 w-24 text-right font-mono">
+  </td>
+  <td id="prix-{{ ligne.index }}" class="py-2 pr-3 pt-4 text-right font-mono">{% if ligne.produit %}{{ ligne.produit.prix_reference|fcfa }}{% else %}—{% endif %}</td>
+  <td id="montant-{{ ligne.index }}" class="py-2 pr-3 pt-4 text-right font-mono">{% if ligne.montant is not None %}{{ ligne.montant|fcfa }}{% else %}—{% endif %}</td>
+  <td class="py-2 pt-3 text-right">
+    <button type="button" class="min-h-9 cursor-pointer px-2 text-[13px] text-lien underline"
+            hx-on:click="const corps = this.closest('tbody'); this.closest('tr').remove(); htmx.trigger(corps, 'change')">Retirer</button>
+  </td>
+</tr>

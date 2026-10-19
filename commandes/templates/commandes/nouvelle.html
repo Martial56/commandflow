@@ -1,0 +1,90 @@
+{% extends "base_bureau.html" %}
+{% load format_fr %}
+{% comment %}Écran « Nouvelle commande » (maquette 1).{% endcomment %}
+{% block titre %}Nouvelle commande{% endblock %}
+{% block contenu %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div class="flex flex-col gap-1">
+    <div class="text-[13px] text-texte-secondaire"><a href="{% url 'ecran_commandes' %}">Commandes</a> › Nouvelle</div>
+    <h1 class="text-[28px] font-semibold">Nouvelle commande</h1>
+  </div>
+  <div class="flex items-center gap-3 text-sm text-texte-secondaire">
+    <span class="rounded-full border border-bordure bg-white px-3 py-1 text-encre">Brouillon</span>
+    <span>N° attribué à l'enregistrement</span>
+  </div>
+</div>
+
+<form id="formulaire-commande" method="post" enctype="multipart/form-data" class="flex flex-col gap-5">
+  {% csrf_token %}
+  {% for erreur in formulaire.non_field_errors %}
+    <p role="alert" class="rounded-md border border-alerte-bordure bg-alerte-fond px-3.5 py-2.5 text-sm text-alerte">{{ erreur }}</p>
+  {% endfor %}
+
+  <section aria-labelledby="sec-client" class="carte grid grid-cols-1 gap-4 md:grid-cols-2">
+    <h2 id="sec-client" class="col-span-full text-base font-semibold">Client et livraison</h2>
+    <div hx-get="{% url 'commande_adresses' %}" hx-trigger="change from:#id_client" hx-include="#id_client" hx-target="#champ-adresse" hx-swap="outerHTML">
+      {% include "composants/champ.html" with champ=formulaire.client %}
+      <datalist id="clients-actifs">
+        {% for client in clients %}<option value="{{ client.nom }} — {{ client.code }}"></option>{% endfor %}
+      </datalist>
+    </div>
+    {% include "composants/champ.html" with champ=formulaire.canal %}
+    {% include "commandes/_adresse.html" with champ=formulaire.adresse %}
+    <div class="grid grid-cols-2 gap-3">
+      {% include "composants/champ.html" with champ=formulaire.date_livraison %}
+      {% include "composants/champ.html" with champ=formulaire.creneau %}
+    </div>
+    <div class="col-span-full flex flex-col gap-1">
+      <label class="flex items-start gap-2.5 text-sm">
+        {{ formulaire.urgente }}
+        <span><strong class="font-semibold">Commande urgente</strong> — déclenche une alerte et exige la validation d'un responsable</span>
+      </label>
+    </div>
+  </section>
+
+  <section aria-labelledby="sec-lignes" class="carte flex flex-col gap-3">
+    <div class="flex items-center justify-between">
+      <h2 id="sec-lignes" class="text-base font-semibold">Produits</h2>
+      <button type="button" class="h-9 cursor-pointer rounded-md border border-lien px-3 text-[13px] text-lien"
+              hx-get="{% url 'commande_ligne' %}" hx-vals='js:{index: Date.now()}'
+              hx-target="#lignes" hx-swap="beforeend">+ Ajouter un produit</button>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-left text-[13px] text-texte-secondaire">
+            <th class="pb-2 pr-3 font-medium">Produit</th>
+            <th class="pb-2 pr-3 font-medium">Unité</th>
+            <th class="pb-2 pr-3 font-medium">Quantité</th>
+            <th class="pb-2 pr-3 text-right font-medium">Prix unitaire (FCFA)</th>
+            <th class="pb-2 pr-3 text-right font-medium">Montant (FCFA)</th>
+            <th class="pb-2"><span class="sr-only">Action</span></th>
+          </tr>
+        </thead>
+        <tbody id="lignes" hx-post="{% url 'commande_calcul' %}" hx-trigger="change" hx-include="#formulaire-commande" hx-swap="none">
+          {% for ligne in lignes %}{% include "commandes/_ligne.html" %}{% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="text-[13px] text-texte-secondaire">Le prix est figé sur chaque ligne à l'enregistrement : un changement de catalogue ne modifie pas cette commande.</p>
+  </section>
+
+  <section aria-labelledby="sec-pj" class="carte grid grid-cols-1 gap-4 md:grid-cols-2">
+    <h2 id="sec-pj" class="col-span-full text-base font-semibold">Instructions et justificatif</h2>
+    {% include "composants/champ.html" with champ=formulaire.instructions %}
+    {% include "composants/champ.html" with champ=formulaire.justificatif %}
+  </section>
+
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div class="flex items-baseline gap-3">
+      <span class="text-sm text-texte-secondaire">Total commande</span>
+      <span id="total" class="font-mono text-[26px]">{{ total|fcfa }}</span>
+      <span class="text-sm text-texte-secondaire">FCFA</span>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <button type="submit" name="action" value="brouillon" class="h-12 cursor-pointer rounded-md border border-bordure bg-white px-5">Enregistrer le brouillon</button>
+      <button type="submit" name="action" value="soumettre" class="bouton-principal h-12 w-auto px-5">Soumettre pour confirmation</button>
+    </div>
+  </div>
+</form>
+{% endblock %}

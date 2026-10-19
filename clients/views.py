@@ -42,6 +42,7 @@ def _rendre(request, client=None, **contexte):
         "inactifs": inactifs,
         "client": client,
         "peut_creer": request.user.has_perm("clients.creer_client"),
+        "peut_commander": request.user.has_perm("commandes.creer_commande"),
         "peut_gerer": request.user.has_perm("clients.gerer_client"),
         **contexte,
     }

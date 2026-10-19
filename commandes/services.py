@@ -17,8 +17,13 @@ from catalogue.models import Produit
 from clients.models import Adresse
 from entreprises.parametres import creneaux
 from noyau.contexte import AutreEntreprise, entreprise_obligatoire, utilisateur_courant
-from noyau.models import Validation
-from noyau.services import decider_validation, demander_validation, prochain_numero
+from noyau.models import PieceJointe, Validation
+from noyau.services import (
+    decider_validation,
+    demander_validation,
+    joindre_fichier,
+    prochain_numero,
+)
 
 from .models import (
     STATUTS_ANNULATION_SIMPLE,
@@ -144,11 +149,12 @@ def _appliquer_lignes(commande, lignes):
 
 @transaction.atomic
 def creer_commande(*, client, lignes, canal, date_livraison, creneau, adresse=None, urgente=False,
-                   instructions="", recue_le=None):  # fmt: skip
+                   instructions="", recue_le=None, justificatif=None):  # fmt: skip
     """Crée une commande au statut brouillon, avec son numéro CMD-AAAA-000123.
 
     `lignes` : liste de (produit, quantité). Le prix de chaque ligne est copié du
     catalogue (prix figé). L'année du numéro est celle de la réception.
+    `justificatif` : bon de commande, photo ou capture (image ou PDF), stocké en privé.
     """
     _exiger("commandes.creer_commande")
     if not client.actif:
@@ -170,7 +176,25 @@ def creer_commande(*, client, lignes, canal, date_livraison, creneau, adresse=No
     commande.numero = prochain_numero("CMD", date_reference=commande.recue_le.date())
     commande.save()
     _appliquer_lignes(commande, lignes)
+    if justificatif is not None:
+        joindre_justificatif(commande, justificatif)
     return commande
+
+
+TYPES_JUSTIFICATIF = {"application/pdf": PieceJointe.Type.BON_COMMANDE}
+
+
+@transaction.atomic
+def joindre_justificatif(commande, fichier):
+    """Bon de commande (PDF) ou photo / capture (image) joint à la commande (§8)."""
+    type_mime = getattr(fichier, "content_type", "") or ""
+    if type_mime.startswith("image/"):
+        type_piece = PieceJointe.Type.PHOTO
+    elif type_mime in TYPES_JUSTIFICATIF:
+        type_piece = TYPES_JUSTIFICATIF[type_mime]
+    else:
+        raise ValidationError({"justificatif": "Joindre une image ou un PDF."})
+    return joindre_fichier(commande, fichier, type_piece)
 
 
 @transaction.atomic
