@@ -23,6 +23,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.postgres",
     # Bibliothèques
     "rules.apps.AutodiscoverRulesConfig",
     "allauth",
@@ -38,6 +39,7 @@ INSTALLED_APPS = [
     "comptes",
     "catalogue",
     "clients",
+    "commandes",
 ]
 
 AUTH_USER_MODEL = "comptes.Utilisateur"
