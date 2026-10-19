@@ -1,7 +1,7 @@
 import pytest
 from django.urls import reverse
 
-from clients.models import Client
+from clients.models import Adresse, Client
 from clients.tests.factories import AdresseFactory, ClientFactory
 from comptes.models import Role
 from comptes.tests.factories import UtilisateurFactory
@@ -81,10 +81,14 @@ def test_modification_refusee_hors_direction_et_gestionnaire(client, role):
     adresse = AdresseFactory(client=fiche, par_defaut=True)
     client.force_login(utilisateur)
     contenu = client.get(reverse("client_detail", args=[fiche.pk])).content.decode()
-    assert "Modifier" not in contenu and "+ Ajouter une adresse" not in contenu
+    assert "Modifier" not in contenu
+    # Ajout d'une adresse : ouvert au Commercial (décision 8.1).
+    ajout_attendu = role == Role.COMMERCIAL
+    assert ("+ Ajouter une adresse" in contenu) is ajout_attendu
+    statut_ajout = client.get(reverse("client_adresse_ajouter", args=[fiche.pk])).status_code
+    assert statut_ajout == (200 if ajout_attendu else 403)
     assert client.get(reverse("client_modifier", args=[fiche.pk])).status_code == 403
     assert client.post(reverse("client_desactiver", args=[fiche.pk])).status_code == 403
-    assert client.get(reverse("client_adresse_ajouter", args=[fiche.pk])).status_code == 403
     assert client.get(reverse("client_contact_ajouter", args=[fiche.pk])).status_code == 403
     url = reverse("client_adresse_par_defaut", args=[fiche.pk, adresse.pk])
     assert client.post(url).status_code == 403
@@ -168,3 +172,17 @@ def test_adresses_par_l_ecran(client, gestionnaire):
     client.post(reverse("client_adresse_par_defaut", args=[fiche.pk, entrepot.pk]))
     entrepot.refresh_from_db()
     assert entrepot.par_defaut is True
+
+
+def test_commercial_ajoute_une_adresse_sans_changer_celle_par_defaut(client):
+    commercial = UtilisateurFactory(roles=[Role.COMMERCIAL])
+    fiche = ClientFactory(entreprise=commercial.entreprise)
+    defaut = AdresseFactory(client=fiche, par_defaut=True)
+    client.force_login(commercial)
+    url = reverse("client_adresse_ajouter", args=[fiche.pk])
+    reponse = client.post(url, {"libelle": "Entrepôt", "adresse": "Zone 4", "commune": "Marcory"})
+    assert reponse.status_code == 302
+    adresses = Adresse.toutes_entreprises.filter(client=fiche)
+    assert adresses.count() == 2
+    assert adresses.get(par_defaut=True) == defaut
+    assert adresses.get(libelle="Entrepôt").cree_par == commercial

@@ -44,6 +44,7 @@ def _rendre(request, client=None, **contexte):
         "peut_creer": request.user.has_perm("clients.creer_client"),
         "peut_commander": request.user.has_perm("commandes.creer_commande"),
         "peut_gerer": request.user.has_perm("clients.gerer_client"),
+        "peut_ajouter_adresse": request.user.has_perm("clients.creer_client"),
         **contexte,
     }
     if request.headers.get("HX-Request") and request.headers.get("HX-Target") == "liste-clients":
@@ -138,7 +139,7 @@ def changer_activite(request, pk, actif):
 @login_required
 def ajouter_adresse(request, pk):
     client = get_object_or_404(Client, pk=pk)
-    _exiger(request, "clients.gerer_ce_client", client)
+    _exiger(request, "clients.ajouter_adresse", client)
     formulaire = AdresseForm(request.POST or None)
     if request.method == "POST" and formulaire.is_valid():
         services.ajouter_adresse(client, **formulaire.cleaned_data)

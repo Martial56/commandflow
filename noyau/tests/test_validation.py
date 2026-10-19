@@ -11,7 +11,7 @@ from noyau.contexte import (
     activer_utilisateur,
 )
 from noyau.models import Validation
-from noyau.services import decider_validation, demander_validation
+from noyau.services import ValidationPropreDemande, decider_validation, demander_validation
 from noyau.tests.models import ObjetTest
 
 pytestmark = pytest.mark.django_db
@@ -74,12 +74,12 @@ def test_refuser(contexte, responsable):
 # Transitions : refusées
 
 
-def test_decision_deja_prise_ne_peut_pas_changer(contexte):
-    validation = decider_validation(
-        demander_validation(contexte, Validation.Action.ECART), accepter=True
-    )
-    with pytest.raises(TransitionNotAllowed):
-        decider_validation(validation, accepter=False)
+def test_decision_deja_prise_ne_peut_pas_changer(contexte, responsable):
+    validation = demander_validation(contexte, Validation.Action.ECART)
+    with activer_utilisateur(responsable):
+        validation = decider_validation(validation, accepter=True)
+        with pytest.raises(TransitionNotAllowed):
+            decider_validation(validation, accepter=False)
     validation.refresh_from_db()
     assert validation.decision == Decision.ACCEPTEE
 
@@ -90,9 +90,9 @@ def test_decision_non_modifiable_directement(contexte):
         validation.decision = Decision.ACCEPTEE
 
 
-def test_decision_annulee_avec_la_transaction_appelante(contexte):
+def test_decision_annulee_avec_la_transaction_appelante(contexte, responsable):
     validation = demander_validation(contexte, Validation.Action.EXCEPTION)
-    with pytest.raises(RuntimeError), transaction.atomic():
+    with activer_utilisateur(responsable), pytest.raises(RuntimeError), transaction.atomic():
         decider_validation(validation, accepter=True)
         raise RuntimeError("erreur dans le service appelant")
     validation.refresh_from_db()
@@ -104,3 +104,12 @@ def test_isolation_des_validations(contexte):
     demander_validation(contexte, Validation.Action.URGENCE)
     with activer_entreprise(EntrepriseFactory()):
         assert Validation.objects.count() == 0
+
+
+@pytest.mark.parametrize("accepter", [True, False])
+def test_auteur_ne_decide_pas_de_sa_propre_demande(contexte, accepter):
+    validation = demander_validation(contexte, Validation.Action.MODIFICATION, motif="+10")
+    with pytest.raises(ValidationPropreDemande):
+        decider_validation(validation, accepter=accepter)
+    validation.refresh_from_db()
+    assert validation.decision == Decision.EN_ATTENTE

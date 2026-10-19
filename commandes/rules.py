@@ -17,6 +17,11 @@ def est_createur(utilisateur, commande):
 
 
 @rules.predicate
+def recurrente(utilisateur, commande):
+    return commande is not None and commande.modele_recurrent_id is not None
+
+
+@rules.predicate
 def avant_confirmation(utilisateur, commande):
     return commande is not None and commande.statut in STATUTS_ANNULATION_SIMPLE
 
@@ -36,7 +41,15 @@ rules.add_perm(
     "commandes.annuler_commande",
     meme_entreprise
     & (
-        (avant_confirmation & (est_createur | a_le_role(Role.GESTIONNAIRE)))
+        (
+            avant_confirmation
+            & (
+                est_createur
+                | a_le_role(Role.GESTIONNAIRE)
+                # « Pas de livraison » sur une commande générée (décision 8.1).
+                | (recurrente & a_le_role(Role.COMMERCIAL))
+            )
+        )
         | (~avant_confirmation & responsable)
     ),
 )

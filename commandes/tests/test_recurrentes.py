@@ -241,14 +241,26 @@ def test_pas_de_livraison(client, entreprise, generees):
     assert "Pas de livraison demain" in contenu and "0 / 1 confirmées" in contenu
 
 
-def test_pas_de_livraison_refuse_au_commercial(client, entreprise, generees):
-    # Annulation avant confirmation : créateur ou gestionnaire (§4) ; une commande
-    # générée n'a pas de créateur.
+def test_pas_de_livraison_par_le_commercial(client, entreprise, generees):
+    # Décision 8.1 (19 octobre 2026) : le Commercial peut marquer « pas de livraison ».
     client.force_login(UtilisateurFactory(entreprise=entreprise, roles=[Role.COMMERCIAL]))
-    contenu = html.unescape(
-        action(client, "pas_de_livraison", generees["Café Le Plateau"]).content.decode()
-    )
-    assert "Café Le Plateau : Votre rôle ne permet pas cette action." in contenu
+    action(client, "pas_de_livraison", generees["Café Le Plateau"])
+    assert statuts(generees)["Café Le Plateau"] == "annulee"
+
+
+def test_commercial_n_annule_pas_une_commande_saisie_par_un_autre(entreprise):
+    from commandes.tests.factories import CommandeFactory
+
+    commercial = UtilisateurFactory(entreprise=entreprise, roles=[Role.COMMERCIAL])
+    with activer_entreprise(entreprise):
+        saisie = CommandeFactory(adresse__client__entreprise=entreprise)
+    assert not commercial.has_perm("commandes.annuler_commande", saisie)
+
+
+@pytest.mark.parametrize("role", [Role.FACTURATION, Role.PRODUCTION])
+def test_pas_de_livraison_refuse_aux_autres_roles(client, entreprise, generees, role):
+    client.force_login(UtilisateurFactory(entreprise=entreprise, roles=[role]))
+    action(client, "pas_de_livraison", generees["Café Le Plateau"])
     assert statuts(generees)["Café Le Plateau"] == "a_confirmer"
 
 

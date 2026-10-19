@@ -239,3 +239,23 @@ def test_fiche_d_une_autre_entreprise_introuvable(client, commande):
     client.force_login(UtilisateurFactory(roles=[Role.GESTIONNAIRE]))
     assert client.get(reverse("commande_detail", args=[commande.pk])).status_code == 404
     assert poster(client, "commande_soumettre", commande).status_code == 404
+
+
+def test_responsable_ne_valide_pas_sa_propre_demande(client, entreprise, personnes, confirmee):
+    gestionnaire, direction = personnes[Role.GESTIONNAIRE], personnes[Role.DIRECTION]
+    with activer_entreprise(entreprise), activer_utilisateur(gestionnaire):
+        demande = services.demander_annulation(confirmee, "Fermeture exceptionnelle")
+
+    contenu = page(client, gestionnaire, confirmee)
+    assert "En attente d'un autre responsable" in contenu
+    assert 'value="accepter"' not in contenu
+    url = reverse("commande_decider", args=[confirmee.pk, demande.pk])
+    reponse = client.post(url, {"decision": "accepter"}, follow=True)
+    assert "Un responsable ne peut pas valider sa propre demande." in html.unescape(
+        reponse.content.decode()
+    )
+    assert recharger(confirmee).statut == Statut.CONFIRMEE
+
+    assert 'value="accepter"' in page(client, direction, confirmee)
+    client.post(url, {"decision": "accepter"})
+    assert recharger(confirmee).statut == Statut.ANNULEE

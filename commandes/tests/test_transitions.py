@@ -48,8 +48,10 @@ def utilisateur(commande, *roles):
 
 
 def accepter(commande, action, responsable):
-    with activer_utilisateur(responsable):
+    """Demande faite par un tiers, acceptée par `responsable` (pas d'auto-validation)."""
+    with activer_utilisateur(utilisateur(commande, R.COMMERCIAL)):
         validation = demander_validation(commande, action, motif="test")
+    with activer_utilisateur(responsable):
         decider_validation(validation, accepter=True)
 
 
@@ -134,8 +136,9 @@ def test_urgente_confirmee_seulement_apres_validation(contexte):
     passer(commande, ("soumettre", {}))
     assert not can_proceed(commande.confirmer)
 
-    with activer_utilisateur(responsable):
+    with activer_utilisateur(utilisateur(commande, R.COMMERCIAL)):
         validation = demander_validation(commande, Validation.Action.URGENCE)
+    with activer_utilisateur(responsable):
         decider_validation(validation, accepter=False)
     assert not can_proceed(commande.confirmer)
 

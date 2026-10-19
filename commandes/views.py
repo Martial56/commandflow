@@ -20,6 +20,7 @@ from entreprises.parametres import heure_limite_confirmation
 from noyau.contexte import entreprise_obligatoire
 from noyau.fichiers import url_signee
 from noyau.models import PieceJointe, Validation
+from noyau.services import ValidationPropreDemande
 from noyau.templatetags.format_fr import date_courte, quantite
 
 from . import services
@@ -46,6 +47,7 @@ from .models import (
 # Onglets de la liste (maquette 9) : libellé et statuts regroupés.
 ONGLETS = [
     ("toutes", "Toutes", None),
+    ("brouillons", "Brouillons", [Statut.BROUILLON]),
     ("a_confirmer", "À confirmer", [Statut.A_CONFIRMER]),
     ("en_preparation", "En préparation", [Statut.EN_PREPARATION]),
     ("en_livraison", "En livraison", [Statut.EN_LIVRAISON]),
@@ -155,6 +157,7 @@ def detail(request, pk):
             "demandes": demandes,
             "pieces": [(piece, url_signee(piece, utilisateur)) for piece in pieces],
             "peut_decider": utilisateur.has_perm("commandes.valider_commande", commande),
+            "moi": utilisateur.pk,
             "peut_modifier": peut_saisir and statut in STATUTS_MODIFICATION_LIBRE,
             "peut_soumettre": statut == Statut.BROUILLON
             and utilisateur.has_perm("commandes.soumettre_commande", commande),
@@ -174,7 +177,7 @@ def _action(request, pk, fonction, succes):
     commande = get_object_or_404(Commande, pk=pk)
     try:
         fonction(commande)
-    except (services.ActionImpossible, ValidationError) as erreur:
+    except (services.ActionImpossible, ValidationError, ValidationPropreDemande) as erreur:
         texte = " ".join(erreur.messages) if isinstance(erreur, ValidationError) else str(erreur)
         messages.error(request, texte)
     else:

@@ -119,3 +119,16 @@ def test_isolation_entre_entreprises(client, gestionnaire):
     contenu = client.get(LISTE).content.decode()
     assert "CMD-CHEZ-NOUS" in contenu and "CMD-AILLEURS" not in contenu
     assert "Toutes · 1" in contenu
+
+
+def test_onglet_brouillons(client, gestionnaire):
+    entreprise = gestionnaire.entreprise
+    commande(entreprise, numero="CMD-B", statut=Statut.BROUILLON)
+    commande(entreprise, numero="CMD-C", statut=Statut.A_CONFIRMER)
+    contenu = client.get(LISTE, {"statut": "brouillons"}).content.decode()
+    assert "Brouillons · 1" in contenu
+    assert "CMD-B" in contenu and "CMD-C" not in contenu
+    onglets = client.get(LISTE).content.decode()
+    assert (
+        onglets.index("Toutes ·") < onglets.index("Brouillons ·") < onglets.index("À confirmer ·")
+    )

@@ -82,7 +82,7 @@
       <section aria-labelledby="titre-adresses" class="carte flex flex-col gap-2 text-sm">
         <div class="flex items-center justify-between">
           <h3 id="titre-adresses" class="text-base font-semibold">Adresses de livraison</h3>
-          {% if peut_gerer %}<a href="{% url 'client_adresse_ajouter' client.pk %}" class="text-[13px]">+ Ajouter une adresse</a>{% endif %}
+          {% if peut_ajouter_adresse %}<a href="{% url 'client_adresse_ajouter' client.pk %}" class="text-[13px]">+ Ajouter une adresse</a>{% endif %}
         </div>
         {% for adresse in adresses %}
           <div class="flex flex-wrap items-center justify-between gap-2 border-b border-trait py-2 last:border-0">

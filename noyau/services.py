@@ -1,3 +1,4 @@
+from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.utils import timezone
 
@@ -51,6 +52,10 @@ def _utilisateur_obligatoire():
     return utilisateur
 
 
+class ValidationPropreDemande(PermissionDenied):
+    """L'auteur d'une demande ne peut pas la valider ni la refuser lui-même."""
+
+
 @transaction.atomic
 def demander_validation(objet, action, motif="", contenu=None):
     """Crée une demande de validation (en attente) sur un objet de l'entreprise courante."""
@@ -70,10 +75,13 @@ def decider_validation(validation, *, accepter):
 
     Les profils habilités à décider sont contrôlés par le service de l'app concernée
     (par exemple `commandes.services.decider_validation_commande`), qui applique aussi
-    l'effet d'une décision acceptée.
+    l'effet d'une décision acceptée. Personne ne peut décider de sa propre demande
+    (décision 8.1 du 19 octobre 2026).
     """
     utilisateur = _utilisateur_obligatoire()
     validation = Validation.objects.select_for_update().get(pk=validation.pk)
+    if validation.demandee_par_id == utilisateur.pk:
+        raise ValidationPropreDemande("Un responsable ne peut pas valider sa propre demande.")
     if accepter:
         validation.accepter(par=utilisateur)
     else:

@@ -70,14 +70,14 @@
     {% for demande in demandes %}
       <div class="flex flex-wrap items-center justify-between gap-3 border-t border-alerte-bordure pt-3 first-of-type:border-0 first-of-type:pt-0">
         <span><strong>{{ demande.get_action_display }}</strong> demandée par {{ demande.demandee_par }} le {{ demande.cree_le|jour_mois }} à {{ demande.cree_le|heure }}{% if demande.motif %} — « {{ demande.motif }} »{% endif %}</span>
-        {% if peut_decider %}
+        {% if peut_decider and demande.demandee_par_id != moi %}
           <form method="post" action="{% url 'commande_decider' commande.pk demande.pk %}" class="flex gap-2">
             {% csrf_token %}
             <button type="submit" name="decision" value="accepter" class="h-10 cursor-pointer rounded-md bg-lien px-4 font-semibold text-white">Accepter</button>
             <button type="submit" name="decision" value="refuser" class="h-10 cursor-pointer rounded-md border border-bordure bg-white px-4">Refuser</button>
           </form>
         {% else %}
-          <span class="text-texte-secondaire">En attente d'un responsable</span>
+          <span class="text-texte-secondaire">{% if peut_decider %}En attente d'un autre responsable{% else %}En attente d'un responsable{% endif %}</span>
         {% endif %}
       </div>
     {% endfor %}
