@@ -167,6 +167,8 @@ class Validation(FSMModelMixin, ModeleEntreprise, ModeleTrace):
     objet = GenericForeignKey("content_type", "object_id")
     action = models.CharField("action", max_length=20, choices=Action.choices)
     motif = models.TextField("motif", blank=True)
+    # « Quoi » (§1) : le changement demandé, appliqué par l'app concernée si accepté.
+    contenu = models.JSONField("contenu de la demande", default=dict, blank=True)
     demandee_par = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,

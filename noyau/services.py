@@ -52,11 +52,15 @@ def _utilisateur_obligatoire():
 
 
 @transaction.atomic
-def demander_validation(objet, action, motif=""):
+def demander_validation(objet, action, motif="", contenu=None):
     """Crée une demande de validation (en attente) sur un objet de l'entreprise courante."""
     _verifier_meme_entreprise(objet)
     return Validation.objects.create(
-        objet=objet, action=action, motif=motif, demandee_par=_utilisateur_obligatoire()
+        objet=objet,
+        action=action,
+        motif=motif,
+        contenu=contenu or {},
+        demandee_par=_utilisateur_obligatoire(),
     )
 
 
@@ -64,7 +68,9 @@ def demander_validation(objet, action, motif=""):
 def decider_validation(validation, *, accepter):
     """Accepte ou refuse une validation en attente, au nom de l'utilisateur courant.
 
-    Les profils habilités à décider (§23) seront contrôlés ici avec django-rules.
+    Les profils habilités à décider sont contrôlés par le service de l'app concernée
+    (par exemple `commandes.services.decider_validation_commande`), qui applique aussi
+    l'effet d'une décision acceptée.
     """
     utilisateur = _utilisateur_obligatoire()
     validation = Validation.objects.select_for_update().get(pk=validation.pk)
