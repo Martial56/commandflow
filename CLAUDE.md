@@ -16,7 +16,9 @@ Documents de référence, à lire avant toute tâche qui les concerne :
 
 ## État du projet
 
-Sprint 1 (socle) terminé : `noyau`, `entreprises`, `comptes`, gabarits et navigation par rôle. Les apps métier (`clients`, `catalogue`, `commandes`…) n'existent pas encore. Les écrans du menu sont des pages « en préparation » déclarées dans `comptes/navigation.py`.
+Sprints 1 (socle) et 2 (clients, catalogue, commandes) terminés. Apps en place : `noyau`, `entreprises`, `comptes`, `catalogue`, `clients`, `commandes`. Écrans livrés : Clients (maquette 12), Commandes (maquettes 1, 9, 10), Récurrentes (maquette 11). Les autres écrans du menu sont des pages « en préparation » (`comptes/navigation.py`). Une commande s'arrête à « Confirmée » : le passage « À planifier » arrive avec la production (Sprint 3).
+
+Les décisions métier prises avec l'utilisateur sont dans `docs/modele-donnees.md` §8.1 : les lire avant de toucher aux commandes, aux clients ou aux récurrentes.
 
 Tout tourne dans Docker : le poste Windows n'a ni Python 3.12 ni Node. Les commandes passent par `docker compose exec web …` (voir « Commandes utiles »).
 
@@ -66,7 +68,15 @@ Précisions : réglages par variables d'environnement avec django-environ ; Tail
 - **Historique** : `@pghistory.track(model_name="Historique<Modele>")`. Les tables d'historique sont en ajout seul. Le contexte contient l'URL, l'utilisateur et l'entreprise ; l'auteur exact d'un événement est le champ `modifie_par` de l'instantané.
 - **Rôles et écrans** : un rôle correspond à un groupe Django (`comptes.models.Role`). Les prédicats `a_le_role(...)`, `meme_entreprise` et `peut_gerer_utilisateurs` sont dans `comptes/rules.py`. Les écrans et la grille par rôle sont dans `comptes/navigation.py` (permission `ecrans.<code>`, URL nommée `ecran_<code>`), et la grille est documentée dans `docs/modele-donnees.md` §3.1. Quand un sprint livre un écran, il remplace l'URL « en préparation » de `comptes/urls.py` par celles de son app, **en gardant le nom `ecran_<code>`**, et la vue vérifie `ecrans.<code>`.
 - **Code de vérification (2FA)** imposé à Direction et Comptabilité par `comptes.middleware.DoubleAuthentificationObligatoireMiddleware`. Le blocage après 5 échecs est géré par django-axes seul.
-- **Gabarits** : `base_bureau.html` (barre de menus), `base_terrain.html` (mobile, sans menu) et `base_connexion.html` (pages d'allauth).
+- **Gabarits** : `base_bureau.html` (barre de menus), `base_terrain.html` (mobile, sans menu) et `base_connexion.html` (pages d'allauth). Composants : `composants/champ.html`, `composants/messages.html` ; style des champs par `noyau.forms.FormulaireStyle` ; filtres `{% load format_fr %}` (`fcfa`, `quantite`, `jour_mois`, `date_courte`, `heure`).
+- **Écrans livrés** : listés dans `ECRANS_LIVRES` (`comptes/urls.py`) ; leurs URL sont dans l'app (`config/urls.py`). Les listes rechargées par htmx renvoient un fragment `_<nom>.html` quand l'en-tête `HX-Request` est présent.
+- **Administration Django** pour les référentiels sans écran (produits, modèles récurrents ; décision 8.1) : site `config.admin.SiteAdmin`, ouvert à la Direction et au Gestionnaire sans `is_staff`. Hériter de `noyau.admin.AdminEntreprise` (pas de suppression, entreprise implicite) et donner les permissions `<app>.view_…/add_…/change_…` et `<app>` dans `rules.py`. Un formulaire ne doit **jamais** lire un `ModeleEntreprise` au chargement du module (pas de `Meta.fields` avec clé étrangère dans un formulaire d'administration, `toutes_entreprises.none()` comme ensemble initial) : il n'y a pas d'entreprise courante, le serveur s'arrête.
+- **Validation d'un responsable** : `Validation.contenu` porte le changement demandé ; l'app applique l'effet à l'acceptation (exemple : `commandes.services.decider_validation_commande`, qui vérifie aussi qui décide).
+- **Commandes** : `commandes.services` (création, modification, transitions, demandes, récurrentes). `django-fsm` : `has_transition_perm()` vérifie aussi les conditions ; `Commande.full_clean()` exclut `statut`. Historique et frise de la fiche : `commandes/historique.py`, reconstruits depuis pghistory (aucune saisie en double).
+- **Paramètres d'entreprise** : `entreprises/parametres.py` (créneaux, heures des récurrentes), lus dans `Entreprise.options` avec valeurs par défaut.
+- **Tâches Celery** : `<app>/tasks.py`, planification dans `CELERY_BEAT_SCHEDULE` ; une tâche active l'entreprise qu'elle traite. Après modification d'une tâche, redémarrer `worker` et `beat`.
+- **Import Excel/CSV** : `noyau.commandes_import.CommandeImport` (lecture, simulation, modèle de fichier, rapport) ; chaque ligne passe par les services de l'app.
+- **Tests** : fabriques des `ModeleEntreprise` héritées de `noyau.tests.factories.FabriqueModeleEntreprise` ; pour créer un objet d'une autre entreprise pendant qu'un contexte est actif, l'entourer de `activer_entreprise(None)`.
 
 ## Enchaînements entre objets
 
@@ -102,6 +112,8 @@ docker compose exec web pytest noyau/tests/test_compteur.py::test_numerotation_a
 docker compose exec web pytest commandes/ -k transition                                    # ciblé
 docker compose exec web ruff check . && docker compose exec web ruff format .
 docker compose exec web python manage.py tailwind build   # sous Windows, après ajout de classes Tailwind
-docker compose exec web python manage.py charger_demo     # comptes de démonstration (mot de passe affiché)
+docker compose exec web python manage.py charger_demo     # comptes et données de démonstration (mot de passe affiché)
+docker compose restart worker beat                        # après modification d'une tâche Celery
+docker compose exec web python manage.py importer_clients clients.xlsx --entreprise mie-dore --simulation
 py -m pre_commit run --all-files                     # hooks (installés côté Windows)
 ```

@@ -1,5 +1,8 @@
 """Données de démonstration : Mie Doré (un compte par rôle) et une seconde entreprise.
 
+Mie Doré reçoit aussi des données métier (produits, clients, modèles récurrents,
+commandes) : voir `_donnees_metier.py`.
+
 Relançable sans créer de doublons. Refusée hors développement (DEBUG=False), car les
 comptes de démonstration partagent un mot de passe connu.
 """
@@ -11,6 +14,9 @@ from django.db import transaction
 
 from comptes.models import Role, Utilisateur
 from entreprises.models import Entreprise
+from noyau.contexte import activer_entreprise, activer_utilisateur
+
+from . import _donnees_metier
 
 MOT_DE_PASSE_DEMO = "demo-comandflow-2026"
 
@@ -52,6 +58,9 @@ class Command(BaseCommand):
         with transaction.atomic():
             entreprises = self._charger_entreprises()
             crees = self._charger_comptes(entreprises)
+            gestionnaire = Utilisateur.objects.get(username="aminata.k")
+            with activer_entreprise(entreprises["mie-dore"]), activer_utilisateur(gestionnaire):
+                _donnees_metier.charger(self.stdout)
 
         self.stdout.write(
             self.style.SUCCESS(f"{crees} compte(s) créé(s), {len(COMPTES)} au total.")

@@ -60,3 +60,28 @@ def test_refusee_hors_developpement(settings):
     with pytest.raises(CommandError):
         call_command("charger_demo")
     assert not Entreprise.objects.exists()
+
+
+def test_donnees_metier_de_mie_dore(mode_developpement):
+    from catalogue.models import Produit
+    from clients.models import Client
+    from commandes.models import Commande, ModeleRecurrent, Statut
+
+    call_command("charger_demo")
+    mie_dore = Entreprise.objects.get(slug="mie-dore")
+    clients = Client.toutes_entreprises.filter(entreprise=mie_dore)
+    assert {"Restaurant Le Baobab", "Supérette Les Palmiers"} <= set(
+        clients.values_list("nom", flat=True)
+    )
+    assert Produit.toutes_entreprises.filter(entreprise=mie_dore).count() == 4
+    assert ModeleRecurrent.toutes_entreprises.filter(entreprise=mie_dore).count() == 6
+    commandes = Commande.toutes_entreprises.filter(entreprise=mie_dore)
+    statuts = set(commandes.values_list("statut", flat=True))
+    assert {Statut.BROUILLON, Statut.A_CONFIRMER, Statut.CONFIRMEE} <= statuts
+    assert commandes.filter(urgente=True).exists()
+    assert not Commande.toutes_entreprises.exclude(entreprise=mie_dore).exists()
+
+    nombre = commandes.count()
+    call_command("charger_demo")
+    assert Commande.toutes_entreprises.filter(entreprise=mie_dore).count() == nombre
+    assert Client.toutes_entreprises.filter(entreprise=mie_dore).count() == clients.count()
