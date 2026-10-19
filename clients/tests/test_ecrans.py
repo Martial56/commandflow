@@ -55,16 +55,39 @@ def test_lecture_refusee(client, role):
     assert client.get(LISTE).status_code == 403
 
 
-@pytest.mark.parametrize("role", [Role.COMMERCIAL, Role.FACTURATION, Role.COMPTABILITE])
-def test_modification_refusee_aux_roles_en_lecture(client, role):
-    utilisateur = UtilisateurFactory(roles=[role])
-    fiche = ClientFactory(entreprise=utilisateur.entreprise)
-    client.force_login(utilisateur)
+@pytest.mark.parametrize("role", [Role.FACTURATION, Role.COMPTABILITE])
+def test_creation_refusee_aux_roles_en_lecture(client, role):
+    client.force_login(UtilisateurFactory(roles=[role]))
     assert "+ Nouveau" not in client.get(LISTE).content.decode()
     assert client.get(NOUVEAU).status_code == 403
     assert client.post(NOUVEAU, SAISIE).status_code == 403
+    assert not Client.toutes_entreprises.exists()
+
+
+def test_creation_par_le_commercial(client):
+    commercial = UtilisateurFactory(roles=[Role.COMMERCIAL])
+    client.force_login(commercial)
+    assert "+ Nouveau" in client.get(LISTE).content.decode()
+    reponse = client.post(NOUVEAU, SAISIE)
+    fiche = Client.toutes_entreprises.get()
+    assert reponse.url == reverse("client_detail", args=[fiche.pk])
+    assert fiche.cree_par == commercial
+
+
+@pytest.mark.parametrize("role", [Role.COMMERCIAL, Role.FACTURATION, Role.COMPTABILITE])
+def test_modification_refusee_hors_direction_et_gestionnaire(client, role):
+    utilisateur = UtilisateurFactory(roles=[role])
+    fiche = ClientFactory(entreprise=utilisateur.entreprise)
+    adresse = AdresseFactory(client=fiche, par_defaut=True)
+    client.force_login(utilisateur)
+    contenu = client.get(reverse("client_detail", args=[fiche.pk])).content.decode()
+    assert "Modifier" not in contenu and "+ Ajouter une adresse" not in contenu
     assert client.get(reverse("client_modifier", args=[fiche.pk])).status_code == 403
     assert client.post(reverse("client_desactiver", args=[fiche.pk])).status_code == 403
+    assert client.get(reverse("client_adresse_ajouter", args=[fiche.pk])).status_code == 403
+    assert client.get(reverse("client_contact_ajouter", args=[fiche.pk])).status_code == 403
+    url = reverse("client_adresse_par_defaut", args=[fiche.pk, adresse.pk])
+    assert client.post(url).status_code == 403
 
 
 def test_creation_par_le_gestionnaire(client, gestionnaire):

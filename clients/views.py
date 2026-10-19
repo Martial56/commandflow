@@ -41,6 +41,7 @@ def _rendre(request, client=None, **contexte):
         "recherche": recherche,
         "inactifs": inactifs,
         "client": client,
+        "peut_creer": request.user.has_perm("clients.creer_client"),
         "peut_gerer": request.user.has_perm("clients.gerer_client"),
         **contexte,
     }
@@ -69,7 +70,7 @@ def detail(request, pk):
 
 @login_required
 def nouveau(request):
-    _exiger(request, "clients.gerer_client")
+    _exiger(request, "clients.creer_client")
     formulaire = ClientForm(request.POST or None)
     adresse = AdresseForm(request.POST or None, prefix="adresse")
     contact = ContactFacultatifForm(request.POST or None, prefix="contact")

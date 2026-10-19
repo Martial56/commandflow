@@ -303,6 +303,7 @@ Ces choix de modélisation dépendent des arbitrages du §23. Chacun modifie un 
 | Confirmation client | Tracée par l'auteur et l'heure de la transition `confirmer` (historique), avec une note facultative |
 | Fiche client : champs obligatoires | Nom, catégorie, téléphone ; NCC facultatif |
 | Doublons de clients (même nom et même téléphone) | Avertissement, création possible en confirmant |
+| Droits sur les clients (19 octobre 2026) | Lecture : Direction, Gestionnaire, Commercial, Facturation, Comptabilité. Création : Direction, Gestionnaire, Commercial. Modification et désactivation : Direction, Gestionnaire |
 | Créneaux de livraison | Liste réglable par entreprise ; par défaut 06h–08h, 08h–10h, 10h–12h, 16h–18h |
 | Prix du catalogue | Prix affiché aux clients ; le traitement de la TVA est fixé au Sprint 6 (à confirmer avec la comptabilité) |
 | Arrondi d'un montant de ligne (quantité × prix) | Au franc le plus proche, la moitié vers le haut |

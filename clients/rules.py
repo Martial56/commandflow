@@ -1,8 +1,8 @@
 """Permissions des clients.
 
 Lecture : les rôles qui ont l'écran Clients (grille §3.1).
-Création et modification : Direction et Gestionnaire. Le §5 du cahier des charges
-limite le Commercial à « consulter les clients ».
+Création : Direction, Gestionnaire et Commercial (décision 8.1 du 19 octobre 2026).
+Modification et désactivation : Direction et Gestionnaire.
 """
 
 import rules
@@ -13,8 +13,10 @@ from comptes.rules import a_le_role, meme_entreprise
 voir_clients = a_le_role(
     Role.DIRECTION, Role.GESTIONNAIRE, Role.COMMERCIAL, Role.FACTURATION, Role.COMPTABILITE
 )
+creer_clients = a_le_role(Role.DIRECTION, Role.GESTIONNAIRE, Role.COMMERCIAL)
 gerer_clients = a_le_role(Role.DIRECTION, Role.GESTIONNAIRE)
 
 rules.add_perm("clients.voir_client", voir_clients)
+rules.add_perm("clients.creer_client", creer_clients)
 rules.add_perm("clients.gerer_client", gerer_clients)
 rules.add_perm("clients.gerer_ce_client", gerer_clients & meme_entreprise)

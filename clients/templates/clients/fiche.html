@@ -6,7 +6,7 @@
   <section aria-labelledby="titre-liste" class="carte flex min-w-0 flex-[1_1_260px] flex-col gap-2.5 p-4">
     <div class="flex items-center justify-between">
       <h1 id="titre-liste" class="text-xl font-semibold">Clients</h1>
-      {% if peut_gerer %}
+      {% if peut_creer %}
         <a href="{% url 'client_nouveau' %}" class="inline-flex h-9 items-center rounded-md border border-lien px-3 text-[13px] no-underline">+ Nouveau</a>
       {% endif %}
     </div>
@@ -96,7 +96,7 @@
         {% endfor %}
       </section>
     {% else %}
-      <div class="carte text-texte-secondaire">Sélectionnez un client dans la liste{% if peut_gerer %}, ou créez-en un avec « + Nouveau »{% endif %}.</div>
+      <div class="carte text-texte-secondaire">Sélectionnez un client dans la liste{% if peut_creer %}, ou créez-en un avec « + Nouveau »{% endif %}.</div>
     {% endif %}
   </div>
 </div>
