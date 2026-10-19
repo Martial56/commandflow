@@ -1,0 +1,12 @@
+{% comment %}Liste des clients (rechargée par htmx pendant la recherche).{% endcomment %}
+<div id="liste-clients" class="flex flex-col gap-1">
+  {% for c in clients %}
+    <a href="{% url 'client_detail' c.pk %}"
+       class="flex flex-col gap-0.5 rounded-md px-3 py-2.5 text-encre no-underline hover:bg-papier hover:text-encre {% if client and c.pk == client.pk %}bg-[#EEF2FF] font-semibold{% endif %}">
+      <span class="{% if not c.actif %}text-texte-secondaire line-through{% endif %}">{{ c.nom }}</span>
+      <span class="text-[13px] font-normal text-texte-secondaire">{{ c.get_categorie_display }} · {{ c.code }}</span>
+    </a>
+  {% empty %}
+    <p class="px-3 py-2 text-sm text-texte-secondaire">Aucun client{% if recherche %} pour « {{ recherche }} »{% endif %}.</p>
+  {% endfor %}
+</div>

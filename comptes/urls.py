@@ -5,9 +5,13 @@ from .navigation import ECRANS
 
 urlpatterns = [path("", views.accueil, name="accueil")]
 
-# Écrans en attente de leur sprint : chaque sprint remplace la ligne de son écran
-# par les URL de son app (en gardant le nom `ecran_<code>` pour la navigation).
+# Écrans livrés : leurs URL sont dans leur app (config/urls.py), sous le même nom
+# `ecran_<code>`, qui sert à la navigation.
+ECRANS_LIVRES = {"clients"}
+
+# Écrans en attente de leur sprint : page « en préparation ».
 urlpatterns += [
     path(ecran.chemin, views.ecran_a_venir, {"code": ecran.code}, name=ecran.nom_url)
     for ecran in ECRANS
+    if ecran.code not in ECRANS_LIVRES
 ]

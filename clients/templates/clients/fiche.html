@@ -1,0 +1,103 @@
+{% extends "base_bureau.html" %}
+{% comment %}Écran Clients (maquette 12) : liste à gauche, fiche du client sélectionné à droite.{% endcomment %}
+{% block titre %}{% if client %}{{ client.nom }}{% else %}Clients{% endif %}{% endblock %}
+{% block contenu %}
+<div class="flex flex-wrap items-start gap-5">
+  <section aria-labelledby="titre-liste" class="carte flex min-w-0 flex-[1_1_260px] flex-col gap-2.5 p-4">
+    <div class="flex items-center justify-between">
+      <h1 id="titre-liste" class="text-xl font-semibold">Clients</h1>
+      {% if peut_gerer %}
+        <a href="{% url 'client_nouveau' %}" class="inline-flex h-9 items-center rounded-md border border-lien px-3 text-[13px] no-underline">+ Nouveau</a>
+      {% endif %}
+    </div>
+    <form method="get" action="{% url 'ecran_clients' %}" class="flex flex-col gap-2">
+      <label for="recherche-client" class="sr-only">Rechercher un client</label>
+      <input id="recherche-client" type="search" name="q" value="{{ recherche }}" placeholder="Nom, téléphone, code" class="champ h-11"
+             hx-get="{% url 'ecran_clients' %}" hx-trigger="input changed delay:300ms, search"
+             hx-target="#liste-clients" hx-swap="outerHTML" hx-include="closest form">
+      <label class="flex items-center gap-2 text-[13px] text-texte-secondaire">
+        <input type="checkbox" name="inactifs" value="1" {% if inactifs %}checked{% endif %} onchange="this.form.submit()"> Afficher les clients désactivés
+      </label>
+    </form>
+    {% include "clients/_liste.html" %}
+  </section>
+
+  <div class="flex min-w-0 flex-[3_1_480px] flex-col gap-5">
+    {% if client %}
+      <div class="flex flex-wrap items-end justify-between gap-3">
+        <div class="flex flex-col gap-1">
+          <span class="font-mono text-[13px] text-texte-secondaire">{{ client.code }}</span>
+          <h2 class="text-[28px] font-semibold">{{ client.nom }}</h2>
+          {% if not client.actif %}<span class="text-sm text-alerte">Client désactivé</span>{% endif %}
+        </div>
+        {% if peut_gerer %}
+          <div class="flex flex-wrap gap-2">
+            <a href="{% url 'client_modifier' client.pk %}" class="inline-flex h-11 items-center rounded-md border border-bordure bg-white px-4 text-encre no-underline">Modifier</a>
+            <form method="post" action="{% if client.actif %}{% url 'client_desactiver' client.pk %}{% else %}{% url 'client_reactiver' client.pk %}{% endif %}">
+              {% csrf_token %}
+              <button type="submit" class="h-11 cursor-pointer rounded-md border border-bordure bg-white px-4">{% if client.actif %}Désactiver{% else %}Réactiver{% endif %}</button>
+            </form>
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div class="carte flex flex-col gap-1 p-4">
+          <span class="text-[13px] text-texte-secondaire">Catégorie</span>
+          <span class="text-lg font-semibold">{{ client.get_categorie_display }}</span>
+        </div>
+        <div class="carte flex flex-col gap-1 p-4">
+          <span class="text-[13px] text-texte-secondaire">Conditions</span>
+          <span class="text-lg font-semibold">{{ client.libelle_conditions }}</span>
+        </div>
+      </div>
+
+      <section aria-labelledby="titre-coordonnees" class="carte grid grid-cols-1 gap-x-6 gap-y-3.5 text-sm sm:grid-cols-2">
+        <h3 id="titre-coordonnees" class="col-span-full text-base font-semibold">Coordonnées et livraison</h3>
+        <div class="flex flex-col gap-0.5"><span class="text-[13px] text-texte-secondaire">Téléphone</span><span>{{ client.telephone }}</span></div>
+        <div class="flex flex-col gap-0.5"><span class="text-[13px] text-texte-secondaire">N° compte contribuable</span><span>{{ client.ncc|default:"—" }}</span></div>
+        {% with adresse=client.adresse_par_defaut %}
+          <div class="flex flex-col gap-0.5"><span class="text-[13px] text-texte-secondaire">Adresse par défaut</span><span>{% if adresse %}{{ adresse.commune }}, {{ adresse.adresse }}{% if adresse.repere %} ({{ adresse.repere }}){% endif %}{% else %}—{% endif %}</span></div>
+          <div class="flex flex-col gap-0.5"><span class="text-[13px] text-texte-secondaire">Consignes</span><span>{{ adresse.consignes|default:"—" }}</span></div>
+          <div class="flex flex-col gap-0.5"><span class="text-[13px] text-texte-secondaire">Position GPS</span><span>{% if adresse.gps_enregistre %}Enregistrée{% else %}Non renseignée{% endif %}</span></div>
+        {% endwith %}
+        {% if client.notes %}<div class="col-span-full flex flex-col gap-0.5"><span class="text-[13px] text-texte-secondaire">Notes</span><span>{{ client.notes|linebreaksbr }}</span></div>{% endif %}
+      </section>
+
+      <section aria-labelledby="titre-contacts" class="carte flex flex-col gap-2 text-sm">
+        <div class="flex items-center justify-between">
+          <h3 id="titre-contacts" class="text-base font-semibold">Contacts</h3>
+          {% if peut_gerer %}<a href="{% url 'client_contact_ajouter' client.pk %}" class="text-[13px]">+ Ajouter un contact</a>{% endif %}
+        </div>
+        {% for contact in contacts %}
+          <div class="border-b border-trait py-2 last:border-0">{{ contact.nom }}{% if contact.fonction %}, {{ contact.fonction }}{% endif %}{% if contact.telephone %} · {{ contact.telephone }}{% endif %}</div>
+        {% empty %}
+          <p class="text-texte-secondaire">Aucun contact.</p>
+        {% endfor %}
+      </section>
+
+      <section aria-labelledby="titre-adresses" class="carte flex flex-col gap-2 text-sm">
+        <div class="flex items-center justify-between">
+          <h3 id="titre-adresses" class="text-base font-semibold">Adresses de livraison</h3>
+          {% if peut_gerer %}<a href="{% url 'client_adresse_ajouter' client.pk %}" class="text-[13px]">+ Ajouter une adresse</a>{% endif %}
+        </div>
+        {% for adresse in adresses %}
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-trait py-2 last:border-0">
+            <span><span class="font-medium">{{ adresse.libelle }}</span>{% if adresse.par_defaut %} · <span class="text-texte-secondaire">par défaut</span>{% endif %}<br>{{ adresse.adresse }}, {{ adresse.commune }}</span>
+            {% if peut_gerer and not adresse.par_defaut %}
+              <span class="flex gap-3">
+                <form method="post" action="{% url 'client_adresse_par_defaut' client.pk adresse.pk %}">{% csrf_token %}<button type="submit" class="cursor-pointer text-[13px] text-lien underline">Définir par défaut</button></form>
+                <form method="post" action="{% url 'client_adresse_desactiver' client.pk adresse.pk %}">{% csrf_token %}<button type="submit" class="cursor-pointer text-[13px] text-lien underline">Retirer</button></form>
+              </span>
+            {% endif %}
+          </div>
+        {% empty %}
+          <p class="text-texte-secondaire">Aucune adresse.</p>
+        {% endfor %}
+      </section>
+    {% else %}
+      <div class="carte text-texte-secondaire">Sélectionnez un client dans la liste{% if peut_gerer %}, ou créez-en un avec « + Nouveau »{% endif %}.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

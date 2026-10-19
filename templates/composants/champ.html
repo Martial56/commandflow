@@ -1,0 +1,11 @@
+{% comment %}Un champ de formulaire : libellé, saisie, aide et erreurs. Usage : {% include "composants/champ.html" with champ=formulaire.nom %}{% endcomment %}
+<div class="flex flex-col gap-1.5 {{ classe|default:'' }}">
+  {% if champ.widget_type == "checkbox" %}
+    <label class="flex items-center gap-2 text-sm">{{ champ }} {{ champ.label }}</label>
+  {% else %}
+    <label for="{{ champ.id_for_label }}" class="text-[13px] font-medium">{{ champ.label }}{% if champ.field.required %} *{% endif %}</label>
+    {{ champ }}
+  {% endif %}
+  {% if champ.help_text %}<p class="text-[13px] text-texte-secondaire">{{ champ.help_text }}</p>{% endif %}
+  {% for erreur in champ.errors %}<p class="text-sm text-alerte">{{ erreur }}</p>{% endfor %}
+</div>

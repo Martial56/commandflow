@@ -1,0 +1,18 @@
+{% extends "base_bureau.html" %}
+{% comment %}Formulaire simple lié à un client (modification, adresse, contact).{% endcomment %}
+{% block titre %}{{ titre }}{% endblock %}
+{% block contenu %}
+<div class="flex flex-col gap-1">
+  <a href="{% url 'client_detail' client.pk %}" class="text-sm">‹ {{ client.nom }}</a>
+  <h1 class="text-[28px] font-semibold">{{ titre }}</h1>
+</div>
+<form method="post" class="carte grid max-w-3xl grid-cols-1 gap-4 sm:grid-cols-2">
+  {% csrf_token %}
+  {% for erreur in formulaire.non_field_errors %}<p class="col-span-full text-sm text-alerte">{{ erreur }}</p>{% endfor %}
+  {% for champ in formulaire %}{% include "composants/champ.html" with champ=champ %}{% endfor %}
+  <div class="col-span-full flex gap-3">
+    <button type="submit" class="bouton-principal w-auto px-6">Enregistrer</button>
+    <a href="{% url 'client_detail' client.pk %}" class="inline-flex items-center px-3">Annuler</a>
+  </div>
+</form>
+{% endblock %}

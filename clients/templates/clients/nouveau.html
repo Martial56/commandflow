@@ -1,0 +1,44 @@
+{% extends "base_bureau.html" %}
+{% block titre %}Nouveau client{% endblock %}
+{% block contenu %}
+<div class="flex flex-col gap-1">
+  <a href="{% url 'ecran_clients' %}" class="text-sm">‹ Clients</a>
+  <h1 class="text-[28px] font-semibold">Nouveau client</h1>
+  <p class="text-sm text-texte-secondaire">Le code client (CLI-…) est attribué à l'enregistrement.</p>
+</div>
+<form method="post" class="flex max-w-3xl flex-col gap-5">
+  {% csrf_token %}
+  {% if doublons %}
+    <div role="alert" class="flex flex-col gap-2 rounded-md border border-alerte-bordure bg-alerte-fond px-4 py-3 text-sm text-alerte">
+      <p class="font-semibold">Un client porte déjà ce nom et ce téléphone :</p>
+      <ul class="list-disc pl-5">
+        {% for d in doublons %}<li><a href="{% url 'client_detail' d.pk %}" class="text-alerte underline">{{ d.nom }} ({{ d.code }})</a></li>{% endfor %}
+      </ul>
+      {% include "composants/champ.html" with champ=confirmation.forcer_doublon %}
+    </div>
+  {% endif %}
+  {% for erreur in formulaire.non_field_errors %}<p class="text-sm text-alerte">{{ erreur }}</p>{% endfor %}
+
+  <section class="carte grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <h2 class="col-span-full text-base font-semibold">Client</h2>
+    {% for champ in formulaire %}
+      {% include "composants/champ.html" with champ=champ %}
+    {% endfor %}
+  </section>
+
+  <section class="carte grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <h2 class="col-span-full text-base font-semibold">Adresse de livraison par défaut</h2>
+    {% for champ in adresse %}{% include "composants/champ.html" with champ=champ %}{% endfor %}
+  </section>
+
+  <section class="carte grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <h2 class="col-span-full text-base font-semibold">Contact principal <span class="text-sm font-normal text-texte-secondaire">(facultatif)</span></h2>
+    {% for champ in contact %}{% include "composants/champ.html" with champ=champ %}{% endfor %}
+  </section>
+
+  <div class="flex gap-3">
+    <button type="submit" class="bouton-principal w-auto px-6">Enregistrer le client</button>
+    <a href="{% url 'ecran_clients' %}" class="inline-flex items-center px-3">Annuler</a>
+  </div>
+</form>
+{% endblock %}
