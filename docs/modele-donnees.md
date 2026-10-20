@@ -313,3 +313,20 @@ Ces choix de modélisation dépendent des arbitrages du §23. Chacun modifie un 
 | Gestion du catalogue et des modèles récurrents | Import Excel et administration Django (Direction, Gestionnaire) en attendant des écrans dédiés |
 | Import initial | Fichiers de Mie Doré s'ils sont fournis, sinon modèle Excel à remplir |
 | Alerte « commande urgente » | Repère « URGENTE » et filtre dans la liste, demande de validation créée automatiquement ; notification réelle au Sprint 6 |
+
+### 8.2 Décisions validées le 20 octobre 2026 (Sprint 3 — production)
+
+| Sujet | Décision |
+| --- | --- |
+| Quantités d'un besoin (§9 du cahier des charges) | **Commandée** : somme des commandes confirmées du plan (hors annulées). **À produire** : saisie par le responsable. **Produite** : cumul des saisies non annulées. **Manquante** : à produire − produite, si positif. **Réservée** : quantités des commandes déjà « prêtes au chargement ». **Disponible** : produite − réservée |
+| Valeur de départ de « à produire » | Égale au commandé. Le responsable ajuste ; la **marge** affichée est la différence. Si le commandé change, la marge est conservée et « à produire » suit |
+| Découpage du plan | Un plan par date de livraison, sans créneau pour l'instant |
+| Validation du plan | Production, Gestionnaire, Direction |
+| Saisie des fournées | Production, Gestionnaire |
+| Commande confirmée après validation du plan | Intégrée au plan validé, passe directement « En préparation » ; besoin recalculé ; bandeau d'alerte sur le plan |
+| Corrections après validation (§23) | Modifier « à produire » : Production, Gestionnaire, Direction, tracé, sans validation. Annuler une saisie (motif obligatoire) : son auteur ou un responsable ; une saisie n'est jamais modifiée |
+| Commande « prête au chargement » | Quand, pour chacun de ses produits, le disponible couvre sa quantité ; une commande ou tout le plan à la fois (ordre des créneaux). Sinon, validation d'exception par un autre responsable. Par Production ou Gestionnaire (§4) |
+| Clôture du plan | Manuelle, par un responsable, quand la production du jour est terminée ; bloque les nouvelles saisies |
+| Alertes du responsable de production | À l'écran (bandeau du plan, pastilles « Manque » et « À lancer », compteur sur le menu Production) ; envoi réel avec les notifications (Sprint 6) |
+| Fiche atelier | Page HTML imprimable ; PDF avec les autres documents (Sprint 6) |
+| Numéro de lot | Texte libre, prérempli « Lot N+1 » |
