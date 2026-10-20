@@ -77,7 +77,7 @@ def test_donnees_metier_de_mie_dore(mode_developpement):
     assert ModeleRecurrent.toutes_entreprises.filter(entreprise=mie_dore).count() == 6
     commandes = Commande.toutes_entreprises.filter(entreprise=mie_dore)
     statuts = set(commandes.values_list("statut", flat=True))
-    assert {Statut.BROUILLON, Statut.A_CONFIRMER, Statut.CONFIRMEE} <= statuts
+    assert {Statut.BROUILLON, Statut.A_CONFIRMER, Statut.A_PLANIFIER} <= statuts
     assert commandes.filter(urgente=True).exists()
     assert not Commande.toutes_entreprises.exclude(entreprise=mie_dore).exists()
 

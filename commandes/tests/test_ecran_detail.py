@@ -101,7 +101,7 @@ def test_parcours_brouillon_soumission_confirmation(client, personnes, commande)
     contenu = html.unescape(
         poster(client, "commande_confirmer", commande, note="OK par WhatsApp").content.decode()
     )
-    assert recharger(commande).statut == Statut.CONFIRMEE
+    assert recharger(commande).statut == Statut.A_PLANIFIER
     assert "Commande confirmée avec le client (« OK par WhatsApp »)" in contenu
     assert "Demander une modification" in contenu and "Demander l'annulation" in contenu
 
@@ -211,7 +211,7 @@ def test_demande_d_annulation_refusee_puis_acceptee(client, personnes, confirmee
     client.post(
         reverse("commande_decider", args=[confirmee.pk, demande.pk]), {"decision": "refuser"}
     )
-    assert recharger(confirmee).statut == Statut.CONFIRMEE
+    assert recharger(confirmee).statut == Statut.A_PLANIFIER
     assert "Demande de annulation refusée" not in page(
         client, personnes[Role.GESTIONNAIRE], confirmee
     )
@@ -230,9 +230,11 @@ def test_demande_d_annulation_refusee_puis_acceptee(client, personnes, confirmee
 
 
 def test_frise_datee_apres_confirmation(client, personnes, confirmee):
+    # Confirmée puis aussitôt intégrée au plan (Sprint 3) : « Planifiée » est atteinte.
     contenu = page(client, personnes[Role.COMMERCIAL], confirmee)
     assert '<strong class="font-semibold">Confirmée</strong>' in contenu
-    assert '<strong class="font-semibold">Planifiée</strong>' not in contenu
+    assert '<strong class="font-semibold">Planifiée</strong>' in contenu
+    assert '<strong class="font-semibold">En préparation</strong>' not in contenu
 
 
 def test_fiche_d_une_autre_entreprise_introuvable(client, commande):
@@ -254,7 +256,7 @@ def test_responsable_ne_valide_pas_sa_propre_demande(client, entreprise, personn
     assert "Un responsable ne peut pas valider sa propre demande." in html.unescape(
         reponse.content.decode()
     )
-    assert recharger(confirmee).statut == Statut.CONFIRMEE
+    assert recharger(confirmee).statut == Statut.A_PLANIFIER
 
     assert 'value="accepter"' in page(client, direction, confirmee)
     client.post(url, {"decision": "accepter"})

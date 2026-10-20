@@ -299,6 +299,10 @@ def confirmer_commande(commande, note=""):
     )
     _transition(commande, "confirmer", message)(note=note)
     commande.save()
+    # Cascade (§7) : intégration au plan de production de la date de livraison.
+    from production.services import integrer_commande
+
+    integrer_commande(commande)
     return commande
 
 
@@ -420,12 +424,22 @@ def decider_validation_commande(validation, *, accepter):
             lignes = [
                 (produits[ligne["produit"]], ligne["quantite"]) for ligne in contenu["lignes"]
             ]
+        ancienne_date = commande.date_livraison
         _modifier(commande, lignes=lignes, **_deserialiser_champs(contenu.get("champs", {})))
+        _recalculer_production(commande, ancienne_date)
     elif validation.action == Validation.Action.ANNULATION:
         commande.motif_annulation = validation.motif
         _transition(commande, "annuler", "Annulation impossible.")()
         commande.save()
+        _recalculer_production(commande)
     return validation
+
+
+def _recalculer_production(commande, ancienne_date=None):
+    """Cascade (§7) : les besoins de production suivent la commande modifiée ou annulée."""
+    from production.services import commande_modifiee
+
+    commande_modifiee(commande, ancienne_date)
 
 
 # --- Commandes récurrentes ----------------------------------------------------------

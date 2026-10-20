@@ -182,7 +182,7 @@ def test_parcours_brouillon_a_confirmee(en_tant_que, client_baobab, catalogue):
         commande = nouvelle(client_baobab, catalogue)
         services.soumettre_commande(commande)
         commande = services.confirmer_commande(commande, note="OK par WhatsApp")
-    assert (commande.statut, commande.note_confirmation) == (Statut.CONFIRMEE, "OK par WhatsApp")
+    assert (commande.statut, commande.note_confirmation) == (Statut.A_PLANIFIER, "OK par WhatsApp")
 
 
 def test_soumission_d_une_commande_incomplete(en_tant_que, client_baobab, catalogue):
@@ -217,7 +217,7 @@ def test_urgente_demande_de_validation_automatique(en_tant_que, client_baobab, c
     with en_tant_que(R.DIRECTION):
         services.decider_validation_commande(demandes.get(), accepter=True)
     with en_tant_que(R.COMMERCIAL):
-        assert services.confirmer_commande(commande).statut == Statut.CONFIRMEE
+        assert services.confirmer_commande(commande).statut == Statut.A_PLANIFIER
 
 
 # --- Annulation --------------------------------------------------------------------
@@ -269,7 +269,7 @@ def test_annulation_refusee_par_le_responsable(en_tant_que, confirmee):
     with en_tant_que(R.DIRECTION):
         services.decider_validation_commande(demande, accepter=False)
     confirmee.refresh_from_db()
-    assert confirmee.statut == Statut.CONFIRMEE
+    assert confirmee.statut == Statut.A_PLANIFIER
 
 
 # --- Modification après confirmation --------------------------------------------
@@ -291,7 +291,7 @@ def test_modification_demandee_puis_appliquee(en_tant_que, confirmee, catalogue)
     confirmee.refresh_from_db()
     assert lignes(confirmee)["Croissant"] == (40, 300)
     assert confirmee.date_livraison == nouvelle_date
-    assert confirmee.statut == Statut.CONFIRMEE
+    assert confirmee.statut == Statut.A_PLANIFIER
     demande.refresh_from_db()
     assert (demande.decision, demande.validee_par) == (Validation.Decision.ACCEPTEE, direction)
 

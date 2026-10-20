@@ -74,7 +74,7 @@ def test_22_13_numero_unique_et_createur_conserve(client):
     # Le créateur reste attaché même après les actions d'un autre utilisateur.
     client.post(reverse("commande_confirmer", args=[premiere.pk]))
     premiere.refresh_from_db()
-    assert (premiere.statut, premiere.cree_par) == (Statut.CONFIRMEE, commercial)
+    assert (premiere.statut, premiere.cree_par) == (Statut.A_PLANIFIER, commercial)
     creation = HistoriqueCommande.objects.filter(pgh_obj=premiere).order_by("pgh_id").first()
     assert creation.cree_par == commercial
     page = html.unescape(
@@ -114,7 +114,7 @@ def test_22_14_recurrente_en_attente_jusqu_a_confirmation(client):
     client.force_login(UtilisateurFactory(entreprise=entreprise, roles=[Role.COMMERCIAL]))
     client.post(f"{reverse('recurrentes_action')}?operation=confirmer&une={commande.pk}")
     commande.refresh_from_db()
-    assert commande.statut == Statut.CONFIRMEE
+    assert commande.statut == Statut.A_PLANIFIER
 
 
 def test_22_26_donnees_d_une_autre_entreprise_inaccessibles(client):

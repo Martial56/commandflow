@@ -221,7 +221,7 @@ def test_confirmer_une_commande(client, entreprise, generees):
     )
     assert "1 commande(s) confirmée(s)." in contenu and "1 / 2 confirmées" in contenu
     assert statuts(generees) == {
-        "Café Le Plateau": "confirmee",
+        "Café Le Plateau": "a_planifier",
         "Supérette Les Palmiers": "a_confirmer",
     }
 
@@ -229,7 +229,7 @@ def test_confirmer_une_commande(client, entreprise, generees):
 def test_confirmer_la_selection(client, entreprise, generees):
     client.force_login(UtilisateurFactory(entreprise=entreprise, roles=[Role.GESTIONNAIRE]))
     action(client, "confirmer", *generees.values())
-    assert set(statuts(generees).values()) == {"confirmee"}
+    assert set(statuts(generees).values()) == {"a_planifier"}
 
 
 def test_pas_de_livraison(client, entreprise, generees):
