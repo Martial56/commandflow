@@ -260,6 +260,47 @@ class Commande(FSMModelMixin, ModeleEntreprise, ModeleTrace):
         """Confirmation du client enregistrée (auteur et heure dans l'historique)."""
         self.note_confirmation = note
 
+    # --- Transitions (Sprint 3 : production) ---------------------------------
+
+    def plan_valide(self):
+        """Le plan de production de la date de livraison est validé (§4)."""
+        from production.disponibilite import plan_valide
+
+        return plan_valide(self)
+
+    def prete_ou_exception(self):
+        """Quantités disponibles pour tous ses produits, ou exception acceptée (§4, 8.2)."""
+        from production.disponibilite import commande_couverte
+
+        return commande_couverte(self) or self.validation_acceptee(Validation.Action.EXCEPTION)
+
+    @transition(field=statut, source=Statut.CONFIRMEE, target=Statut.A_PLANIFIER)
+    def inclure_au_plan(self):
+        """Action du système : la commande est intégrée au plan de sa date de livraison."""
+
+    @transition(
+        field=statut,
+        source=Statut.A_PLANIFIER,
+        target=Statut.EN_PREPARATION,
+        conditions=[plan_valide],
+    )
+    def lancer_preparation(self):
+        """Action du système, à la validation du plan (ou plan déjà validé, décision 8.2)."""
+
+    @transition(
+        field=statut,
+        source=Statut.EN_PREPARATION,
+        target=Statut.PRETE_CHARGEMENT,
+        conditions=[prete_ou_exception],
+        permission=lambda commande, utilisateur: utilisateur.has_perm(
+            "commandes.preparer_commande", commande
+        ),
+    )
+    def marquer_prete(self):
+        """Quantités réservées : la commande peut être chargée (Sprint 4)."""
+
+    # --- Annulation -----------------------------------------------------------
+
     @transition(
         field=statut,
         source=[*STATUTS_ANNULATION_SIMPLE, *STATUTS_ANNULATION_VALIDEE],

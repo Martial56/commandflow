@@ -53,6 +53,11 @@ rules.add_perm(
         | (~avant_confirmation & responsable)
     ),
 )
+# Marquer prête au chargement : Gestionnaire, responsable de production (§4, 8.2).
+rules.add_perm(
+    "commandes.preparer_commande",
+    a_le_role(Role.GESTIONNAIRE, Role.PRODUCTION) & meme_entreprise,
+)
 # Décider des validations (modification, urgence, annulation) : décision 8.1.
 rules.add_perm("commandes.valider_commande", responsable & meme_entreprise)
 
