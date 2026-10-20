@@ -287,6 +287,18 @@ class Commande(FSMModelMixin, ModeleEntreprise, ModeleTrace):
     def lancer_preparation(self):
         """Action du système, à la validation du plan (ou plan déjà validé, décision 8.2)."""
 
+    def plan_non_valide(self):
+        return not self.plan_valide()
+
+    @transition(
+        field=statut,
+        source=Statut.EN_PREPARATION,
+        target=Statut.A_PLANIFIER,
+        conditions=[plan_non_valide],
+    )
+    def replanifier(self):
+        """Action du système : commande reportée vers un plan non validé (décision 8.2)."""
+
     @transition(
         field=statut,
         source=Statut.EN_PREPARATION,

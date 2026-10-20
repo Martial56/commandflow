@@ -236,3 +236,40 @@ def test_isolation_entre_entreprises(entreprise, produits, en_tant_que):
     with activer_entreprise(autre):
         assert not PlanProduction.objects.exists()
         assert not BesoinProduit.objects.exists()
+
+
+# --- Report de date (décision 8.2 du 20 octobre) -----------------------------------
+
+
+def _valider(personnes, date=DEMAIN):
+    plan = PlanProduction.objects.get(date_livraison=date)
+    with activer_utilisateur(personnes[Role.PRODUCTION]):
+        services.valider_plan(plan)
+
+
+def test_report_vers_un_plan_non_valide_revient_a_planifier(
+    entreprise, personnes, produits, en_tant_que
+):
+    en_tant_que(Role.COMMERCIAL)
+    commande = confirmee(entreprise, [(produits["baguette"], 120)])
+    _valider(personnes)
+    commande.refresh_from_db()
+    assert commande.statut == Statut.EN_PREPARATION
+    demande = commandes.demander_modification(commande, "report", date_livraison=APRES_DEMAIN)
+    accepter_demande(personnes, demande)
+    commande.refresh_from_db()
+    assert commande.statut == Statut.A_PLANIFIER
+
+
+def test_report_vers_un_plan_valide_passe_en_preparation(
+    entreprise, personnes, produits, en_tant_que
+):
+    en_tant_que(Role.COMMERCIAL)
+    confirmee(entreprise, [(produits["croissant"], 10)], date=APRES_DEMAIN)
+    _valider(personnes, APRES_DEMAIN)
+    commande = confirmee(entreprise, [(produits["baguette"], 120)])
+    assert commande.statut == Statut.A_PLANIFIER
+    demande = commandes.demander_modification(commande, "report", date_livraison=APRES_DEMAIN)
+    accepter_demande(personnes, demande)
+    commande.refresh_from_db()
+    assert commande.statut == Statut.EN_PREPARATION

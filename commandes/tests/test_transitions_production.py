@@ -138,3 +138,21 @@ def test_annulation_validee_possible_jusqu_a_prete(contexte, statut):  # noqa: F
     accepter(commande, Validation.Action.ANNULATION, utilisateur(commande, R.DIRECTION))
     passer(commande, ("annuler", {}))
     assert commande.statut == Statut.ANNULEE
+
+
+# --- replanifier (report vers un plan non validé, décision 8.2) -----------------
+
+
+def test_replanifier_si_le_plan_de_la_date_n_est_pas_valide(confirmee):
+    import datetime
+
+    en_preparation(confirmee, quantite_produite=0)
+    assert not can_proceed(confirmee.replanifier)  # plan de la date validé
+    confirmee.date_livraison += datetime.timedelta(days=5)  # nouvelle date, sans plan
+    passer(confirmee, ("replanifier", {}))
+    assert confirmee.statut == Statut.A_PLANIFIER
+
+
+def test_replanifier_refuse_au_mauvais_statut(confirmee):
+    with pytest.raises(TransitionNotAllowed):
+        confirmee.replanifier()

@@ -10,11 +10,13 @@ simultanées ne peuvent pas perdre de quantité.
 
 from decimal import Decimal
 
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Sum
+from django_fsm import can_proceed
 
-from commandes.models import LigneCommande, Statut
-from noyau.contexte import entreprise_obligatoire
+from commandes.models import Commande, LigneCommande, Statut
+from noyau.contexte import entreprise_obligatoire, utilisateur_courant
 
 from .models import BesoinProduit, PlanProduction, SaisieProduction, StatutPlan
 
@@ -111,6 +113,78 @@ def recalculer_besoin(plan):
     return plan
 
 
+# --- Plan : ajustement, validation, clôture -------------------------------------------
+
+
+class ActionImpossible(Exception):
+    """Action refusée par une règle métier ; le message s'affiche tel quel."""
+
+
+def _utilisateur():
+    utilisateur = utilisateur_courant()
+    if utilisateur is None:
+        raise PermissionDenied("Action à attribuer à un utilisateur connecté.")
+    return utilisateur
+
+
+def _exiger(permission, objet):
+    if not _utilisateur().has_perm(permission, objet):
+        raise PermissionDenied("Votre rôle ne permet pas cette action.")
+
+
+@transaction.atomic
+def ajuster_a_produire(besoin, quantite):
+    """Objectif de production d'un produit, fixé par un responsable (8.2).
+
+    Possible avant et après validation (tracé par l'historique), pas après clôture.
+    """
+    plan = PlanProduction.objects.select_for_update().get(pk=besoin.plan_id)
+    _exiger("production.gerer_plan", plan)
+    if plan.statut == StatutPlan.CLOTURE:
+        raise ActionImpossible("Le plan est clôturé : il ne peut plus être modifié.")
+    besoin = BesoinProduit.objects.select_for_update().get(pk=besoin.pk)
+    quantite = Decimal(str(quantite))
+    if quantite < 0 or (quantite and not besoin.produit.accepte_quantite(quantite)):
+        unite = besoin.produit.get_unite_display()
+        raise ValidationError(
+            {"quantite_a_produire": f"Quantité invalide pour l'unité « {unite} »."}
+        )
+    besoin.quantite_a_produire = quantite
+    besoin.save()
+    return besoin
+
+
+@transaction.atomic
+def valider_plan(plan):
+    """Brouillon → validé ; les commandes du plan passent « En préparation » (§7)."""
+    plan = PlanProduction.objects.select_for_update().get(pk=plan.pk)
+    _exiger("production.gerer_plan", plan)
+    if plan.statut != StatutPlan.BROUILLON:
+        raise ActionImpossible(f"Plan déjà {plan.get_statut_display().lower()}.")
+    if not can_proceed(plan.valider):
+        raise ActionImpossible("Aucune commande confirmée dans ce plan.")
+    plan.valider(par=_utilisateur())
+    plan.save()
+    for commande in Commande.objects.select_for_update().filter(
+        date_livraison=plan.date_livraison, statut=Statut.A_PLANIFIER
+    ):
+        commande.lancer_preparation()
+        commande.save()
+    return plan
+
+
+@transaction.atomic
+def cloturer_plan(plan):
+    """Validé → clôturé, quand la production du jour est terminée ; plus de saisie (8.2)."""
+    plan = PlanProduction.objects.select_for_update().get(pk=plan.pk)
+    _exiger("production.gerer_plan", plan)
+    if plan.statut != StatutPlan.VALIDE:
+        raise ActionImpossible("Seul un plan validé peut être clôturé.")
+    plan.cloturer(par=_utilisateur())
+    plan.save()
+    return plan
+
+
 # --- Cascades depuis les commandes ------------------------------------------------
 
 
@@ -145,3 +219,14 @@ def commande_modifiee(commande, ancienne_date=None):
                 continue
             plan = plan_verrouille(date)  # nouvelle date sans plan : il est créé
         recalculer_besoin(plan)
+    _aligner_sur_le_plan(commande)
+
+
+def _aligner_sur_le_plan(commande):
+    """Statut de la commande cohérent avec le plan de sa (nouvelle) date (décision 8.2)."""
+    if commande.statut == Statut.EN_PREPARATION and can_proceed(commande.replanifier):
+        commande.replanifier()
+        commande.save()
+    elif commande.statut == Statut.A_PLANIFIER and can_proceed(commande.lancer_preparation):
+        commande.lancer_preparation()
+        commande.save()
