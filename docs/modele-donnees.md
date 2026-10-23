@@ -327,7 +327,7 @@ Ces choix de modélisation dépendent des arbitrages du §23. Chacun modifie un 
 | Report de la date de livraison (20 octobre 2026) | Une commande « En préparation » reportée vers un plan non validé revient « À planifier » (transition système `replanifier`) ; une commande « À planifier » reportée vers un plan validé passe « En préparation » |
 | Corrections après validation (§23) | Modifier « à produire » : Production, Gestionnaire, Direction, tracé, sans validation. Annuler une saisie (motif obligatoire) : son auteur ou un responsable ; une saisie n'est jamais modifiée |
 | Commande « prête au chargement » | Quand, pour chacun de ses produits, le disponible couvre sa quantité ; une commande ou tout le plan à la fois (ordre des créneaux). Sinon, validation d'exception par un autre responsable. Par Production ou Gestionnaire (§4) |
-| Clôture du plan | Manuelle, par un responsable, quand la production du jour est terminée ; bloque les nouvelles saisies |
+| Clôture du plan | Manuelle, par un responsable, quand la production du jour est terminée ; bloque les nouvelles saisies et l'annulation des saisies existantes |
 | Alertes du responsable de production | À l'écran (bandeau du plan, pastilles « Manque » et « À lancer », compteur sur le menu Production) ; envoi réel avec les notifications (Sprint 6) |
 | Fiche atelier | Page HTML imprimable ; PDF avec les autres documents (Sprint 6) |
 | Numéro de lot | Texte libre, prérempli « Lot N+1 » |

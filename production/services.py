@@ -13,6 +13,7 @@ from decimal import Decimal
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Sum
+from django.utils import timezone
 from django_fsm import can_proceed
 
 from commandes.models import Commande, LigneCommande, Statut
@@ -183,6 +184,84 @@ def cloturer_plan(plan):
     plan.cloturer(par=_utilisateur())
     plan.save()
     return plan
+
+
+# --- Saisies de production --------------------------------------------------------
+
+
+def _mettre_a_jour_produit(besoin):
+    """Cumul produit du besoin = somme de ses saisies non annulées (§9)."""
+    total = besoin.saisies.filter(annulee=False).aggregate(total=Sum("quantite"))["total"]
+    besoin.quantite_produite = total or ZERO
+    besoin.save(update_fields=["quantite_produite"])
+    return besoin
+
+
+def prochain_lot(besoin):
+    """Libellé proposé pour la fournée suivante : « Lot N+1 » (décision 8.2)."""
+    return f"Lot {besoin.saisies.count() + 1}"
+
+
+@transaction.atomic
+def enregistrer_saisie(besoin, quantite, lot="", commentaire=""):
+    """Nouvelle fournée : s'ajoute aux saisies précédentes, sans jamais les remplacer (§9).
+
+    Plan validé uniquement (ni brouillon, ni clôturé). Production et Gestionnaire (8.2).
+    """
+    plan = PlanProduction.objects.select_for_update().get(pk=besoin.plan_id)
+    _exiger("production.saisir_production", plan)
+    if plan.statut == StatutPlan.BROUILLON:
+        raise ActionImpossible("Le plan n'est pas encore validé : la production n'a pas commencé.")
+    if plan.statut == StatutPlan.CLOTURE:
+        raise ActionImpossible("Le plan est clôturé : plus aucune saisie n'est possible.")
+    besoin = BesoinProduit.objects.select_for_update().get(pk=besoin.pk)
+    quantite = Decimal(str(quantite))
+    if not besoin.produit.accepte_quantite(quantite):
+        unite = besoin.produit.get_unite_display()
+        raise ValidationError({"quantite": f"Quantité invalide pour l'unité « {unite} »."})
+    saisie = SaisieProduction(
+        entreprise=plan.entreprise,
+        besoin=besoin,
+        lot=(lot or "").strip() or prochain_lot(besoin),
+        quantite=quantite,
+        saisie_par=_utilisateur(),
+        commentaire=(commentaire or "").strip(),
+    )
+    saisie.full_clean()
+    saisie.save()
+    _mettre_a_jour_produit(besoin)
+    return saisie
+
+
+@transaction.atomic
+def annuler_saisie(saisie, motif):
+    """Corrige une erreur : la saisie est annulée (motif obligatoire), jamais modifiée (§3.4).
+
+    Par son auteur ou par un responsable du plan, tant que le plan n'est pas clôturé (8.2).
+    """
+    saisie = SaisieProduction.objects.select_for_update().select_related("besoin").get(pk=saisie.pk)
+    utilisateur = _utilisateur()
+    auteur = saisie.saisie_par_id == utilisateur.pk
+    plan = saisie.besoin.plan
+    if not (
+        (auteur and utilisateur.has_perm("production.saisir_production", plan))
+        or utilisateur.has_perm("production.gerer_plan", plan)
+    ):
+        raise PermissionDenied("Seul l'auteur de la saisie ou un responsable peut l'annuler.")
+    if plan.statut == StatutPlan.CLOTURE:
+        raise ActionImpossible("Le plan est clôturé : les saisies ne peuvent plus être annulées.")
+    if saisie.annulee:
+        raise ActionImpossible("Cette saisie est déjà annulée.")
+    motif = (motif or "").strip()
+    if not motif:
+        raise ValidationError({"motif": "Indiquer le motif de l'annulation."})
+    saisie.annulee = True
+    saisie.motif_annulation = motif
+    saisie.annulee_par = utilisateur
+    saisie.annulee_le = timezone.now()
+    saisie.save(update_fields=["annulee", "motif_annulation", "annulee_par", "annulee_le"])
+    _mettre_a_jour_produit(saisie.besoin)
+    return saisie
 
 
 # --- Cascades depuis les commandes ------------------------------------------------
