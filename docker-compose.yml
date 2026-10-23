@@ -32,6 +32,8 @@ services:
       - "${PORT_WEB:-8000}:8000"
     volumes:
       - .:/app
+      # Environnements des hooks pre-commit, conservés entre deux redémarrages.
+      - cache_pre_commit:/root/.cache/pre-commit
     depends_on:
       db:
         condition: service_healthy
@@ -64,3 +66,4 @@ services:
 
 volumes:
   donnees_postgres:
+  cache_pre_commit:

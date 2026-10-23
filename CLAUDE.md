@@ -42,7 +42,7 @@ Tout tourne dans Docker : le poste Windows n'a ni Python 3.12 ni Node. Les comma
 
 Python 3.12, Django 5.2 LTS, PostgreSQL 16, Redis, Celery + Celery Beat, HTMX + Alpine.js + Tailwind CSS, django-fsm-2, django-pghistory, django-rules, django-allauth, django-axes, django-storages (S3), django-import-export, WeasyPrint. Tests : pytest-django + factory_boy. Qualité : ruff + pre-commit. Environnement : Docker Compose.
 
-Précisions : réglages par variables d'environnement avec django-environ ; Tailwind via `django-tailwind-cli` (exécutable autonome, sans Node), source `assets/css/source.css` ; htmx et Alpine copiés dans `static/vendor/` (pas de CDN, exclus des hooks pre-commit). Stockage des fichiers privés : disque en développement, S3 managé (Cloudflare R2 ou Backblaze B2) en production ; pas de MinIO, qui n'est plus distribué.
+Précisions : réglages par variables d'environnement avec django-environ ; Tailwind via `django-tailwind-cli` (exécutable autonome, sans Node), source `assets/css/source.css` ; htmx et Alpine copiés dans `static/vendor/` (pas de CDN, exclus des hooks pre-commit). pre-commit tourne **dans le conteneur `web`** (le contrôle des applications de Windows bloque ses outils sur le poste) : hook git installé depuis `outils/hook-pre-commit.sh` ; `check-yaml` est remplacé par une étape de la CI. Stockage des fichiers privés : disque en développement, S3 managé (Cloudflare R2 ou Backblaze B2) en production ; pas de MinIO, qui n'est plus distribué.
 
 ## Règles d'architecture (non négociables)
 
@@ -115,5 +115,5 @@ docker compose exec web python manage.py tailwind build   # sous Windows, après
 docker compose exec web python manage.py charger_demo     # comptes et données de démonstration (mot de passe affiché)
 docker compose restart worker beat                        # après modification d'une tâche Celery
 docker compose exec web python manage.py importer_clients clients.xlsx --entreprise mie-dore --simulation
-py -m pre_commit run --all-files                     # hooks (installés côté Windows)
+docker compose exec web pre-commit run --all-files   # hooks pre-commit (dans le conteneur)
 ```

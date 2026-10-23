@@ -6,6 +6,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+# git : nécessaire à pre-commit, lancé dans le conteneur (outils/hook-pre-commit.sh).
+# Le dépôt monté appartient à l'utilisateur du poste : git doit l'accepter.
+RUN apt-get update     && apt-get install -y --no-install-recommends git     && rm -rf /var/lib/apt/lists/*     && git config --global --add safe.directory /app
+
 # dev (par défaut) ou prod
 ARG REQUIREMENTS=dev
 COPY requirements/ requirements/

@@ -8,7 +8,8 @@ repos:
         exclude: ^(docs|static/vendor)/
       - id: end-of-file-fixer
         exclude: ^(docs|static/vendor)/
-      - id: check-yaml
+      # check-yaml retiré : bloqué par le contrôle des applications de Windows
+      # (WinError 4551). La syntaxe des fichiers YAML est vérifiée par la CI.
       - id: check-merge-conflict
       - id: check-added-large-files
         args: ["--maxkb=1024"]

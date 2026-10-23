@@ -40,6 +40,10 @@ jobs:
           cache: pip
           cache-dependency-path: requirements/*.txt
       - run: pip install -r requirements/dev.txt
+      - name: Syntaxe des fichiers YAML
+        run: |
+          pip install pyyaml
+          python -c "import sys, yaml; [yaml.safe_load(open(f)) for f in sys.argv[1:]]" docker-compose.yml .pre-commit-config.yaml .github/workflows/ci.yml
       - run: ruff check .
       - run: ruff format --check .
       - run: python manage.py makemigrations --check --dry-run

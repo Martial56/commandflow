@@ -51,3 +51,15 @@ Le CSS (Tailwind, sans Node) est compilé au démarrage du conteneur `web`, puis
 ```bash
 docker compose exec web python manage.py tailwind build
 ```
+
+## Hooks pre-commit
+
+Les hooks (ruff, fins de ligne…) tournent dans le conteneur `web` : sous Windows, le contrôle
+des applications bloque les outils que pre-commit installe sur le poste. À faire une fois :
+
+```bash
+cp outils/hook-pre-commit.sh .git/hooks/pre-commit
+```
+
+Docker doit être démarré pour committer. Pour lancer les hooks à la main :
+`docker compose exec web pre-commit run --all-files`.
