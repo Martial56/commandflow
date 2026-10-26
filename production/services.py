@@ -8,6 +8,7 @@ Le plan est verrouillé (`select_for_update`) pendant chaque recalcul : deux con
 simultanées ne peuvent pas perdre de quantité.
 """
 
+from dataclasses import dataclass, field
 from decimal import Decimal
 
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -262,6 +263,39 @@ def annuler_saisie(saisie, motif):
     saisie.save(update_fields=["annulee", "motif_annulation", "annulee_par", "annulee_le"])
     _mettre_a_jour_produit(saisie.besoin)
     return saisie
+
+
+# --- Commandes prêtes au chargement -----------------------------------------------
+
+
+@dataclass
+class ResultatPreparation:
+    pretes: list = field(default_factory=list)
+    restantes: list = field(default_factory=list)  # quantités insuffisantes
+
+
+@transaction.atomic
+def marquer_plan_pret(plan):
+    """Marque prêtes toutes les commandes couvertes du plan, dans l'ordre des créneaux (8.2).
+
+    Chaque commande réserve ses quantités avant la suivante : celles que le disponible ne
+    couvre plus restent « En préparation » (exception possible).
+    """
+    from commandes import services as commandes
+
+    plan = PlanProduction.objects.select_for_update().get(pk=plan.pk)
+    _exiger("production.saisir_production", plan)  # Production, Gestionnaire (§4)
+    resultat = ResultatPreparation()
+    a_preparer = Commande.objects.filter(
+        date_livraison=plan.date_livraison, statut=Statut.EN_PREPARATION
+    ).order_by("creneau", "numero")
+    for commande in a_preparer:
+        try:
+            with transaction.atomic():
+                resultat.pretes.append(commandes.marquer_prete(commande))
+        except commandes.ActionImpossible:
+            resultat.restantes.append(commande)
+    return resultat
 
 
 # --- Cascades depuis les commandes ------------------------------------------------

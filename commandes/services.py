@@ -330,6 +330,39 @@ def _demande_en_attente(commande, action):
 
 
 @transaction.atomic
+def marquer_prete(commande):
+    """En préparation → prête au chargement ; ses quantités sont réservées (§4, 8.2).
+
+    Production ou Gestionnaire. Si le disponible ne couvre pas la commande, demander
+    une exception (`demander_exception`).
+    """
+    commande = _verrouiller(commande)
+    _transition(
+        commande,
+        "marquer_prete",
+        "Quantités disponibles insuffisantes : demander une exception à un responsable.",
+    )()
+    commande.save()
+    _recalculer_production(commande)
+    return commande
+
+
+@transaction.atomic
+def demander_exception(commande, motif):
+    """Exception : commande prête malgré des quantités insuffisantes (validation, 8.2)."""
+    commande = _verrouiller(commande)
+    _exiger("commandes.preparer_commande", commande)
+    if commande.statut != Statut.EN_PREPARATION:
+        raise ActionImpossible(
+            f"Exception impossible au statut « {commande.get_statut_display()} »."
+        )
+    if not (motif or "").strip():
+        raise ValidationError({"motif": "Indiquer le motif de l'exception."})
+    _demande_en_attente(commande, Validation.Action.EXCEPTION)
+    return demander_validation(commande, Validation.Action.EXCEPTION, motif=motif.strip())
+
+
+@transaction.atomic
 def demander_annulation(commande, motif):
     """Demande d'annulation d'une commande confirmée, soumise à un responsable."""
     commande = _verrouiller(commande)
@@ -430,6 +463,15 @@ def decider_validation_commande(validation, *, accepter):
     elif validation.action == Validation.Action.ANNULATION:
         commande.motif_annulation = validation.motif
         _transition(commande, "annuler", "Annulation impossible.")()
+        commande.save()
+        _recalculer_production(commande)
+    elif validation.action == Validation.Action.EXCEPTION:
+        # Décidée par un responsable : la commande passe prête malgré le manque (8.2).
+        if not can_proceed(commande.marquer_prete):
+            raise ActionImpossible(
+                f"La commande est passée au statut « {commande.get_statut_display()} »."
+            )
+        commande.marquer_prete()
         commande.save()
         _recalculer_production(commande)
     return validation
