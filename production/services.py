@@ -314,15 +314,18 @@ def integrer_commande(commande):
     if plan.statut == StatutPlan.VALIDE:
         commande.lancer_preparation()
         commande.save()
+        plan.ajouts_apres_validation += 1
+        plan.save(update_fields=["ajouts_apres_validation"])
     recalculer_besoin(plan)
     return plan
 
 
 @transaction.atomic
-def commande_modifiee(commande, ancienne_date=None):
+def commande_modifiee(commande, ancienne_date=None, signaler=True):
     """Commande modifiée ou annulée après confirmation : besoins recalculés (§7).
 
     Si la date de livraison a changé, l'ancien plan et le nouveau sont recalculés.
+    `signaler` : compté dans l'alerte des plans validés (faux pour une simple réservation).
     """
     dates = {commande.date_livraison, ancienne_date} - {None}
     for date in sorted(dates):
@@ -331,7 +334,10 @@ def commande_modifiee(commande, ancienne_date=None):
             if date != commande.date_livraison or commande.statut not in STATUTS_PLANIFIES:
                 continue
             plan = plan_verrouille(date)  # nouvelle date sans plan : il est créé
-        recalculer_besoin(plan)
+        plan = recalculer_besoin(plan)
+        if signaler and plan.statut == StatutPlan.VALIDE:
+            plan.changements_apres_validation += 1
+            plan.save(update_fields=["changements_apres_validation"])
     _aligner_sur_le_plan(commande)
 
 

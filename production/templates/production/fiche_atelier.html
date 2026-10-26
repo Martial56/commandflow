@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load format_fr %}
+{% comment %}Fiche atelier imprimable (décision 8.2 : page HTML ; PDF au Sprint 6).{% endcomment %}
+{% block titre %}Fiche atelier · {{ plan.date_livraison|date_courte }}{% endblock %}
+{% block corps %}
+<main class="mx-auto flex max-w-3xl flex-col gap-5 bg-white p-8 print:p-0">
+  <div class="flex items-end justify-between gap-4">
+    <div>
+      <p class="text-[13px] text-texte-secondaire">{{ user.entreprise }} · fiche atelier</p>
+      <h1 class="text-[24px] font-semibold">Production pour la livraison du {{ plan.date_livraison|date_courte }}</h1>
+      <p class="text-[13px] text-texte-secondaire">Plan {{ plan.get_statut_display|lower }} · imprimé le {{ imprime_le|jour_mois }} à {{ imprime_le|heure }}</p>
+    </div>
+    <button type="button" onclick="window.print()" class="h-10 cursor-pointer rounded-md border border-bordure bg-white px-4 print:hidden">Imprimer</button>
+  </div>
+  <table class="w-full border-collapse text-sm">
+    <thead>
+      <tr class="border-b-2 border-encre text-left">
+        <th class="py-2 pr-3">Produit</th>
+        <th class="py-2 pr-3 text-right">À produire</th>
+        <th class="py-2 pr-3">Unité</th>
+        <th class="py-2 pr-3">Notes de préparation</th>
+        <th class="w-40 py-2">Lots / fours</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for besoin in besoins %}
+        <tr class="border-b border-trait align-top">
+          <td class="py-3 pr-3 font-semibold">{{ besoin.produit.nom }}</td>
+          <td class="py-3 pr-3 text-right font-mono text-base">{{ besoin.quantite_a_produire|quantite }}</td>
+          <td class="py-3 pr-3">{{ besoin.produit.get_unite_display }}</td>
+          <td class="py-3 pr-3">{{ besoin.produit.notes_preparation }}</td>
+          <td class="py-3"></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5" class="py-3 text-texte-secondaire">Rien à produire.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</main>
+{% endblock %}

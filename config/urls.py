@@ -8,5 +8,6 @@ urlpatterns = [
     path("clients/", include("clients.urls")),
     path("commandes/", include("commandes.urls")),
     path("recurrentes/", include("commandes.urls_recurrentes")),
+    path("production/", include("production.urls")),
     path("", include("comptes.urls")),
 ]

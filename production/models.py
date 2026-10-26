@@ -59,6 +59,13 @@ class PlanProduction(FSMModelMixin, ModeleEntreprise, ModeleTrace):
         verbose_name="clôturé par",
     )
     cloture_le = models.DateTimeField("clôturé le", null=True, blank=True)
+    # Alerte « le plan a changé depuis sa validation » (décision 8.2), tenue par les services.
+    ajouts_apres_validation = models.PositiveIntegerField(
+        "commandes ajoutées après validation", default=0
+    )
+    changements_apres_validation = models.PositiveIntegerField(
+        "commandes modifiées ou annulées après validation", default=0
+    )
 
     class Meta:
         verbose_name = "plan de production"

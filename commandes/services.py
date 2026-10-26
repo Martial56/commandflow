@@ -343,7 +343,7 @@ def marquer_prete(commande):
         "Quantités disponibles insuffisantes : demander une exception à un responsable.",
     )()
     commande.save()
-    _recalculer_production(commande)
+    _recalculer_production(commande, signaler=False)
     return commande
 
 
@@ -473,15 +473,18 @@ def decider_validation_commande(validation, *, accepter):
             )
         commande.marquer_prete()
         commande.save()
-        _recalculer_production(commande)
+        _recalculer_production(commande, signaler=False)
     return validation
 
 
-def _recalculer_production(commande, ancienne_date=None):
-    """Cascade (§7) : les besoins de production suivent la commande modifiée ou annulée."""
+def _recalculer_production(commande, ancienne_date=None, signaler=True):
+    """Cascade (§7) : les besoins de production suivent la commande modifiée ou annulée.
+
+    `signaler=False` pour une réservation (commande prête) : ce n'est pas un changement.
+    """
     from production.services import commande_modifiee
 
-    commande_modifiee(commande, ancienne_date)
+    commande_modifiee(commande, ancienne_date, signaler=signaler)
 
 
 # --- Commandes récurrentes ----------------------------------------------------------

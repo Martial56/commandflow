@@ -24,6 +24,8 @@ class Ecran:
     acces: rules.Predicate
     terrain: bool = False
     sprint: int | None = None
+    # Fonction « module.fonction(utilisateur) → nombre » : pastille d'alerte sur le menu.
+    compteur: str = ""
 
     @property
     def permission(self):
@@ -72,6 +74,7 @@ ECRANS = [
         # Responsable de production : plan groupé uniquement.
         a_le_role(R.DIRECTION, R.GESTIONNAIRE, R.PRODUCTION),
         sprint=3,
+        compteur="production.alertes.nombre_alertes",
     ),
     Ecran(
         "tournees",

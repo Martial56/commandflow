@@ -1,0 +1,29 @@
+{% load format_fr %}{% comment %}Ligne du tableau des besoins (maquette 13) ; renvoyée seule après un ajustement (htmx).{% endcomment %}
+<tr id="besoin-{{ besoin.pk }}" class="border-t border-trait">
+  <td class="px-4 py-3">
+    <a href="?date={{ plan.date_livraison|date:'Y-m-d' }}&produit={{ besoin.produit_id }}#detail" class="text-encre">{{ besoin.produit.nom }}</a>
+  </td>
+  <td class="px-4 py-3 text-right font-mono">{{ besoin.quantite_commandee|quantite }}</td>
+  <td class="px-4 py-3 text-right font-mono {% if besoin.marge < 0 %}text-alerte{% endif %}">{% if besoin.marge > 0 %}+{% endif %}{{ besoin.marge|quantite }}</td>
+  <td class="px-4 py-3">
+    {% if peut_gerer and plan.statut != "cloture" %}
+      <label for="a-produire-{{ besoin.pk }}" class="sr-only">À produire {{ besoin.produit.nom|lower }}</label>
+      <input id="a-produire-{{ besoin.pk }}" name="a_produire" value="{{ besoin.quantite_a_produire|quantite }}" inputmode="decimal"
+             class="champ h-10 w-28 text-right font-mono"
+             hx-post="{% url 'production_ajuster' besoin.pk %}" hx-trigger="change" hx-target="#besoin-{{ besoin.pk }}" hx-swap="outerHTML">
+      {% if erreur %}<p role="alert" class="pt-1 text-xs text-alerte">{{ erreur }}</p>{% endif %}
+    {% else %}
+      <span class="font-mono">{{ besoin.quantite_a_produire|quantite }}</span>
+    {% endif %}
+  </td>
+  <td class="px-4 py-3 text-right font-mono">{{ besoin.quantite_produite|quantite }}</td>
+  <td class="px-4 py-3">
+    {% if besoin.complet %}
+      <span class="whitespace-nowrap rounded-full bg-[#DCFCE7] px-2.5 py-1 text-xs font-semibold text-[#166534]">Complet</span>
+    {% elif besoin.quantite_produite > 0 %}
+      <span class="whitespace-nowrap rounded-full bg-[#FFEDD5] px-2.5 py-1 text-xs font-semibold text-alerte">Manque {{ besoin.quantite_manquante|quantite }}</span>
+    {% else %}
+      <span class="whitespace-nowrap rounded-full bg-[#E7E3DA] px-2.5 py-1 text-xs font-semibold text-[#3D3A34]">À lancer</span>
+    {% endif %}
+  </td>
+</tr>

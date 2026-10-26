@@ -1,0 +1,97 @@
+{% extends "base_bureau.html" %}
+{% load format_fr %}
+{% comment %}Plan de production (maquette 13).{% endcomment %}
+{% block titre %}Plan de production{% endblock %}
+{% block contenu %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div class="flex flex-col gap-1">
+    <div class="flex flex-wrap items-center gap-3">
+      <h1 class="text-[28px] font-semibold">Plan de production · {{ date|date_courte }}</h1>
+      {% if plan %}
+        <span class="rounded-full px-2.5 py-1 text-xs font-semibold {% if plan.statut == 'brouillon' %}bg-[#E7E3DA] text-[#3D3A34]{% elif plan.statut == 'valide' %}bg-[#DBEAFE] text-lien{% else %}bg-[#DCFCE7] text-[#166534]{% endif %}">{{ plan.get_statut_display }}</span>
+      {% endif %}
+    </div>
+    {% if plan %}
+      <span class="text-[13px] text-texte-secondaire">
+        Regroupe {{ nb_commandes }} commande{{ nb_commandes|pluralize }} confirmée{{ nb_commandes|pluralize }} · mis à jour à chaque confirmation ou modification
+        {% if plan.valide_par %} · validé par {{ plan.valide_par }} le {{ plan.valide_le|jour_mois }} à {{ plan.valide_le|heure }}{% endif %}
+      </span>
+    {% endif %}
+  </div>
+  <div class="flex flex-wrap items-end gap-2">
+    <form method="get">
+      <label for="date-plan" class="sr-only">Date de livraison</label>
+      <input id="date-plan" type="date" name="date" value="{{ date|date:'Y-m-d' }}" class="champ h-11" onchange="this.form.submit()">
+    </form>
+    {% if plan %}
+      <a href="{% url 'production_fiche_atelier' plan.pk %}" target="_blank" class="inline-flex h-11 items-center rounded-md border border-bordure bg-white px-4 text-encre no-underline">Imprimer la fiche atelier</a>
+      {% if peut_gerer and plan.statut == "brouillon" %}
+        <form method="post" action="{% url 'production_valider' plan.pk %}">{% csrf_token %}<button type="submit" class="bouton-principal h-11 w-auto px-4">Valider le plan</button></form>
+      {% endif %}
+      {% if plan.statut == "valide" %}
+        {% if peut_preparer and nb_en_preparation %}
+          <form method="post" action="{% url 'production_pretes' plan.pk %}">{% csrf_token %}<button type="submit" class="bouton-principal h-11 w-auto px-4">Marquer les commandes prêtes</button></form>
+        {% endif %}
+        {% if peut_gerer %}
+          <form method="post" action="{% url 'production_cloturer' plan.pk %}" onsubmit="return confirm('Clôturer le plan ? Plus aucune saisie ne sera possible.')">{% csrf_token %}<button type="submit" class="h-11 cursor-pointer rounded-md border border-bordure bg-white px-4">Clôturer</button></form>
+        {% endif %}
+      {% endif %}
+    {% endif %}
+  </div>
+</div>
+
+{% if recurrentes_a_confirmer %}
+  <div role="status" class="rounded-[10px] border border-[#BFDBFE] bg-[#EEF2FF] px-4 py-3 text-sm">
+    {{ recurrentes_a_confirmer }} commande{{ recurrentes_a_confirmer|pluralize }} récurrente{{ recurrentes_a_confirmer|pluralize }} {{ recurrentes_a_confirmer|pluralize:"est,sont" }} encore à confirmer (limite {{ heure_limite|time:"H\hi" }}) : le plan peut encore évoluer.
+  </div>
+{% endif %}
+{% if ajoutees or modifiees %}
+  <div role="alert" class="rounded-[10px] border border-alerte-bordure bg-alerte-fond px-4 py-3 text-sm text-alerte">
+    Le plan a changé depuis sa validation :
+    {% if ajoutees %}{{ ajoutees }} commande{{ ajoutees|pluralize }} ajoutée{{ ajoutees|pluralize }}{% endif %}{% if ajoutees and modifiees %}, {% endif %}{% if modifiees %}{{ modifiees }} commande{{ modifiees|pluralize }} modifiée{{ modifiees|pluralize }} ou annulée{{ modifiees|pluralize }}{% endif %}.
+    Vérifier les quantités à produire.
+  </div>
+{% endif %}
+{% if plan.statut == "valide" and en_manque %}
+  <div role="status" class="rounded-[10px] border border-alerte-bordure bg-alerte-fond px-4 py-3 text-sm text-alerte">
+    Production insuffisante : {% for besoin in en_manque %}{{ besoin.produit.nom }} (manque {{ besoin.quantite_manquante|quantite }}){% if not forloop.last %}, {% endif %}{% endfor %}.
+    {% if nb_pretes %}{{ nb_pretes }} commande{{ nb_pretes|pluralize }} prête{{ nb_pretes|pluralize }} au chargement.{% endif %}
+  </div>
+{% endif %}
+
+{% if not plan %}
+  <div class="carte text-texte-secondaire">Aucune commande confirmée pour le {{ date|date_courte }}.</div>
+{% else %}
+  <div class="carte overflow-x-auto p-0">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-left text-[13px] text-texte-secondaire">
+          <th class="px-4 py-3 font-medium">Produit</th>
+          <th class="px-4 py-3 text-right font-medium">Commandé</th>
+          <th class="px-4 py-3 text-right font-medium">Marge</th>
+          <th class="px-4 py-3 font-medium">À produire</th>
+          <th class="px-4 py-3 text-right font-medium">Produit</th>
+          <th class="px-4 py-3 font-medium">Avancement</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for besoin in besoins %}{% include "production/_besoin.html" %}{% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if choisi %}
+    <section id="detail" aria-labelledby="titre-detail" class="carte flex flex-col gap-3 text-sm">
+      <h2 id="titre-detail" class="text-base font-semibold">{{ choisi.produit.nom }} · détail par commande</h2>
+      <div class="flex flex-wrap gap-x-6 gap-y-2">
+        {% for ligne in detail %}
+          <span>{{ ligne.commande__client__nom }} · <span class="font-mono">{{ ligne.total|quantite }}</span></span>
+        {% empty %}
+          <span class="text-texte-secondaire">Plus aucune commande pour ce produit.</span>
+        {% endfor %}
+        {% if autres %}<span class="text-texte-secondaire">+ {{ autres }} autre{{ autres|pluralize }} commande{{ autres|pluralize }}</span>{% endif %}
+      </div>
+    </section>
+  {% endif %}
+{% endif %}
+{% endblock %}
