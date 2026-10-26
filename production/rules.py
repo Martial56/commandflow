@@ -11,7 +11,6 @@ responsable_production = a_le_role(Role.PRODUCTION, Role.GESTIONNAIRE, Role.DIRE
 rules.add_perm("production.voir_plan", responsable_production)
 rules.add_perm("production.gerer_plan", responsable_production & meme_entreprise)
 # Saisie des fournées : Production, Gestionnaire.
-rules.add_perm(
-    "production.saisir_production",
-    a_le_role(Role.PRODUCTION, Role.GESTIONNAIRE) & meme_entreprise,
-)
+atelier = a_le_role(Role.PRODUCTION, Role.GESTIONNAIRE)
+rules.add_perm("production.acceder_saisie", atelier)  # écran de saisie (maquette 2)
+rules.add_perm("production.saisir_production", atelier & meme_entreprise)

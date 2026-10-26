@@ -29,6 +29,9 @@
         <form method="post" action="{% url 'production_valider' plan.pk %}">{% csrf_token %}<button type="submit" class="bouton-principal h-11 w-auto px-4">Valider le plan</button></form>
       {% endif %}
       {% if plan.statut == "valide" %}
+        {% if peut_preparer %}
+          <a href="{% url 'production_saisie' %}?date={{ plan.date_livraison|date:'Y-m-d' }}" class="inline-flex h-11 items-center rounded-md border border-lien bg-white px-4 text-lien no-underline">Saisir la production</a>
+        {% endif %}
         {% if peut_preparer and nb_en_preparation %}
           <form method="post" action="{% url 'production_pretes' plan.pk %}">{% csrf_token %}<button type="submit" class="bouton-principal h-11 w-auto px-4">Marquer les commandes prêtes</button></form>
         {% endif %}

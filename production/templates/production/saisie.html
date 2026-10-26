@@ -1,0 +1,106 @@
+{% extends "base_terrain.html" %}
+{% load format_fr %}
+{% comment %}Saisie de production sur téléphone (maquette 2).{% endcomment %}
+{% block titre %}Saisie de production{% endblock %}
+{% block sur_titre %}{% if plan %}Plan de production · {{ plan.get_statut_display|lower }}{% else %}Saisie de production{% endif %}{% endblock %}
+{% block titre_terrain %}{% if plan %}Livraison du {{ plan.date_livraison|date_courte }}{% else %}Aucun plan en cours{% endif %}{% endblock %}
+{% block contenu %}
+{% include "composants/messages.html" %}
+
+{% if not plan or plan.statut != "valide" %}
+  <div class="carte text-texte-secondaire">
+    {% if not plan %}Aucun plan de production validé à partir d'aujourd'hui.
+    {% elif plan.statut == "brouillon" %}Le plan n'est pas encore validé : la production n'a pas commencé.
+    {% else %}Le plan est clôturé : plus aucune saisie n'est possible.{% endif %}
+  </div>
+{% elif not choisi %}
+  <div class="carte text-texte-secondaire">Rien à produire dans ce plan.</div>
+{% else %}
+  <section class="flex flex-col gap-3 rounded-xl border-2 border-lien bg-white p-4" aria-labelledby="titre-produit">
+    <div class="flex items-baseline justify-between">
+      <h2 id="titre-produit" class="text-lg font-semibold">{{ choisi.produit.nom }}</h2>
+      <span class="text-[13px] text-texte-secondaire">{{ choisi.produit.get_unite_display }}</span>
+    </div>
+    <div class="h-2 rounded-full bg-trait" aria-hidden="true"><div class="h-full rounded-full bg-lien" style="width: {{ progression }}%"></div></div>
+    <div class="grid grid-cols-3 gap-2 text-center">
+      <div class="flex flex-col"><span class="text-[13px] text-texte-secondaire">À produire</span><span class="font-mono text-xl">{{ choisi.quantite_a_produire|quantite }}</span></div>
+      <div class="flex flex-col"><span class="text-[13px] text-texte-secondaire">Produit</span><span class="font-mono text-xl">{{ choisi.quantite_produite|quantite }}</span></div>
+      <div class="flex flex-col"><span class="text-[13px] text-texte-secondaire">Manque</span><span class="font-mono text-xl {% if choisi.quantite_manquante %}text-alerte{% endif %}">{{ choisi.quantite_manquante|quantite }}</span></div>
+    </div>
+
+    <form method="post" action="{% url 'production_saisie_enregistrer' choisi.pk %}" class="flex flex-col gap-3"
+          x-data="{ quantite: '{{ quantite_proposee }}', pas: {% if choisi.produit.quantites_decimales %}1{% else %}10{% endif %} }">
+      {% csrf_token %}
+      <label for="quantite" class="text-[13px] font-medium">Nouvelle fournée</label>
+      <div class="flex items-center gap-2">
+        <button type="button" aria-label="Retirer {% if choisi.produit.quantites_decimales %}1{% else %}10{% endif %}" class="h-14 w-14 cursor-pointer rounded-md border border-bordure bg-white text-2xl"
+                x-on:click="quantite = Math.max((parseFloat(String(quantite).replace(',', '.')) || 0) - pas, 0)">−</button>
+        <input id="quantite" name="quantite" x-model="quantite" inputmode="{% if choisi.produit.quantites_decimales %}decimal{% else %}numeric{% endif %}" required
+               class="champ h-14 flex-1 text-center font-mono text-2xl">
+        <button type="button" aria-label="Ajouter {% if choisi.produit.quantites_decimales %}1{% else %}10{% endif %}" class="h-14 w-14 cursor-pointer rounded-md border border-bordure bg-white text-2xl"
+                x-on:click="quantite = (parseFloat(String(quantite).replace(',', '.')) || 0) + pas">+</button>
+      </div>
+      <div class="flex flex-col gap-1.5">
+        <label for="lot" class="text-[13px] font-medium">Lot</label>
+        <input id="lot" name="lot" value="{{ lot_propose }}" list="lots-du-jour" class="champ">
+        <datalist id="lots-du-jour">{% for lot in lots %}<option value="{{ lot }}"></option>{% endfor %}</datalist>
+      </div>
+      <details class="text-sm">
+        <summary class="cursor-pointer text-texte-secondaire">Ajouter un commentaire</summary>
+        <input name="commentaire" maxlength="255" aria-label="Commentaire" class="champ mt-2">
+      </details>
+      <button type="submit" class="bouton-principal h-14 text-lg">
+        <span>Enregistrer <span x-text="quantite || 0">{{ quantite_proposee|default:"0" }}</span> {{ unite_pluriel }}</span>
+      </button>
+      <p class="text-center text-[13px] text-texte-secondaire">Chaque saisie s'ajoute aux précédentes, elle ne les remplace pas.</p>
+    </form>
+  </section>
+
+  {% if saisies %}
+    <section class="flex flex-col gap-2" aria-labelledby="titre-saisies">
+      <h2 id="titre-saisies" class="text-base font-semibold">Dernières saisies · {{ choisi.produit.nom }}</h2>
+      {% for saisie in saisies %}
+        <div class="flex flex-col gap-1 rounded-lg border border-trait bg-white px-3 py-2 text-sm {% if saisie.annulee %}text-texte-secondaire{% endif %}">
+          <div class="flex items-center justify-between gap-2">
+            <span{% if saisie.annulee %} class="line-through"{% endif %}><span class="font-mono">{{ saisie.quantite|quantite }}</span> · {{ saisie.lot }}</span>
+            <span class="text-[13px] text-texte-secondaire">{{ saisie.saisie_le|heure }} · {{ saisie.saisie_par }}</span>
+          </div>
+          {% if saisie.annulee %}
+            <span class="text-[13px]">Annulée : « {{ saisie.motif_annulation }} »</span>
+          {% elif saisie.saisie_par_id == user.pk or peut_corriger %}
+            <details>
+              <summary class="cursor-pointer text-[13px] text-lien">Annuler cette saisie</summary>
+              <form method="post" action="{% url 'production_saisie_annuler' saisie.pk %}" class="mt-2 flex gap-2">
+                {% csrf_token %}
+                <input name="motif" required placeholder="Motif (erreur de quantité…)" aria-label="Motif de l'annulation" class="champ h-11 flex-1">
+                <button type="submit" class="h-11 cursor-pointer rounded-md border border-alerte-bordure bg-white px-3 text-alerte">Annuler</button>
+              </form>
+            </details>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </section>
+  {% endif %}
+
+  {% if autres %}
+    <section class="flex flex-col gap-2" aria-labelledby="titre-autres">
+      <h2 id="titre-autres" class="text-base font-semibold">Autres produits du jour</h2>
+      {% for besoin in autres %}
+        <a href="?date={{ plan.date_livraison|date:'Y-m-d' }}&produit={{ besoin.produit_id }}" class="flex min-h-14 items-center justify-between gap-3 rounded-lg border border-trait bg-white px-4 py-3 text-encre no-underline">
+          <span class="flex flex-col">
+            <span class="font-medium">{{ besoin.produit.nom }}</span>
+            <span class="text-[13px] text-texte-secondaire">{{ besoin.quantite_produite|quantite }} / {{ besoin.quantite_a_produire|quantite }} produits</span>
+          </span>
+          {% if besoin.complet %}
+            <span class="rounded-full bg-[#DCFCE7] px-2.5 py-1 text-xs font-semibold text-[#166534]">Complet</span>
+          {% elif besoin.quantite_produite > 0 %}
+            <span class="rounded-full bg-[#FFEDD5] px-2.5 py-1 text-xs font-semibold text-alerte">Manque {{ besoin.quantite_manquante|quantite }}</span>
+          {% else %}
+            <span class="rounded-full bg-[#E7E3DA] px-2.5 py-1 text-xs font-semibold text-[#3D3A34]">À lancer</span>
+          {% endif %}
+        </a>
+      {% endfor %}
+    </section>
+  {% endif %}
+{% endif %}
+{% endblock %}
