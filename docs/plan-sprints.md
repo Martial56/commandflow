@@ -34,12 +34,12 @@ Coche les cases au fur et à mesure.
 
 ## Sprint 4 — Chargement et tournées
 
-- [ ] Tournées, chargements, double validation préparateur / chauffeur (maquette 3)
+- [ ] Tournées, chargements, double validation préparateur / chauffeur (maquettes 3, 4 et 14)
 - [ ] Départ de tournée et cascade vers les commandes
 
 ## Sprint 5 — Application chauffeur
 
-- [ ] Livraisons, preuves, échecs, reliquats, retours (maquette 4), PWA installable
+- [ ] Livraisons, preuves, échecs, reliquats, retours (maquettes 5 et 6), PWA installable
 
 ## Sprint 6 — Facturation, paiements, pilotage
 

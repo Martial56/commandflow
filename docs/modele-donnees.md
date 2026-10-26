@@ -281,8 +281,8 @@ Règle de base : une vue appelle un service, le service appelle les transitions 
 
 Ces choix de modélisation dépendent des arbitrages du §23. Chacun modifie un modèle ou une transition précise.
 
-- [ ] Contrôle du chargement par ligne de produit (modèle actuel, `LigneChargement`) ou par commande entière seulement
-- [ ] Double validation imposée aussi aux prestataires externes, ou preuve transmise par le gestionnaire à leur place
+- [x] Contrôle du chargement par ligne de produit (modèle actuel, `LigneChargement`) ou par commande entière seulement : par ligne (voir 8.3)
+- [x] Double validation imposée aussi aux prestataires externes, ou preuve transmise par le gestionnaire à leur place : les deux selon le cas (voir 8.3)
 - [x] Sort d'une commande récurrente non confirmée à l'heure limite : maintien en `a_confirmer` avec alerte (voir 8.1)
 - [x] Heure limite de confirmation des récurrentes et heure de génération : génération la veille à 18 h, limite à 20 h, réglables par entreprise (voir 8.1)
 - [x] Profils autorisés à valider les modifications, les urgences et les annulations : Direction et Gestionnaire (voir 8.1)
@@ -331,3 +331,23 @@ Ces choix de modélisation dépendent des arbitrages du §23. Chacun modifie un 
 | Alertes du responsable de production | À l'écran (bandeau du plan, pastilles « Manque » et « À lancer », compteur sur le menu Production) ; envoi réel avec les notifications (Sprint 6) |
 | Fiche atelier | Page HTML imprimable ; PDF avec les autres documents (Sprint 6) |
 | Numéro de lot | Texte libre, prérempli « Lot N+1 » |
+
+### 8.3 Décisions validées le 26 octobre 2026 (Sprint 4 — chargement et tournées)
+
+| Sujet | Décision |
+| --- | --- |
+| Contrôle du chargement | Par ligne de produit (maquette 3, `LigneChargement`) |
+| Prestataires externes | Avec un compte ComandFlow : il confirme lui-même la réception, comme un chauffeur. Sans compte : le gestionnaire saisit la réception à sa place, tracée, avec la validation d'un autre responsable |
+| Commandes affectables à une tournée | Seulement « Prête au chargement », de la date de la tournée ; les reliquats arrivent au Sprint 5 |
+| Création des tournées et affectation | Gestionnaire, Direction |
+| Contrôle du chargement (préparateur) | Préparation, Gestionnaire |
+| Motifs d'écart au chargement | Production insuffisante, Produit abîmé, Autre (texte libre) |
+| Départ avec des commandes non reçues | Bloqué ; le gestionnaire retire la commande de la tournée, ou fait accepter une exception par un autre responsable |
+| Retrait d'une commande avant le départ | Nouvel état de chargement « Retiré » ; la commande redevient affectable ; historique conservé |
+| Écart accepté par exception | La commande ne change pas ; les quantités réellement chargées sont enregistrées et serviront de « prévu » pour la livraison (Sprint 5) |
+| Ordre de passage | Proposition : tri par créneau puis par commune ; le gestionnaire réordonne. Carte reportée au Sprint 5 |
+| Numéro de tournée | `TRN-AAAA-000123` (comme les commandes) |
+| Véhicule | Facultatif ; véhicules gérés dans l'administration |
+| Suivi « en temps réel » (§10) | Écran Tournées rafraîchi toutes les 30 secondes |
+| Modification d'une tournée partie (§11) | Reportée au Sprint 5 ; au Sprint 4, une tournée partie est figée |
+| Maquettes | Sprint 4 : maquettes 3, 4 (réception par le chauffeur) et 14 ; Sprint 5 : maquettes 5 et 6 |
