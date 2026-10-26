@@ -30,7 +30,7 @@ Coche les cases au fur et à mesure.
 
 ## Sprint 3 — Production groupée
 
-- [ ] Plan de production, besoins, saisies cumulatives, écarts, alertes (maquette 2)
+- [x] Plan de production, besoins, saisies cumulatives, écarts, alertes (maquette 2)
 
 ## Sprint 4 — Chargement et tournées
 

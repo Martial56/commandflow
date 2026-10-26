@@ -16,9 +16,9 @@ Documents de référence, à lire avant toute tâche qui les concerne :
 
 ## État du projet
 
-Sprints 1 (socle) et 2 (clients, catalogue, commandes) terminés. Apps en place : `noyau`, `entreprises`, `comptes`, `catalogue`, `clients`, `commandes`. Écrans livrés : Clients (maquette 12), Commandes (maquettes 1, 9, 10), Récurrentes (maquette 11). Les autres écrans du menu sont des pages « en préparation » (`comptes/navigation.py`). Une commande s'arrête à « Confirmée » : le passage « À planifier » arrive avec la production (Sprint 3).
+Sprints 1 (socle), 2 (clients, catalogue, commandes) et 3 (production groupée) terminés. Apps en place : `noyau`, `entreprises`, `comptes`, `catalogue`, `clients`, `commandes`, `production`. Écrans livrés : Clients (maquette 12), Commandes (maquettes 1, 9, 10), Récurrentes (maquette 11), Production (maquettes 13 et 2). Les autres écrans du menu sont des pages « en préparation » (`comptes/navigation.py`). Une commande va jusqu'à « Prête au chargement » ; le chargement arrive au Sprint 4.
 
-Les décisions métier prises avec l'utilisateur sont dans `docs/modele-donnees.md` §8.1 : les lire avant de toucher aux commandes, aux clients ou aux récurrentes.
+Les décisions métier prises avec l'utilisateur sont dans `docs/modele-donnees.md` §8.1 (Sprint 2) et §8.2 (Sprint 3, production) : les lire avant de toucher aux commandes, aux clients, aux récurrentes ou à la production.
 
 Tout tourne dans Docker : le poste Windows n'a ni Python 3.12 ni Node. Les commandes passent par `docker compose exec web …` (voir « Commandes utiles »).
 
@@ -73,6 +73,10 @@ Précisions : réglages par variables d'environnement avec django-environ ; Tail
 - **Administration Django** pour les référentiels sans écran (produits, modèles récurrents ; décision 8.1) : site `config.admin.SiteAdmin`, ouvert à la Direction et au Gestionnaire sans `is_staff`. Hériter de `noyau.admin.AdminEntreprise` (pas de suppression, entreprise implicite) et donner les permissions `<app>.view_…/add_…/change_…` et `<app>` dans `rules.py`. Un formulaire ne doit **jamais** lire un `ModeleEntreprise` au chargement du module (pas de `Meta.fields` avec clé étrangère dans un formulaire d'administration, `toutes_entreprises.none()` comme ensemble initial) : il n'y a pas d'entreprise courante, le serveur s'arrête.
 - **Validation d'un responsable** : `Validation.contenu` porte le changement demandé ; l'app applique l'effet à l'acceptation (exemple : `commandes.services.decider_validation_commande`, qui vérifie aussi qui décide).
 - **Commandes** : `commandes.services` (création, modification, transitions, demandes, récurrentes). `django-fsm` : `has_transition_perm()` vérifie aussi les conditions ; `Commande.full_clean()` exclut `statut`. Historique et frise de la fiche : `commandes/historique.py`, reconstruits depuis pghistory (aucune saisie en double).
+- **Production** (`production.services`) : une commande confirmée entre aussitôt dans le plan de sa date (`integrer_commande`) ; toute modification ou annulation acceptée appelle `commande_modifiee` (recalcul des besoins, report de date, alerte « changé depuis la validation » ; `signaler=False` pour une simple réservation). Les conditions de transition des commandes lisent `production/disponibilite.py` (import local, pas de dépendance circulaire). Une `SaisieProduction` n'est jamais modifiée (déclencheur PostgreSQL `pgtrigger.ReadOnly`) : seule l'annulation motivée est possible. Les quantités (commandé, produit, réservé) sont recalculées par les services ; marge, manque et disponible sont des propriétés.
+- **Pastilles d'alerte du menu** : `Ecran.compteur` (`comptes/navigation.py`), chemin d'une fonction `(utilisateur) → nombre` (exemple : `production.alertes.nombre_alertes`).
+- **Dates de l'historique** : pghistory date un événement au début de sa transaction ; ne pas comparer `pgh_created_at` à une date calculée en Python dans la même transaction (préférer un compteur ou un champ tenu par le service).
+- **Tests transactionnels** (`django_db(transaction=True)`) : ils vident la base après eux, y compris les groupes de rôles créés par migration ; un test transactionnel qui a besoin des rôles les recrée (voir `production/tests/test_integration.py`).
 - **Paramètres d'entreprise** : `entreprises/parametres.py` (créneaux, heures des récurrentes), lus dans `Entreprise.options` avec valeurs par défaut.
 - **Tâches Celery** : `<app>/tasks.py`, planification dans `CELERY_BEAT_SCHEDULE` ; une tâche active l'entreprise qu'elle traite. Après modification d'une tâche, redémarrer `worker` et `beat`.
 - **Import Excel/CSV** : `noyau.commandes_import.CommandeImport` (lecture, simulation, modèle de fichier, rapport) ; chaque ligne passe par les services de l'app.
@@ -115,5 +119,6 @@ docker compose exec web python manage.py tailwind build   # sous Windows, après
 docker compose exec web python manage.py charger_demo     # comptes et données de démonstration (mot de passe affiché)
 docker compose restart worker beat                        # après modification d'une tâche Celery
 docker compose exec web python manage.py importer_clients clients.xlsx --entreprise mie-dore --simulation
+docker compose exec web python manage.py integrer_commandes_confirmees      # rattrapage : commandes confirmées hors plan
 docker compose exec web pre-commit run --all-files   # hooks pre-commit (dans le conteneur)
 ```

@@ -86,6 +86,14 @@
   {% if choisi %}
     <section id="detail" aria-labelledby="titre-detail" class="carte flex flex-col gap-3 text-sm">
       <h2 id="titre-detail" class="text-base font-semibold">{{ choisi.produit.nom }} · détail par commande</h2>
+      <p class="flex flex-wrap gap-x-5 gap-y-1 text-texte-secondaire">
+        <span>Commandé <span class="font-mono text-encre">{{ choisi.quantite_commandee|quantite }}</span></span>
+        <span>À produire <span class="font-mono text-encre">{{ choisi.quantite_a_produire|quantite }}</span></span>
+        <span>Produit <span class="font-mono text-encre">{{ choisi.quantite_produite|quantite }}</span></span>
+        <span>Manque <span class="font-mono {% if choisi.quantite_manquante %}text-alerte{% else %}text-encre{% endif %}">{{ choisi.quantite_manquante|quantite }}</span></span>
+        <span>Réservé <span class="font-mono text-encre">{{ choisi.quantite_reservee|quantite }}</span></span>
+        <span>Disponible <span class="font-mono text-encre">{{ choisi.quantite_disponible|quantite }}</span></span>
+      </p>
       <div class="flex flex-wrap gap-x-6 gap-y-2">
         {% for ligne in detail %}
           <span>{{ ligne.commande__client__nom }} · <span class="font-mono">{{ ligne.total|quantite }}</span></span>

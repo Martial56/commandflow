@@ -81,6 +81,13 @@ def test_donnees_metier_de_mie_dore(mode_developpement):
     assert commandes.filter(urgente=True).exists()
     assert not Commande.toutes_entreprises.exclude(entreprise=mie_dore).exists()
 
+    # Sprint 3 : plan du lendemain en brouillon, alimenté par les récurrentes confirmées.
+    from production.models import PlanProduction, StatutPlan
+
+    plan = PlanProduction.toutes_entreprises.get(entreprise=mie_dore)
+    assert plan.statut == StatutPlan.BROUILLON
+    assert commandes.filter(statut=Statut.A_CONFIRMER, modele_recurrent__isnull=False).exists()
+
     nombre = commandes.count()
     call_command("charger_demo")
     assert Commande.toutes_entreprises.filter(entreprise=mie_dore).count() == nombre

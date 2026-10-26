@@ -53,6 +53,10 @@ def charger(sortie):
     _commandes(fiches, produits)
     demain = timezone.localdate() + datetime.timedelta(days=1)
     rapport = commandes.generer_commandes_recurrentes(demain)
+    # Plan de production du lendemain (Sprint 3) : récurrentes confirmées, sauf une,
+    # pour montrer le bandeau « encore à confirmer ». Le plan reste à valider.
+    for generee in rapport.creees[:-1]:
+        commandes.confirmer_commande(generee, note="Confirmée (démonstration)")
     sortie.write(
         f"Données métier : {len(produits)} produits, {len(fiches)} clients, "
         f"{ModeleRecurrent.objects.count()} modèles récurrents, "
