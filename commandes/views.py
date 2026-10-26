@@ -166,10 +166,27 @@ def detail(request, pk):
             "peut_annuler": statut in STATUTS_ANNULATION_SIMPLE
             and utilisateur.has_perm("commandes.annuler_commande", commande),
             "peut_demander": peut_saisir and statut in STATUTS_MODIFICATION_VALIDEE,
+            **_production(commande, utilisateur),
             "formulaire_note": NoteConfirmationForm(),
             "formulaire_motif": MotifForm(),
         },
     )
+
+
+def _production(commande, utilisateur):
+    """Bloc production de la fiche : plan, couverture et action « prête » (Sprint 3)."""
+    from production.disponibilite import commande_couverte, plan_de
+
+    plan = plan_de(commande)
+    preparer = commande.statut == Statut.EN_PREPARATION and utilisateur.has_perm(
+        "commandes.preparer_commande", commande
+    )
+    return {
+        "plan_production": plan,
+        "voir_plan": utilisateur.has_perm("ecrans.production"),
+        "peut_marquer_prete": preparer,
+        "couverte": preparer and commande_couverte(commande),
+    }
 
 
 def _action(request, pk, fonction, succes):
@@ -212,6 +229,26 @@ def annuler(request, pk):
         pk,
         lambda commande: services.annuler_commande(commande, motif),
         "Commande annulée.",
+    )
+
+
+@login_required
+@require_POST
+def marquer_prete(request, pk):
+    return _action(
+        request, pk, services.marquer_prete, "Commande prête au chargement : quantités réservées."
+    )
+
+
+@login_required
+@require_POST
+def demander_exception(request, pk):
+    motif = request.POST.get("motif", "")
+    return _action(
+        request,
+        pk,
+        lambda commande: services.demander_exception(commande, motif),
+        "Demande d'exception envoyée à un responsable.",
     )
 
 

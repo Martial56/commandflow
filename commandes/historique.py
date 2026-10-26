@@ -165,7 +165,7 @@ def _texte_commande(precedent, evenement):
 
     changements = []
     if precedent.statut != evenement.statut:
-        changements.append(_texte_statut(evenement))
+        changements.append(_texte_statut(evenement, precedent.statut))
     if precedent.date_livraison != evenement.date_livraison:
         changements.append(
             f"Livraison : {date_courte(precedent.date_livraison)} → "
@@ -182,7 +182,7 @@ def _texte_commande(precedent, evenement):
     return " ; ".join(changements)
 
 
-def _texte_statut(evenement):
+def _texte_statut(evenement, precedent_statut=None):
     if evenement.statut == Statut.A_CONFIRMER:
         return "Soumise pour confirmation"
     if evenement.statut == Statut.CONFIRMEE:
@@ -190,6 +190,14 @@ def _texte_statut(evenement):
         return f"Commande confirmée avec le client{note}"
     if evenement.statut == Statut.ANNULEE:
         return f"Commande annulée (« {evenement.motif_annulation} »)"
+    if evenement.statut == Statut.A_PLANIFIER:
+        if precedent_statut == Statut.EN_PREPARATION:
+            return "Reportée vers un plan non validé : retour « À planifier »"
+        return f"Intégrée au plan de production du {date_courte(evenement.date_livraison)}"
+    if evenement.statut == Statut.EN_PREPARATION:
+        return "Plan de production validé : passage en préparation"
+    if evenement.statut == Statut.PRETE_CHARGEMENT:
+        return "Prête au chargement : quantités réservées"
     return f"Passage au statut « {Statut(evenement.statut).label} »"
 
 

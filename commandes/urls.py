@@ -19,6 +19,12 @@ urlpatterns = [
         views.demander_modification,
         name="commande_demander_modification",
     ),
+    path("<int:pk>/prete/", views.marquer_prete, name="commande_marquer_prete"),
+    path(
+        "<int:pk>/demander-exception/",
+        views.demander_exception,
+        name="commande_demander_exception",
+    ),
     path(
         "<int:pk>/demander-annulation/",
         views.demander_annulation,

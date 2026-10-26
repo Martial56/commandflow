@@ -40,6 +40,26 @@
   {% endfor %}
 </ol>
 
+{% if peut_marquer_prete %}
+  <section aria-labelledby="titre-preparation" class="carte flex flex-col gap-3 text-sm">
+    <h2 id="titre-preparation" class="text-base font-semibold">Préparation</h2>
+    {% if couverte %}
+      <p>Les quantités produites couvrent cette commande.</p>
+      <form method="post" action="{% url 'commande_marquer_prete' commande.pk %}">{% csrf_token %}<button type="submit" class="bouton-principal h-12 w-auto px-5">Marquer prête au chargement</button></form>
+    {% else %}
+      <p class="text-alerte">Quantités disponibles insuffisantes pour au moins un produit.</p>
+      <form method="post" action="{% url 'commande_demander_exception' commande.pk %}" class="flex flex-wrap items-end gap-3">
+        {% csrf_token %}
+        <div class="flex min-w-60 flex-1 flex-col gap-1.5">
+          <label for="id_motif_exception" class="text-[13px] font-medium">Motif de l'exception</label>
+          <input id="id_motif_exception" name="motif" required class="champ" placeholder="Client d'accord pour une livraison partielle">
+        </div>
+        <button type="submit" class="h-12 cursor-pointer rounded-md border border-bordure bg-white px-5">Demander une exception</button>
+      </form>
+    {% endif %}
+  </section>
+{% endif %}
+
 {% if peut_confirmer or peut_annuler or peut_demander %}
   <section aria-labelledby="titre-actions" class="carte flex flex-col gap-4 text-sm">
     <h2 id="titre-actions" class="text-base font-semibold">Actions</h2>
@@ -104,6 +124,7 @@
       <h2 id="titre-suivi" class="text-base font-semibold">Suivi lié</h2>
       <div class="flex justify-between gap-3"><span class="text-texte-secondaire">Livraison</span><span class="text-right">{{ commande.adresse }}</span></div>
       {% if commande.instructions %}<div class="flex justify-between gap-3"><span class="text-texte-secondaire">Instructions</span><span class="text-right">{{ commande.instructions }}</span></div>{% endif %}
+      <div class="flex justify-between gap-3"><span class="text-texte-secondaire">Production</span><span class="text-right">{% if plan_production %}{% if voir_plan %}<a href="{% url 'ecran_production' %}?date={{ plan_production.date_livraison|date:'Y-m-d' }}">Plan du {{ plan_production.date_livraison|jour_mois }}</a>{% else %}Plan du {{ plan_production.date_livraison|jour_mois }}{% endif %} · {{ plan_production.get_statut_display|lower }}{% else %}Pas encore planifiée{% endif %}</span></div>
       <div class="flex justify-between gap-3"><span class="text-texte-secondaire">Tournée</span><span>Non affectée</span></div>
       <div class="flex justify-between gap-3"><span class="text-texte-secondaire">Facture</span><span>Pas encore facturée</span></div>
       <div class="flex justify-between gap-3"><span class="text-texte-secondaire">Paiement</span><span>{{ commande.client.libelle_conditions }}</span></div>
