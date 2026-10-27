@@ -311,6 +311,23 @@ class Commande(FSMModelMixin, ModeleEntreprise, ModeleTrace):
     def marquer_prete(self):
         """Quantités réservées : la commande peut être chargée (Sprint 4)."""
 
+    # --- Transitions (Sprint 4 : chargement) ---------------------------------
+
+    def chargee(self):
+        """Chargement reçu par le livreur, ou départ autorisé par exception (§4, 8.3)."""
+        from logistique.etat import commande_chargee
+
+        return commande_chargee(self)
+
+    @transition(
+        field=statut,
+        source=Statut.PRETE_CHARGEMENT,
+        target=Statut.EN_LIVRAISON,
+        conditions=[chargee],
+    )
+    def partir_en_livraison(self):
+        """Action du système, au départ de la tournée (`logistique.services`)."""
+
     # --- Annulation -----------------------------------------------------------
 
     @transition(

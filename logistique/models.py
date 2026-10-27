@@ -11,11 +11,17 @@ import pghistory
 from django.conf import settings
 from django.db import models
 from django.db.models import Q
-from django_fsm import FSMField, FSMModelMixin
+from django.utils import timezone
+from django_fsm import FSMField, FSMModelMixin, transition
 
 from noyau.models import ModeleEntreprise, ModeleTrace
 
 QUANTITE = {"max_digits": 10, "decimal_places": 3}
+
+
+def _permission(nom):
+    """Permission django-rules d'une transition, évaluée sur l'objet."""
+    return lambda objet, utilisateur: utilisateur.has_perm(nom, objet)
 
 
 class _StatutProtege(FSMModelMixin):
@@ -151,6 +157,55 @@ class Tournee(_StatutProtege, ModeleEntreprise, ModeleTrace):
             return self.chauffeur
         return self.prestataire.compte if self.prestataire_id else None
 
+    def chargements_actifs(self):
+        return self.chargements.exclude(statut=StatutChargement.RETIRE)
+
+    def tout_peut_partir(self):
+        """Tous les chargements reçus, ou exception de départ acceptée (§5, 8.3)."""
+        from .etat import peut_partir
+
+        actifs = list(self.chargements_actifs())
+        return bool(actifs) and all(peut_partir(chargement) for chargement in actifs)
+
+    # --- Transitions (§5 « Statut de la tournée ») ---
+
+    @transition(field="statut", source=StatutTournee.PLANIFIEE, target=StatutTournee.EN_CHARGEMENT)
+    def commencer_chargement(self):
+        """Action du système : premier contrôle commencé."""
+
+    @transition(
+        field="statut",
+        source=StatutTournee.EN_CHARGEMENT,
+        target=StatutTournee.DEPART_AUTORISE,
+        conditions=[tout_peut_partir],
+    )
+    def autoriser_depart(self):
+        """Action du système : chargements tous reçus ou couverts par une exception."""
+
+    @transition(
+        field="statut",
+        source=StatutTournee.DEPART_AUTORISE,
+        target=StatutTournee.EN_CHARGEMENT,
+    )
+    def rouvrir_chargement(self):
+        """Action du système : commande ajoutée ou réception contestée avant le départ."""
+
+    @transition(
+        field="statut",
+        source=StatutTournee.DEPART_AUTORISE,
+        target=StatutTournee.EN_COURS,
+        conditions=[tout_peut_partir],
+        permission=_permission("logistique.recevoir_chargement"),
+    )
+    def demarrer(self):
+        """Le livreur démarre la tournée : l'heure de départ est figée (§10)."""
+        self.depart_le = timezone.now()
+
+    @transition(field="statut", source=StatutTournee.EN_COURS, target=StatutTournee.TERMINEE)
+    def terminer(self):
+        """Action du système : toutes les livraisons traitées (Sprint 5)."""
+        self.fin_le = timezone.now()
+
 
 # --- Chargement ----------------------------------------------------------------------
 
@@ -226,6 +281,139 @@ class Chargement(_StatutProtege, ModeleEntreprise, ModeleTrace):
 
     def __str__(self):
         return f"{self.tournee} · arrêt {self.ordre_passage} · {self.commande}"
+
+    # --- Conditions (§5) ---
+
+    def tout_conforme(self):
+        """Chaque ligne comptée et conforme à l'attendu."""
+        lignes = list(self.lignes.all())
+        return bool(lignes) and all(ligne.conforme for ligne in lignes)
+
+    def ecart_motive(self):
+        """Toutes les lignes comptées, au moins un écart, chaque écart avec son motif."""
+        lignes = list(self.lignes.all())
+        if not lignes or any(ligne.quantite_preparee is None for ligne in lignes):
+            return False
+        en_ecart = [ligne for ligne in lignes if not ligne.conforme]
+        return bool(en_ecart) and all(ligne.motif_ecart for ligne in en_ecart)
+
+    def exception_ecart_acceptee(self):
+        from .etat import exception_acceptee
+
+        return exception_acceptee(self, "ecart")
+
+    def reception_conforme(self):
+        """Quantité reçue saisie sur chaque ligne, égale à la quantité préparée."""
+        lignes = list(self.lignes.all())
+        return bool(lignes) and all(
+            ligne.quantite_recue_chauffeur is not None
+            and ligne.quantite_recue_chauffeur == ligne.quantite_preparee
+            for ligne in lignes
+        )
+
+    def reception_contestee(self):
+        """Motif saisi et au moins une ligne reçue différente du préparé."""
+        return bool(self.motif_contestation.strip()) and any(
+            ligne.quantite_recue_chauffeur is not None
+            and ligne.quantite_recue_chauffeur != ligne.quantite_preparee
+            for ligne in self.lignes.all()
+        )
+
+    def tournee_pas_partie(self):
+        return self.tournee.statut not in (StatutTournee.EN_COURS, StatutTournee.TERMINEE)
+
+    # --- Transitions (§5 « Statut du chargement ») ---
+
+    @transition(
+        field="statut",
+        source=StatutChargement.A_PREPARER,
+        target=StatutChargement.EN_VERIFICATION,
+        conditions=[tournee_pas_partie],
+        permission=_permission("logistique.controler_chargement"),
+    )
+    def commencer_verification(self):
+        """Le préparateur commence le contrôle physique."""
+
+    @transition(
+        field="statut",
+        source=StatutChargement.EN_VERIFICATION,
+        target=StatutChargement.VERIFIEE_PREPARATION,
+        conditions=[tournee_pas_partie, tout_conforme],
+        permission=_permission("logistique.controler_chargement"),
+    )
+    def valider_preparation(self, par):
+        """Toutes les lignes comptées et conformes."""
+        self.verifie_par = par
+        self.verifie_le = timezone.now()
+
+    @transition(
+        field="statut",
+        source=StatutChargement.EN_VERIFICATION,
+        target=StatutChargement.ECART_CONSTATE,
+        conditions=[tournee_pas_partie, ecart_motive],
+        permission=_permission("logistique.controler_chargement"),
+    )
+    def constater_ecart(self, par):
+        """Quantité différente, avec son motif : une décision est requise (§10)."""
+        self.verifie_par = par
+        self.verifie_le = timezone.now()
+
+    @transition(
+        field="statut",
+        source=StatutChargement.ECART_CONSTATE,
+        target=StatutChargement.EN_VERIFICATION,
+        conditions=[tournee_pas_partie],
+        permission=_permission("logistique.controler_chargement"),
+    )
+    def completer(self):
+        """Marchandise complétée : nouveau contrôle."""
+
+    @transition(
+        field="statut",
+        source=StatutChargement.ECART_CONSTATE,
+        target=StatutChargement.VERIFIEE_PREPARATION,
+        conditions=[tournee_pas_partie, exception_ecart_acceptee],
+    )
+    def accepter_exception(self):
+        """Exception validée par un responsable : les quantités chargées font foi (8.3)."""
+
+    @transition(
+        field="statut",
+        source=StatutChargement.VERIFIEE_PREPARATION,
+        target=StatutChargement.RECUE_CHAUFFEUR,
+        conditions=[tournee_pas_partie, reception_conforme],
+        permission=_permission("logistique.recevoir_chargement"),
+    )
+    def confirmer_reception(self, par):
+        """Le livreur affecté confirme lui-même ; jamais le préparateur (§10)."""
+        self.recu_par = par
+        self.recu_le = timezone.now()
+
+    @transition(
+        field="statut",
+        source=StatutChargement.VERIFIEE_PREPARATION,
+        target=StatutChargement.ECART_CONSTATE,
+        conditions=[tournee_pas_partie, reception_contestee],
+        permission=_permission("logistique.recevoir_chargement"),
+    )
+    def contester(self):
+        """Le livreur conteste une quantité : l'écart est consigné avant le départ (§10)."""
+
+    @transition(
+        field="statut",
+        source=[
+            StatutChargement.A_PREPARER,
+            StatutChargement.EN_VERIFICATION,
+            StatutChargement.ECART_CONSTATE,
+            StatutChargement.VERIFIEE_PREPARATION,
+            StatutChargement.RECUE_CHAUFFEUR,
+        ],
+        target=StatutChargement.RETIRE,
+        conditions=[tournee_pas_partie],
+        permission=_permission("logistique.gerer_tournee"),
+    )
+    def retirer(self):
+        """Commande retirée de la tournée avant le départ ; elle redevient affectable (8.3)."""
 
 
 @pghistory.track(model_name="HistoriqueLigneChargement")
