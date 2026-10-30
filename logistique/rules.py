@@ -53,3 +53,10 @@ rules.add_perm(
 )
 # Décider des exceptions de chargement et de départ : Direction, Gestionnaire.
 rules.add_perm("logistique.valider_exception", responsable & meme_entreprise)
+
+# Véhicules et prestataires : administration Django, Direction et Gestionnaire (8.3).
+# Pas de suppression (désactivation).
+rules.add_perm("logistique", responsable)
+for _modele in ("vehicule", "prestataire"):
+    for _action in ("view", "add", "change"):
+        rules.add_perm(f"logistique.{_action}_{_modele}", responsable)

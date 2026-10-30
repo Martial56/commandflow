@@ -1,6 +1,9 @@
+import datetime
+
 import pytest
 from django.core.management import CommandError, call_command
 from django.urls import reverse
+from django.utils import timezone
 
 from comptes.models import Role, Utilisateur
 from entreprises.management.commands.charger_demo import MOT_DE_PASSE_DEMO
@@ -84,7 +87,8 @@ def test_donnees_metier_de_mie_dore(mode_developpement):
     # Sprint 3 : plan du lendemain en brouillon, alimenté par les récurrentes confirmées.
     from production.models import PlanProduction, StatutPlan
 
-    plan = PlanProduction.toutes_entreprises.get(entreprise=mie_dore)
+    demain = timezone.localdate() + datetime.timedelta(days=1)
+    plan = PlanProduction.toutes_entreprises.get(entreprise=mie_dore, date_livraison=demain)
     assert plan.statut == StatutPlan.BROUILLON
     assert commandes.filter(statut=Statut.A_CONFIRMER, modele_recurrent__isnull=False).exists()
 
@@ -92,3 +96,59 @@ def test_donnees_metier_de_mie_dore(mode_developpement):
     call_command("charger_demo")
     assert Commande.toutes_entreprises.filter(entreprise=mie_dore).count() == nombre
     assert Client.toutes_entreprises.filter(entreprise=mie_dore).count() == clients.count()
+
+
+def test_tournees_du_jour(mode_developpement):
+    """Sprint 4 : tournées du jour à différents stades (maquettes 3, 4 et 14)."""
+    from logistique.models import Chargement, Prestataire, StatutChargement, Tournee, Vehicule
+    from noyau.models import Validation
+
+    call_command("charger_demo")
+    mie_dore = Entreprise.objects.get(slug="mie-dore")
+    tournees = Tournee.toutes_entreprises.filter(
+        entreprise=mie_dore, date=timezone.localdate()
+    ).order_by("numero")
+    assert [t.livreur.__str__() for t in tournees] == ["Konan K.", "Express Livr."]
+    assert Prestataire.toutes_entreprises.get(nom="Express Livr.").compte.username == "express.livr"
+    assert Vehicule.toutes_entreprises.filter(entreprise=mie_dore).count() == 2
+    statuts = sorted(
+        Chargement.toutes_entreprises.filter(tournee__in=tournees).values_list("statut", flat=True)
+    )
+    assert statuts == sorted(
+        [
+            StatutChargement.A_PREPARER,
+            StatutChargement.ECART_CONSTATE,
+            StatutChargement.RECUE_CHAUFFEUR,
+            StatutChargement.VERIFIEE_PREPARATION,
+        ]
+    )
+    assert Validation.toutes_entreprises.filter(
+        entreprise=mie_dore, decision=Validation.Decision.EN_ATTENTE, contenu__objet="ecart"
+    ).exists()
+
+    call_command("charger_demo")
+    assert Tournee.toutes_entreprises.filter(entreprise=mie_dore).count() == 2
+
+
+def test_pas_de_tournees_si_le_plan_du_jour_est_cloture(mode_developpement):
+    """Relance sur une base où le plan du jour est clôturé : rien n'est créé pour ce jour."""
+    from commandes.models import Commande
+    from noyau.contexte import activer_entreprise
+    from production.models import PlanProduction, StatutPlan
+
+    call_command("charger_demo")
+    mie_dore = Entreprise.objects.get(slug="mie-dore")
+    with activer_entreprise(mie_dore):
+        from logistique.models import Tournee
+
+        aujourd_hui = timezone.localdate()
+        # Plus de tournée ce jour (base de test seulement), et plan clôturé.
+        Tournee.objects.filter(date=aujourd_hui).update(
+            date=aujourd_hui - datetime.timedelta(days=7)
+        )
+        PlanProduction.objects.filter(date_livraison=aujourd_hui).update(statut=StatutPlan.CLOTURE)
+        nombre = Commande.objects.filter(date_livraison=aujourd_hui).count()
+    call_command("charger_demo")
+    with activer_entreprise(mie_dore):
+        assert Commande.objects.filter(date_livraison=aujourd_hui).count() == nombre
+        assert not Tournee.objects.filter(date=aujourd_hui).exists()

@@ -63,6 +63,10 @@ def charger(sortie):
         f"{Commande.objects.count()} commandes "
         f"(dont {len(rapport.creees)} récurrente(s) générée(s) pour le {demain:%d/%m})."
     )
+    # Sprint 4 : véhicules, prestataire et tournées du jour.
+    from . import _donnees_logistique
+
+    _donnees_logistique.charger(fiches, produits, sortie)
 
 
 def _produits():

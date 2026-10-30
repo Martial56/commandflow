@@ -34,7 +34,7 @@ Coche les cases au fur et à mesure.
 
 ## Sprint 4 — Chargement et tournées
 
-- [ ] Tournées, chargements, double validation préparateur / chauffeur (maquettes 3, 4 et 14)
+- [x] Tournées, chargements, double validation préparateur / chauffeur (maquettes 3, 4 et 14)
 - [x] Départ de tournée et cascade vers les commandes
 
 ## Sprint 5 — Application chauffeur
