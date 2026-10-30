@@ -1,0 +1,34 @@
+{% extends "base_bureau.html" %}
+{% load format_fr %}
+{% comment %}Tournées du jour (maquette 14). Le tableau se recharge toutes les 30 secondes,
+sauf pendant une saisie (champ actif ou formulaire déplié).{% endcomment %}
+{% block titre %}Tournées{% endblock %}
+{% block contenu %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <h1 class="text-[28px] font-semibold">Tournées · {{ date|date_courte }}</h1>
+  <div class="flex flex-wrap items-start gap-2">
+    <form method="get">
+      <label for="date-tournees" class="sr-only">Date</label>
+      <input id="date-tournees" type="date" name="date" value="{{ date|date:'Y-m-d' }}" class="champ h-11" onchange="this.form.submit()">
+    </form>
+    {% if peut_creer %}
+      <details class="relative">
+        <summary class="bouton-principal h-11 w-auto list-none px-4">+ Nouvelle tournée</summary>
+        <form method="post" action="{% url 'tournee_creer' %}" class="carte absolute right-0 z-10 mt-2 flex w-80 flex-col gap-3 shadow-lg">
+          {% csrf_token %}
+          <input type="hidden" name="date" value="{{ date|date:'Y-m-d' }}">
+          {% include "logistique/_champs_livreur.html" with prefixe="nouvelle" %}
+          <button type="submit" class="bouton-principal h-11">Créer la tournée du {{ date|date_courte }}</button>
+        </form>
+      </details>
+    {% endif %}
+  </div>
+</div>
+
+<div id="tableau"
+     hx-get="{% url 'ecran_tournees' %}?date={{ date|date:'Y-m-d' }}"
+     hx-trigger="every 30s [!document.querySelector('#tableau details[open], #tableau :focus')]"
+     hx-swap="innerHTML">
+  {% include "logistique/_tableau.html" %}
+</div>
+{% endblock %}

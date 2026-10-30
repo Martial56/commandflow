@@ -1,0 +1,22 @@
+{% comment %}Choix du livreur (chauffeur ou prestataire) et du véhicule facultatif.{% endcomment %}
+<div class="flex flex-col gap-1.5">
+  <label for="livreur-{{ prefixe }}" class="text-[13px] font-medium">Chauffeur ou prestataire</label>
+  <select id="livreur-{{ prefixe }}" name="livreur" class="champ h-11" required>
+    <option value="">Choisir…</option>
+    <optgroup label="Chauffeurs">
+      {% for chauffeur in chauffeurs %}<option value="c-{{ chauffeur.pk }}" {% if tournee.chauffeur_id == chauffeur.pk %}selected{% endif %}>{{ chauffeur }}</option>{% endfor %}
+    </optgroup>
+    {% if prestataires %}
+      <optgroup label="Prestataires">
+        {% for prestataire in prestataires %}<option value="p-{{ prestataire.pk }}" {% if tournee.prestataire_id == prestataire.pk %}selected{% endif %}>{{ prestataire }}{% if not prestataire.compte_id %} (sans compte){% endif %}</option>{% endfor %}
+      </optgroup>
+    {% endif %}
+  </select>
+</div>
+<div class="flex flex-col gap-1.5">
+  <label for="vehicule-{{ prefixe }}" class="text-[13px] font-medium">Véhicule (facultatif)</label>
+  <select id="vehicule-{{ prefixe }}" name="vehicule" class="champ h-11">
+    <option value="">Aucun</option>
+    {% for vehicule in vehicules %}<option value="{{ vehicule.pk }}" {% if tournee.vehicule_id == vehicule.pk %}selected{% endif %}>{{ vehicule }}</option>{% endfor %}
+  </select>
+</div>

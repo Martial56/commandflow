@@ -1,0 +1,93 @@
+{% load format_fr %}
+{% comment %}Carte d'une tournée (maquette 14) : livreur, récapitulatif du §10, arrêts, décisions.{% endcomment %}
+<section aria-labelledby="tournee-{{ tournee.pk }}" class="carte flex flex-col gap-2.5 p-3.5">
+  <div class="flex items-center justify-between gap-2">
+    <h2 id="tournee-{{ tournee.pk }}" class="text-[15px] font-semibold">{{ tournee.numero }}{% if tournee.commune %} · {{ tournee.commune }}{% endif %}</h2>
+    <span class="rounded-full px-2 py-0.5 text-xs font-semibold {% if tournee.statut == 'en_chargement' %}bg-[#DBEAFE] text-lien{% elif tournee.statut == 'depart_autorise' %}bg-[#FEF3C7] text-[#92400E]{% elif tournee.statut == 'en_cours' %}bg-[#DCFCE7] text-[#166534]{% else %}bg-[#E7E3DA] text-[#3D3A34]{% endif %}">{{ tournee.get_statut_display }}</span>
+  </div>
+  <span class="text-[13px] text-texte-secondaire">
+    {{ tournee.livreur }}{% if tournee.prestataire_id and not tournee.compte_livreur %} (prestataire sans compte){% endif %}{% if tournee.vehicule %} · {{ tournee.vehicule }}{% endif %}{% if tournee.depart_le %} · départ {{ tournee.depart_le|heure }}{% endif %}
+  </span>
+
+  {% if tournee.modifiable %}
+    <div class="grid grid-cols-3 gap-1.5 text-center text-xs">
+      <div class="rounded-md bg-papier p-1.5"><div class="font-mono text-base">{{ tournee.recap.verifiees }}/{{ tournee.recap.attendues }}</div>vérifiées</div>
+      <div class="rounded-md bg-papier p-1.5"><div class="font-mono text-base">{{ tournee.recap.recues }}/{{ tournee.recap.attendues }}</div>reçues</div>
+      <div class="rounded-md p-1.5 {% if tournee.recap.ecarts %}bg-alerte-fond text-alerte{% else %}bg-papier{% endif %}"><div class="font-mono text-base">{{ tournee.recap.ecarts }}</div>écart{{ tournee.recap.ecarts|pluralize }}</div>
+    </div>
+  {% else %}
+    <span class="text-[13px]">{{ tournee.actifs|length }} commande{{ tournee.actifs|length|pluralize }} en livraison</span>
+  {% endif %}
+
+  <ol class="flex list-decimal flex-col gap-2 pl-5 text-sm">
+    {% for chargement in tournee.actifs %}
+      <li>
+        <div class="flex flex-wrap items-center gap-x-1.5">
+          <span>{{ chargement.commande.client.nom }}</span>
+          <span class="{% if chargement.statut == 'recue_chauffeur' %}text-[#166534]{% elif chargement.statut == 'ecart_constate' %}text-alerte{% elif chargement.statut == 'a_preparer' %}text-texte-secondaire{% else %}text-lien{% endif %}">· {{ chargement.get_statut_display|lower }}</span>
+          {% if tournee.modifiable and tournee.peut_gerer %}
+            <span class="ml-auto flex gap-1">
+              {% if not forloop.first %}<form method="post" action="{% url 'chargement_deplacer' chargement.pk %}">{% csrf_token %}<input type="hidden" name="sens" value="haut"><button type="submit" class="h-7 w-7 cursor-pointer rounded border border-trait bg-white" title="Monter" aria-label="Monter {{ chargement.commande.client.nom }}">↑</button></form>{% endif %}
+              {% if not forloop.last %}<form method="post" action="{% url 'chargement_deplacer' chargement.pk %}">{% csrf_token %}<input type="hidden" name="sens" value="bas"><button type="submit" class="h-7 w-7 cursor-pointer rounded border border-trait bg-white" title="Descendre" aria-label="Descendre {{ chargement.commande.client.nom }}">↓</button></form>{% endif %}
+              <form method="post" action="{% url 'chargement_retirer' chargement.pk %}" onsubmit="return confirm('Retirer {{ chargement.commande.numero }} de la tournée ?')">{% csrf_token %}<button type="submit" class="h-7 cursor-pointer rounded border border-trait bg-white px-2 text-xs">Retirer</button></form>
+            </span>
+          {% endif %}
+        </div>
+        <span class="block text-xs text-texte-secondaire">{{ chargement.commande.numero }} · {{ chargement.commande.adresse.commune }} · {{ chargement.commande.creneau }}</span>
+        {% for ligne in chargement.ecarts %}
+          <span class="block text-xs text-alerte">écart {{ ligne.ecart|quantite }} {{ ligne.ligne_commande.produit.nom }}{% if ligne.motif_ecart %} ({{ ligne.get_motif_ecart_display|lower }}{% if ligne.detail_ecart %} : {{ ligne.detail_ecart }}{% endif %}){% endif %}</span>
+        {% endfor %}
+
+        {% for demande in chargement.demandes %}
+          <div class="mt-1.5 flex flex-col gap-1.5 rounded-md border border-alerte-bordure bg-alerte-fond px-2.5 py-2 text-[13px]">
+            <span>
+              {% if demande.contenu.objet == "ecart" %}Écart {% if demande.contenu.origine == "livreur" %}contesté par le livreur{% else %}signalé par la préparation{% endif %}
+              {% elif demande.contenu.objet == "depart" %}Départ sans réception demandé
+              {% else %}Réception saisie pour le prestataire{% endif %}
+              par {{ demande.demandee_par }}{% if demande.motif %} : {{ demande.motif }}{% endif %}
+            </span>
+            {% if chargement.peut_decider and demande.demandee_par_id != user.pk %}
+              <form method="post" action="{% url 'chargement_decider' demande.pk %}" class="flex gap-2">
+                {% csrf_token %}
+                <button type="submit" name="decision" value="accepter" class="h-8 cursor-pointer rounded-md bg-lien px-3 text-white">Accepter</button>
+                <button type="submit" name="decision" value="refuser" class="h-8 cursor-pointer rounded-md border border-bordure bg-white px-3">Refuser</button>
+              </form>
+            {% elif demande.demandee_par_id == user.pk %}
+              <span class="text-texte-secondaire">En attente d'un autre responsable.</span>
+            {% endif %}
+          </div>
+        {% endfor %}
+
+        {% if chargement.peut_exception %}
+          <details class="mt-1 text-[13px]">
+            <summary class="cursor-pointer text-lien">Faire partir sans réception…</summary>
+            <form method="post" action="{% url 'chargement_exception_depart' chargement.pk %}" class="mt-1.5 flex flex-col gap-1.5">
+              {% csrf_token %}
+              <label for="motif-depart-{{ chargement.pk }}" class="sr-only">Motif</label>
+              <input id="motif-depart-{{ chargement.pk }}" name="motif" required placeholder="Motif de l'exception" class="h-9 rounded-md border border-bordure px-2">
+              <button type="submit" class="h-8 cursor-pointer self-start rounded-md border border-alerte-bordure bg-white px-3 text-alerte">Demander l'exception</button>
+            </form>
+          </details>
+        {% endif %}
+      </li>
+    {% empty %}
+      <li class="list-none text-texte-secondaire">Aucune commande affectée.</li>
+    {% endfor %}
+  </ol>
+
+  {% if tournee.modifiable and tournee.peut_gerer %}
+    <div class="flex flex-wrap gap-2 border-t border-trait pt-2.5">
+      {% if tournee.actifs|length > 1 %}
+        <form method="post" action="{% url 'tournee_proposer_ordre' tournee.pk %}">{% csrf_token %}<button type="submit" class="h-9 cursor-pointer rounded-md border border-bordure bg-white px-3 text-sm">Proposer l'ordre</button></form>
+      {% endif %}
+      <details class="w-full text-sm">
+        <summary class="cursor-pointer text-lien">Changer le livreur ou le véhicule…</summary>
+        <form method="post" action="{% url 'tournee_livreur' tournee.pk %}" class="mt-2 flex flex-col gap-2">
+          {% csrf_token %}
+          {% include "logistique/_champs_livreur.html" with prefixe=tournee.pk %}
+          <button type="submit" class="h-10 cursor-pointer rounded-md border border-lien bg-white px-3 text-lien">Enregistrer</button>
+        </form>
+      </details>
+    </div>
+  {% endif %}
+</section>

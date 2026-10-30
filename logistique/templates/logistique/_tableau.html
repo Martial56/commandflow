@@ -1,0 +1,32 @@
+{% load format_fr %}
+{% comment %}Colonnes « À affecter » puis une carte par tournée (maquette 14).{% endcomment %}
+<p class="mb-3 text-[13px] text-texte-secondaire">Mis à jour à {{ heure|heure }} · actualisation toutes les 30 secondes</p>
+<div class="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
+  <section aria-labelledby="titre-a-affecter" class="flex flex-col gap-2.5 rounded-[10px] bg-[#EDEAE3] p-3.5">
+    <h2 id="titre-a-affecter" class="flex justify-between text-[15px] font-semibold">À affecter <span class="font-mono">{{ affectables|length }}</span></h2>
+    {% for commande in affectables %}
+      <div class="flex flex-col gap-1 rounded-lg border border-trait bg-white px-3 py-2.5 text-sm">
+        <strong class="font-semibold">{{ commande.client.nom }}</strong>
+        <span class="text-texte-secondaire">{{ commande.adresse.commune }} · {{ commande.creneau }} · {{ commande.pieces|quantite }} pièce{{ commande.pieces|pluralize }} · {{ commande.numero }}</span>
+        {% if destinations %}
+          <form method="post" action="{% url 'tournee_affecter' %}" class="flex flex-wrap items-center gap-2">
+            {% csrf_token %}
+            <input type="hidden" name="commande" value="{{ commande.pk }}">
+            <label for="affecter-{{ commande.pk }}" class="sr-only">Tournée</label>
+            <select id="affecter-{{ commande.pk }}" name="tournee" class="h-[34px] rounded-md border border-bordure bg-white px-2 text-[13px]">
+              {% for tournee in destinations %}<option value="{{ tournee.pk }}">{{ tournee.numero }} · {{ tournee.livreur }}</option>{% endfor %}
+            </select>
+            <button type="submit" class="h-[34px] cursor-pointer rounded-md border border-lien bg-white px-2.5 text-[13px] text-lien">Affecter à…</button>
+          </form>
+        {% endif %}
+      </div>
+    {% empty %}
+      <p class="text-sm text-texte-secondaire">Aucune commande prête au chargement à affecter.</p>
+    {% endfor %}
+    {% if affectables and not destinations %}<p class="text-[13px] text-texte-secondaire">Créer une tournée pour affecter ces commandes.</p>{% endif %}
+  </section>
+
+  {% for tournee in tournees %}{% include "logistique/_tournee.html" %}{% empty %}
+    <div class="carte text-sm text-texte-secondaire">Aucune tournée le {{ date|date_courte }}</div>
+  {% endfor %}
+</div>
