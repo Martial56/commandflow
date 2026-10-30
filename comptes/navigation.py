@@ -118,7 +118,8 @@ ECRANS = [
         "ma-tournee/",
         a_le_role(R.CHAUFFEUR, R.PRESTATAIRE),
         terrain=True,
-        sprint=5,
+        # Sprint 4 : réception du chargement (maquette 4) ; livraisons au Sprint 5.
+        sprint=4,
     ),
 ]
 ECRANS_PAR_CODE = {ecran.code: ecran for ecran in ECRANS}

@@ -1,0 +1,19 @@
+{% extends "base_terrain.html" %}
+{% comment %}Réception du chargement par le livreur (maquette 4). Rafraîchie toutes les 30 secondes,
+sauf pendant une saisie.{% endcomment %}
+{% block titre %}Contrôle du chargement{% endblock %}
+{% block sur_titre %}{% if tournee %}Tournée {{ tournee.numero }} · {{ tournee.livreur }}{% if pour_le_prestataire %} (saisie par {{ user }}){% endif %}{% else %}Ma tournée{% endif %}{% endblock %}
+{% block titre_terrain %}{% if tournee.statut == "en_cours" %}Tournée en cours{% else %}Contrôle du chargement{% endif %}{% endblock %}
+{% block contenu %}
+{% include "composants/messages.html" %}
+{% if not tournee %}
+  <div class="carte text-texte-secondaire">Aucune tournée ne vous est affectée pour le moment.</div>
+{% else %}
+  <div id="reception"
+       hx-get="{% url 'reception_tournee' tournee.pk %}"
+       hx-trigger="every 30s [!document.querySelector('#reception :focus, #reception details[open]')]"
+       hx-swap="innerHTML">
+    {% include "logistique/_reception.html" %}
+  </div>
+{% endif %}
+{% endblock %}

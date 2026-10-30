@@ -11,5 +11,6 @@ urlpatterns = [
     path("production/", include("production.urls")),
     path("tournees/", include("logistique.urls")),
     path("chargement/", include("logistique.urls_chargement")),
+    path("ma-tournee/", include("logistique.urls_reception")),
     path("", include("comptes.urls")),
 ]

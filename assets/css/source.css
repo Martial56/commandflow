@@ -31,6 +31,10 @@
   a {
     @apply text-lien hover:text-lien-survol;
   }
+  /* Alpine : élément masqué jusqu'à l'initialisation. */
+  [x-cloak] {
+    display: none !important;
+  }
 }
 
 /* Classes réutilisables (déclarées en @utility pour pouvoir être reprises par @apply). */

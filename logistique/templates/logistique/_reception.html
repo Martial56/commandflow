@@ -1,0 +1,77 @@
+{% load format_fr %}
+{% comment %}Récapitulatif du §10, commandes à recevoir et démarrage de la tournée (maquette 4).{% endcomment %}
+<div class="flex flex-col gap-3">
+  <div class="grid grid-cols-4 gap-2 text-center">
+    <div class="flex flex-col rounded-lg bg-white p-2"><span class="font-mono text-xl">{{ recap.attendues }}</span><span class="text-xs text-texte-secondaire">Attendues</span></div>
+    <div class="flex flex-col rounded-lg bg-white p-2"><span class="font-mono text-xl">{{ recap.verifiees }}</span><span class="text-xs text-texte-secondaire">Vérifiées</span></div>
+    <div class="flex flex-col rounded-lg p-2 {% if recap.ecarts %}bg-alerte-fond text-alerte{% else %}bg-white{% endif %}"><span class="font-mono text-xl">{{ recap.ecarts }}</span><span class="text-xs {% if not recap.ecarts %}text-texte-secondaire{% endif %}">Écart{{ recap.ecarts|pluralize }}</span></div>
+    <div class="flex flex-col rounded-lg bg-white p-2"><span class="font-mono text-xl">{{ recap.recues }}</span><span class="text-xs text-texte-secondaire">Reçues</span></div>
+  </div>
+
+  {% if tournee.statut == "en_cours" %}
+    <p role="status" class="rounded-md bg-[#DCFCE7] px-3 py-2 text-sm text-[#166534]">Tournée partie à {{ tournee.depart_le|heure }} avec {{ chargements|length }} commande{{ chargements|length|pluralize }}.</p>
+  {% endif %}
+
+  {% for chargement in chargements %}
+    {% if chargement.statut == "verifiee_preparation" and tournee.statut != "en_cours" and not chargement.reception_en_attente %}
+      <section aria-labelledby="arret-{{ chargement.pk }}" class="flex flex-col gap-3 rounded-xl border-2 border-lien bg-white p-4">
+        <div class="flex items-start justify-between gap-2">
+          <div class="flex flex-col">
+            <span class="text-[13px] text-texte-secondaire">Arrêt {{ chargement.ordre_passage }} · {{ chargement.commande.numero }}</span>
+            <h2 id="arret-{{ chargement.pk }}" class="text-lg font-semibold">{{ chargement.commande.client.nom }}</h2>
+          </div>
+          <span class="rounded-full bg-[#DBEAFE] px-2 py-0.5 text-xs font-semibold text-lien">Vérifiée préparation</span>
+        </div>
+        {% if chargement.verifie_par %}<span class="text-[13px] text-texte-secondaire">Préparée par {{ chargement.verifie_par }} à {{ chargement.verifie_le|heure }}</span>{% endif %}
+        <form method="post" action="{% url 'reception_recevoir' chargement.pk %}" class="flex flex-col gap-3" x-data="{ ecart: false }">
+          {% csrf_token %}
+          <div class="grid grid-cols-[1fr_auto_6rem] items-center gap-x-3 gap-y-2 text-sm">
+            <span class="text-[13px] text-texte-secondaire">Produit</span><span class="text-right text-[13px] text-texte-secondaire">Préparé</span><span class="text-center text-[13px] text-texte-secondaire">Je reçois</span>
+            {% for ligne, retenue in chargement.lignes_recues %}
+              <label for="recu-{{ ligne.pk }}">{{ ligne.ligne_commande.produit.nom }}</label>
+              <span class="text-right font-mono">{{ retenue|quantite }}</span>
+              <input id="recu-{{ ligne.pk }}" name="recu-{{ ligne.pk }}" value="{% if ligne.quantite_recue_chauffeur is not None %}{{ ligne.quantite_recue_chauffeur|floatformat:'-3' }}{% else %}{{ retenue|floatformat:'-3' }}{% endif %}"
+                     inputmode="{% if ligne.ligne_commande.produit.quantites_decimales %}decimal{% else %}numeric{% endif %}" required
+                     class="champ h-11 text-center font-mono">
+            {% endfor %}
+          </div>
+          <button type="submit" name="action" value="confirmer" x-show="!ecart" class="bouton-principal h-auto min-h-14 py-2 text-lg">Je confirme avoir reçu cette commande</button>
+          <button type="button" x-show="!ecart" x-on:click="ecart = true" class="h-12 cursor-pointer rounded-md border border-alerte-bordure bg-white font-semibold text-alerte">Signaler un écart</button>
+          <div x-show="ecart" x-cloak class="flex flex-col gap-2">
+            <label for="motif-{{ chargement.pk }}" class="text-[13px] font-medium">Motif de l'écart (indiquer ci-dessus la quantité réellement reçue)</label>
+            <input id="motif-{{ chargement.pk }}" name="motif" maxlength="255" class="champ h-11" x-bind:required="ecart">
+            <button type="submit" name="action" value="ecart" class="flex h-12 cursor-pointer items-center justify-center rounded-md bg-alerte font-semibold text-white">Envoyer l'écart au responsable</button>
+            <button type="button" x-on:click="ecart = false" class="h-10 cursor-pointer text-sm text-lien underline">Annuler</button>
+          </div>
+        </form>
+      </section>
+    {% else %}
+      <div class="flex items-center justify-between gap-3 rounded-lg border border-trait bg-white px-4 py-3">
+        <div class="flex flex-col">
+          <span class="text-sm font-medium">Arrêt {{ chargement.ordre_passage }} · {{ chargement.commande.client.nom }}</span>
+          {% if chargement.statut == "ecart_constate" %}
+            <span class="text-[13px] text-alerte">Écart : {% if chargement.motif_contestation %}{{ chargement.motif_contestation }}{% else %}{% for ligne in chargement.ecarts %}{{ ligne.ecart|quantite }} {{ ligne.ligne_commande.produit.nom }}{% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}</span>
+          {% elif chargement.reception_en_attente %}
+            <span class="text-[13px] text-texte-secondaire">Réception saisie, en attente de validation</span>
+          {% elif chargement.statut == "recue_chauffeur" %}
+            <span class="text-[13px] text-texte-secondaire">Reçue {% if chargement.recu_par %}par {{ chargement.recu_par }} {% endif %}à {{ chargement.recu_le|heure }}</span>
+          {% endif %}
+        </div>
+        <span class="shrink-0 text-[13px] {% if chargement.statut == 'recue_chauffeur' %}text-[#166534]{% elif chargement.statut == 'ecart_constate' %}text-alerte{% else %}text-texte-secondaire{% endif %}">
+          {% if chargement.statut == "recue_chauffeur" %}Reçue{% elif chargement.statut == "a_preparer" or chargement.statut == "en_verification" %}En préparation{% else %}En attente{% endif %}
+        </span>
+      </div>
+    {% endif %}
+  {% empty %}
+    <div class="carte text-texte-secondaire">Aucune commande dans cette tournée.</div>
+  {% endfor %}
+
+  {% if tournee.statut != "en_cours" and chargements %}
+    <form method="post" action="{% url 'reception_demarrer' tournee.pk %}">
+      {% csrf_token %}
+      <button type="submit" {% if not peut_demarrer %}disabled{% endif %} class="bouton-principal h-auto min-h-14 py-2 text-lg disabled:cursor-not-allowed disabled:bg-bordure">
+        Démarrer la tournée{% if restantes and not peut_demarrer %} · {{ restantes }} commande{{ restantes|pluralize }} restante{{ restantes|pluralize }}{% endif %}
+      </button>
+    </form>
+  {% endif %}
+</div>

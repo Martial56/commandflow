@@ -77,6 +77,9 @@
 
   {% if tournee.modifiable and tournee.peut_gerer %}
     <div class="flex flex-wrap gap-2 border-t border-trait pt-2.5">
+      {% if tournee.prestataire_id and not tournee.compte_livreur and tournee.actifs %}
+        <a href="{% url 'reception_tournee' tournee.pk %}" class="inline-flex h-9 items-center rounded-md border border-lien bg-white px-3 text-sm text-lien no-underline">Saisir la réception du prestataire</a>
+      {% endif %}
       {% if tournee.actifs|length > 1 %}
         <form method="post" action="{% url 'tournee_proposer_ordre' tournee.pk %}">{% csrf_token %}<button type="submit" class="h-9 cursor-pointer rounded-md border border-bordure bg-white px-3 text-sm">Proposer l'ordre</button></form>
       {% endif %}
