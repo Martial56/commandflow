@@ -42,20 +42,6 @@ def entreprise():
 
 
 @pytest.fixture
-def personnes(entreprise):
-    def creer(role):
-        return UtilisateurFactory(entreprise=entreprise, roles=[role])
-
-    class Personnes:
-        gestionnaire = creer(R.GESTIONNAIRE)
-        direction = creer(R.DIRECTION)
-        preparateur = creer(R.PREPARATION)
-        autre_chauffeur = creer(R.CHAUFFEUR)
-
-    return Personnes
-
-
-@pytest.fixture
 def tournee(entreprise, personnes):
     return TourneeFactory(entreprise=entreprise, date=DEMAIN)
 

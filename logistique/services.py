@@ -23,6 +23,7 @@ from .etat import exceptions
 from .models import (
     Chargement,
     LigneChargement,
+    Livraison,
     MotifEcart,
     StatutChargement,
     StatutTournee,
@@ -491,3 +492,33 @@ def decider_exception_chargement(validation, *, accepter):
         chargement.save()
     actualiser_tournee(chargement.tournee)
     return validation
+
+
+# --- Départ de la tournée (§10, §11) -----------------------------------------------------
+
+
+@transaction.atomic
+def demarrer_tournee(tournee):
+    """Le livreur démarre la tournée (§7) : l'heure de départ et la liste des commandes
+    chargées sont figées, chaque commande passe « En livraison » et une livraison
+    « En attente » est créée par chargement."""
+    tournee = _verrouiller(tournee)
+    _transition(
+        tournee,
+        "demarrer",
+        "Des commandes ne sont pas reçues : les retirer ou faire accepter une exception.",
+    )
+    chargements = list(tournee.chargements_actifs().select_related("commande"))
+    for chargement in chargements:
+        commande = Commande.objects.select_for_update().get(pk=chargement.commande_id)
+        if not can_proceed(commande.partir_en_livraison):
+            raise ActionImpossible(
+                f"{commande} est au statut « {commande.get_statut_display()} » : "
+                "la retirer de la tournée."
+            )
+        commande.partir_en_livraison()
+        commande.save()
+        Livraison.objects.create(chargement=chargement, commande=commande)
+    tournee.demarrer()
+    tournee.save()
+    return tournee
