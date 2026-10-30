@@ -5,6 +5,8 @@ courant et appellent les transitions (§5 de modele-donnees.md, décisions 8.3).
 est verrouillée (`select_for_update`) pendant chaque modification de ses chargements.
 """
 
+from decimal import Decimal, InvalidOperation
+
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.db.models import Max
@@ -14,15 +16,19 @@ from commandes.models import Commande, Statut
 from comptes.models import Role
 from entreprises.parametres import creneaux
 from noyau.contexte import AutreEntreprise, entreprise_obligatoire, utilisateur_courant
-from noyau.services import prochain_numero
+from noyau.models import Validation
+from noyau.services import decider_validation, demander_validation, prochain_numero
 
+from .etat import exceptions
 from .models import (
     Chargement,
     LigneChargement,
+    MotifEcart,
     StatutChargement,
     StatutTournee,
     Tournee,
 )
+from .rules import livreur_affecte
 
 # Tournée modifiable : pas encore partie (décision 8.3 : une tournée partie est figée).
 STATUTS_MODIFIABLES = [
@@ -242,3 +248,246 @@ def proposer_ordre(tournee):
     )
     _numeroter(tournee, chargements)
     return chargements
+
+
+# --- Contrôle et réception (§10, décisions 8.3) ------------------------------------------
+
+
+def _verrouiller_chargement(chargement):
+    """Verrouille la tournée puis le chargement (même ordre partout)."""
+    _verrouiller(chargement.tournee)
+    return Chargement.objects.select_for_update().select_related("tournee").get(pk=chargement.pk)
+
+
+def _autoriser(objet, nom):
+    """Vérifie le statut et le rôle (sans les conditions) de la transition `nom`."""
+    methode = getattr(objet, nom)
+    if not can_proceed(methode, check_conditions=False):
+        raise ActionImpossible(f"Impossible depuis le statut « {objet.get_statut_display()} ».")
+    # Rôle seul (has_transition_perm de django-fsm vérifierait aussi les conditions).
+    if not methode._django_fsm.has_transition_perm(objet, objet.statut, _utilisateur()):
+        raise PermissionDenied("Votre rôle ne permet pas cette action.")
+    return methode
+
+
+def _transition(objet, nom, message_conditions):
+    """Vérifie statut, rôle et conditions de la transition `nom`, avec des messages clairs."""
+    methode = _autoriser(objet, nom)
+    if not can_proceed(methode):
+        raise ActionImpossible(message_conditions)
+    return methode
+
+
+def _quantite(valeur):
+    try:
+        quantite = Decimal(str(valeur))
+    except (InvalidOperation, TypeError, ValueError):
+        raise ActionImpossible("Quantité invalide.") from None
+    if not quantite.is_finite() or quantite < 0:
+        raise ActionImpossible("Quantité invalide.")
+    return quantite
+
+
+def _saisir_recues(chargement, quantites):
+    """Quantités reçues par le livreur : une par ligne du chargement ({ligne: quantité})."""
+    quantites = {getattr(ligne, "pk", ligne): valeur for ligne, valeur in quantites.items()}
+    lignes = list(chargement.lignes.all())
+    if sorted(quantites) != sorted(ligne.pk for ligne in lignes):
+        raise ActionImpossible("Indiquer la quantité reçue pour chaque produit.")
+    for ligne in lignes:
+        ligne.quantite_recue_chauffeur = _quantite(quantites[ligne.pk])
+        ligne.save()
+    return lignes
+
+
+def _demander_exception(chargement, objet, motif, lignes=None, **contenu):
+    if exceptions(chargement, objet, Validation.Decision.EN_ATTENTE).exists():
+        raise ActionImpossible("Une demande est déjà en attente de décision.")
+    contenu = {"objet": objet, **contenu}
+    if lignes is not None:
+        contenu["lignes"] = {str(pk): str(quantite) for pk, quantite in lignes.items()}
+    return demander_validation(chargement, Validation.Action.EXCEPTION, motif, contenu)
+
+
+@transaction.atomic
+def compter_ligne(ligne, quantite, motif="", detail=""):
+    """Le préparateur compte un produit chargé (maquette 3).
+
+    Le premier comptage met le chargement « en vérification » et la tournée « en
+    chargement ». Une ligne conforme perd son motif d'écart.
+    """
+    chargement = _verrouiller_chargement(ligne.chargement)
+    tournee = chargement.tournee
+    if chargement.statut == StatutChargement.A_PREPARER:
+        _transition(chargement, "commencer_verification", "Tournée partie.")()
+        chargement.save()
+        if tournee.statut == StatutTournee.PLANIFIEE:
+            tournee.commencer_chargement()
+            tournee.save()
+    elif chargement.statut != StatutChargement.EN_VERIFICATION:
+        raise ActionImpossible(
+            f"Contrôle impossible depuis le statut « {chargement.get_statut_display()} »."
+        )
+    else:
+        _exiger("logistique.controler_chargement", chargement)
+
+    ligne = chargement.lignes.get(pk=ligne.pk)
+    ligne.quantite_preparee = _quantite(quantite)
+    if ligne.conforme:
+        ligne.motif_ecart, ligne.detail_ecart = "", ""
+    else:
+        if motif and motif not in MotifEcart.values:
+            raise ActionImpossible("Motif d'écart inconnu.")
+        ligne.motif_ecart, ligne.detail_ecart = motif, (detail or "").strip()
+    ligne.save()
+    return ligne
+
+
+@transaction.atomic
+def valider_preparation(chargement):
+    """Toutes les lignes comptées et conformes : « Vérifiée par la préparation »."""
+    chargement = _verrouiller_chargement(chargement)
+    _transition(
+        chargement,
+        "valider_preparation",
+        "Compter chaque produit ; en cas d'écart, le signaler au gestionnaire.",
+    )(par=_utilisateur())
+    chargement.save()
+    return chargement
+
+
+@transaction.atomic
+def signaler_ecart(chargement, commentaire=""):
+    """Écart constaté par le préparateur : décision d'un responsable demandée (§10)."""
+    chargement = _verrouiller_chargement(chargement)
+    lignes = list(chargement.lignes.all())
+    if any(ligne.motif_ecart == MotifEcart.AUTRE and not ligne.detail_ecart for ligne in lignes):
+        raise ActionImpossible("Préciser le motif « Autre ».")
+    _transition(
+        chargement,
+        "constater_ecart",
+        "Compter chaque produit et indiquer le motif de chaque écart.",
+    )(par=_utilisateur())
+    chargement.save()
+    _demander_exception(
+        chargement,
+        "ecart",
+        (commentaire or "").strip() or "Écart au chargement",
+        lignes={ligne.pk: ligne.quantite_preparee for ligne in lignes},
+        origine="preparation",
+    )
+    return chargement
+
+
+@transaction.atomic
+def completer_chargement(chargement):
+    """Marchandise complétée après un écart : nouveau contrôle par le préparateur."""
+    chargement = _verrouiller_chargement(chargement)
+    _transition(chargement, "completer", "Tournée partie.")()
+    chargement.save()
+    return chargement
+
+
+@transaction.atomic
+def confirmer_reception(chargement, quantites):
+    """Le livreur affecté confirme lui-même la réception (§10, maquette 4).
+
+    Pour un prestataire sans compte, le gestionnaire saisit à sa place : une demande
+    est créée, et la réception n'est confirmée qu'à l'acceptation par un autre
+    responsable (décision 8.3).
+    """
+    chargement = _verrouiller_chargement(chargement)
+    _autoriser(chargement, "confirmer_reception")
+    _saisir_recues(chargement, quantites)
+    if not can_proceed(chargement.confirmer_reception):
+        raise ActionImpossible("Quantités différentes du chargement : signaler un écart.")
+    utilisateur = _utilisateur()
+    if not livreur_affecte(utilisateur, chargement):
+        _demander_exception(
+            chargement,
+            "reception",
+            f"Réception saisie pour le prestataire {chargement.tournee.livreur}",
+            lignes={ligne.pk: ligne.quantite_recue_chauffeur for ligne in chargement.lignes.all()},
+        )
+        return chargement
+    chargement.confirmer_reception(par=utilisateur)
+    chargement.save()
+    actualiser_tournee(chargement.tournee)
+    return chargement
+
+
+@transaction.atomic
+def contester_reception(chargement, quantites, motif):
+    """Le livreur conteste une quantité : l'écart est consigné avant le départ et soumis
+    à un responsable (§10) ; la marchandise peut aussi être complétée."""
+    chargement = _verrouiller_chargement(chargement)
+    _autoriser(chargement, "contester")
+    lignes = _saisir_recues(chargement, quantites)
+    chargement.motif_contestation = (motif or "").strip()
+    _transition(
+        chargement,
+        "contester",
+        "Indiquer le motif et la quantité réellement reçue.",
+    )()
+    chargement.save()
+    _demander_exception(
+        chargement,
+        "ecart",
+        chargement.motif_contestation,
+        lignes={ligne.pk: ligne.quantite_recue_chauffeur for ligne in lignes},
+        origine="livreur",
+    )
+    actualiser_tournee(chargement.tournee)
+    return chargement
+
+
+@transaction.atomic
+def demander_exception_depart(chargement, motif):
+    """Faire partir la tournée sans la réception de cette commande (décision 8.3).
+
+    Demandée par le Gestionnaire, décidée par un autre responsable.
+    """
+    chargement = _verrouiller_chargement(chargement)
+    _exiger("logistique.demander_exception_depart", chargement)
+    _exiger_modifiable(chargement.tournee)
+    if chargement.statut in (StatutChargement.RECUE_CHAUFFEUR, StatutChargement.RETIRE):
+        raise ActionImpossible(
+            f"Aucune exception utile au statut « {chargement.get_statut_display()} »."
+        )
+    if not (motif or "").strip():
+        raise ActionImpossible("Indiquer le motif de l'exception.")
+    return _demander_exception(chargement, "depart", motif.strip())
+
+
+@transaction.atomic
+def decider_exception_chargement(validation, *, accepter):
+    """Décision d'un autre responsable (Direction, Gestionnaire) sur une demande liée
+    à un chargement. Acceptée : écart retenu, départ autorisé ou réception confirmée.
+    Tout est annulé si l'effet ne peut plus s'appliquer (demande dépassée)."""
+    chargement = _verrouiller_chargement(validation.objet)
+    _exiger("logistique.valider_exception", chargement)
+    validation = decider_validation(validation, accepter=accepter)
+    if not accepter:
+        return validation
+
+    objet = validation.contenu.get("objet")
+    if objet == "ecart":
+        # Seule la dernière demande d'écart s'applique (le chargement a pu être recompté).
+        derniere = exceptions(chargement, "ecart", *Validation.Decision.values).latest("pk")
+        if chargement.statut != StatutChargement.ECART_CONSTATE or derniere.pk != validation.pk:
+            raise ActionImpossible("Demande dépassée : le chargement a changé depuis ; la refuser.")
+        chargement.accepter_exception()
+        chargement.save()
+    elif objet == "depart":
+        _exiger_modifiable(chargement.tournee)
+    elif objet == "reception":
+        recues = {int(pk): quantite for pk, quantite in validation.contenu["lignes"].items()}
+        if chargement.statut != StatutChargement.VERIFIEE_PREPARATION:
+            raise ActionImpossible("Demande dépassée : le chargement a changé depuis ; la refuser.")
+        _saisir_recues(chargement, recues)
+        if not can_proceed(chargement.confirmer_reception):
+            raise ActionImpossible("Demande dépassée : le chargement a changé depuis ; la refuser.")
+        chargement.confirmer_reception(par=validation.demandee_par)
+        chargement.save()
+    actualiser_tournee(chargement.tournee)
+    return validation

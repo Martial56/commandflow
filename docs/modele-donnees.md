@@ -350,4 +350,6 @@ Ces choix de modélisation dépendent des arbitrages du §23. Chacun modifie un 
 | Véhicule | Facultatif ; véhicules gérés dans l'administration |
 | Suivi « en temps réel » (§10) | Écran Tournées rafraîchi toutes les 30 secondes |
 | Modification d'une tournée partie (§11) | Reportée au Sprint 5 ; au Sprint 4, une tournée partie est figée |
+| Demandes d'écart (30 octobre 2026) | Une seule demande d'écart en attente par chargement ; après un nouveau comptage, l'ancienne demande est refusée avant d'en faire une nouvelle |
+| Exception de départ (30 octobre 2026) | Demandée par le Gestionnaire, décidée par un autre responsable (Direction ou Gestionnaire) |
 | Maquettes | Sprint 4 : maquettes 3, 4 (réception par le chauffeur) et 14 ; Sprint 5 : maquettes 5 et 6 |

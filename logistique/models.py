@@ -302,20 +302,28 @@ class Chargement(_StatutProtege, ModeleEntreprise, ModeleTrace):
 
         return exception_acceptee(self, "ecart")
 
+    def quantites_retenues(self):
+        from .etat import quantites_retenues
+
+        return quantites_retenues(self)
+
     def reception_conforme(self):
-        """Quantité reçue saisie sur chaque ligne, égale à la quantité préparée."""
+        """Quantité reçue saisie sur chaque ligne, égale à la quantité retenue
+        (le préparé, ou la quantité d'une exception d'écart acceptée)."""
         lignes = list(self.lignes.all())
+        retenues = self.quantites_retenues()
         return bool(lignes) and all(
             ligne.quantite_recue_chauffeur is not None
-            and ligne.quantite_recue_chauffeur == ligne.quantite_preparee
+            and ligne.quantite_recue_chauffeur == retenues[ligne.pk]
             for ligne in lignes
         )
 
     def reception_contestee(self):
-        """Motif saisi et au moins une ligne reçue différente du préparé."""
+        """Motif saisi et au moins une ligne reçue différente de la quantité retenue."""
+        retenues = self.quantites_retenues()
         return bool(self.motif_contestation.strip()) and any(
             ligne.quantite_recue_chauffeur is not None
-            and ligne.quantite_recue_chauffeur != ligne.quantite_preparee
+            and ligne.quantite_recue_chauffeur != retenues[ligne.pk]
             for ligne in self.lignes.all()
         )
 

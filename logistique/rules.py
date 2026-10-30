@@ -45,5 +45,9 @@ rules.add_perm(
     "logistique.recevoir_chargement",
     meme_entreprise & (livreur_affecte | (prestataire_sans_compte & a_le_role(Role.GESTIONNAIRE))),
 )
+# Demander l'exception de départ : Gestionnaire (8.3).
+rules.add_perm(
+    "logistique.demander_exception_depart", a_le_role(Role.GESTIONNAIRE) & meme_entreprise
+)
 # Décider des exceptions de chargement et de départ : Direction, Gestionnaire.
 rules.add_perm("logistique.valider_exception", responsable & meme_entreprise)
