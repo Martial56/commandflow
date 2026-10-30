@@ -324,6 +324,15 @@ def annuler_commande(commande, motif):
 # --- Demandes de validation (après confirmation) ------------------------------
 
 
+def _hors_tournee(commande):
+    """Ni annulation ni modification d'une commande dans une tournée (décision 8.3)."""
+    tournee = commande.tournee_en_cours()
+    if tournee is not None:
+        raise ActionImpossible(
+            f"Commande dans la tournée {tournee} : la retirer de la tournée d'abord."
+        )
+
+
 def _demande_en_attente(commande, action):
     if _validations(commande, action, Validation.Decision.EN_ATTENTE).exists():
         raise ActionImpossible("Une demande est déjà en attente de décision.")
@@ -373,6 +382,7 @@ def demander_annulation(commande, motif):
         raise ActionImpossible(
             f"Annulation impossible au statut « {commande.get_statut_display()} »."
         )
+    _hors_tournee(commande)
     if not (motif or "").strip():
         raise ValidationError({"motif": "Indiquer le motif de l'annulation."})
     _demande_en_attente(commande, Validation.Action.ANNULATION)
@@ -396,6 +406,7 @@ def demander_modification(commande, motif, *, lignes=None, **champs):
     inconnus = set(champs) - CHAMPS_DEMANDE_MODIFICATION
     if inconnus:
         raise ValueError(f"Champs non modifiables : {', '.join(sorted(inconnus))}")
+    _hors_tournee(commande)
     if not (motif or "").strip():
         raise ValidationError({"motif": "Indiquer le motif de la modification."})
     if lignes is None and not champs:
@@ -445,6 +456,8 @@ def decider_validation_commande(validation, *, accepter):
     if not accepter:
         return validation
 
+    if validation.action in (Validation.Action.MODIFICATION, Validation.Action.ANNULATION):
+        _hors_tournee(commande)
     if validation.action == Validation.Action.MODIFICATION:
         if commande.statut not in STATUTS_MODIFICATION_VALIDEE:
             raise ActionImpossible(

@@ -225,9 +225,17 @@ class Commande(FSMModelMixin, ModeleEntreprise, ModeleTrace):
         """Une commande urgente n'est confirmée qu'après validation de l'urgence (§4)."""
         return not self.urgente or self.validation_acceptee(Validation.Action.URGENCE)
 
+    def tournee_en_cours(self):
+        """Tournée où la commande est chargée (chargement non retiré), sinon None."""
+        from logistique.etat import chargement_actif
+
+        chargement = chargement_actif(self)
+        return chargement.tournee if chargement else None
+
     def annulation_autorisee(self):
-        """Motif obligatoire ; validation d'annulation acceptée après confirmation (§4)."""
-        if not self.motif_annulation.strip():
+        """Motif obligatoire ; validation d'annulation acceptée après confirmation (§4).
+        Jamais dans une tournée : la retirer d'abord (décision 8.3)."""
+        if not self.motif_annulation.strip() or self.tournee_en_cours():
             return False
         if self.statut in STATUTS_ANNULATION_SIMPLE:
             return True

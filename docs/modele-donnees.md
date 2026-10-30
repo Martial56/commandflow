@@ -352,4 +352,5 @@ Ces choix de modélisation dépendent des arbitrages du §23. Chacun modifie un 
 | Modification d'une tournée partie (§11) | Reportée au Sprint 5 ; au Sprint 4, une tournée partie est figée |
 | Demandes d'écart (30 octobre 2026) | Une seule demande d'écart en attente par chargement ; après un nouveau comptage, l'ancienne demande est refusée avant d'en faire une nouvelle |
 | Exception de départ (30 octobre 2026) | Demandée par le Gestionnaire, décidée par un autre responsable (Direction ou Gestionnaire) |
+| Commande dans une tournée (30 octobre 2026) | Ni annulation ni modification tant qu'elle est dans une tournée : la retirer d'abord ; une demande antérieure peut être refusée, mais n'est acceptée qu'après le retrait |
 | Maquettes | Sprint 4 : maquettes 3, 4 (réception par le chauffeur) et 14 ; Sprint 5 : maquettes 5 et 6 |
