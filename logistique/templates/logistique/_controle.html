@@ -1,0 +1,78 @@
+{% load format_fr %}
+{% comment %}Lignes à compter et actions du préparateur ; renvoyé par htmx à chaque ligne comptée.{% endcomment %}
+<div id="controle" class="flex flex-col gap-3">
+  {% if erreur %}<p role="alert" class="rounded-md border border-alerte-bordure bg-alerte-fond px-3 py-2 text-sm text-alerte">{{ erreur }}</p>{% endif %}
+  {% if chargement.statut == "a_preparer" or chargement.statut == "en_verification" %}
+    <p class="text-sm">Comptez chaque produit chargé dans le véhicule et cochez la ligne.</p>
+  {% endif %}
+
+  {% for ligne in lignes %}
+    <form class="flex flex-col gap-2 rounded-[10px] border bg-white p-3.5 {% if ligne.quantite_preparee is None %}border-trait{% elif ligne.conforme %}border-[#86EFAC]{% else %}border-alerte-bordure{% endif %}"
+          {% if chargement.statut == "a_preparer" or chargement.statut == "en_verification" %}hx-post="{% url 'chargement_compter' ligne.pk %}" hx-trigger="change" hx-target="#controle" hx-swap="outerHTML"{% endif %}
+          method="post" action="{% url 'chargement_compter' ligne.pk %}">
+      {% csrf_token %}
+      <div class="flex items-center justify-between gap-2">
+        <label class="flex min-h-11 items-center gap-2.5 font-medium">
+          <input type="checkbox" class="h-5 w-5" {% if ligne.quantite_preparee is not None %}checked{% endif %}
+                 {% if chargement.statut != "a_preparer" and chargement.statut != "en_verification" %}disabled{% endif %}
+                 x-data x-on:click="if ($el.checked) { $el.closest('form').querySelector('[name=quantite]').value = '{{ ligne.quantite_attendue|floatformat:"-3" }}' } else { $event.preventDefault() }">
+          {{ ligne.ligne_commande.produit.nom }}
+        </label>
+        {% if ligne.quantite_preparee is None %}<span class="text-[13px] text-texte-secondaire">À compter</span>
+        {% elif ligne.conforme %}<span class="text-[13px] font-semibold text-[#166534]">Conforme</span>
+        {% else %}<span class="text-[13px] font-semibold text-alerte">Écart {% if ligne.ecart > 0 %}+{% endif %}{{ ligne.ecart|quantite }}</span>{% endif %}
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="text-[13px] text-texte-secondaire">Attendu</span>
+        <span class="font-mono text-lg">{{ ligne.quantite_attendue|quantite }}</span>
+        <label for="prepare-{{ ligne.pk }}" class="ml-auto text-[13px] text-texte-secondaire">Préparé</label>
+        <input id="prepare-{{ ligne.pk }}" name="quantite" value="{% if ligne.quantite_preparee is not None %}{{ ligne.quantite_preparee|floatformat:"-3" }}{% endif %}"
+               inputmode="{% if ligne.ligne_commande.produit.quantites_decimales %}decimal{% else %}numeric{% endif %}"
+               {% if chargement.statut != "a_preparer" and chargement.statut != "en_verification" %}disabled{% endif %}
+               class="champ h-12 w-24 text-center font-mono text-lg">
+      </div>
+      {% if ligne.quantite_preparee is not None and not ligne.conforme %}
+        <label for="motif-{{ ligne.pk }}" class="text-[13px] font-medium">Motif de l'écart</label>
+        <select id="motif-{{ ligne.pk }}" name="motif" class="champ h-11" {% if chargement.statut != "a_preparer" and chargement.statut != "en_verification" %}disabled{% endif %}>
+          <option value="">Choisir…</option>
+          {% for valeur, libelle in motifs %}<option value="{{ valeur }}" {% if ligne.motif_ecart == valeur %}selected{% endif %}>{{ libelle }}</option>{% endfor %}
+        </select>
+        {% if ligne.motif_ecart == "autre" %}
+          <label for="detail-{{ ligne.pk }}" class="text-[13px] font-medium">Précision</label>
+          <input id="detail-{{ ligne.pk }}" name="detail" value="{{ ligne.detail_ecart }}" maxlength="255" class="champ h-11" {% if chargement.statut != "a_preparer" and chargement.statut != "en_verification" %}disabled{% endif %}>
+        {% endif %}
+      {% endif %}
+      <noscript><button type="submit" class="h-10 rounded-md border border-bordure bg-white">Enregistrer</button></noscript>
+    </form>
+  {% endfor %}
+
+  <div class="flex flex-col gap-2 pt-1">
+    {% if chargement.statut == "a_preparer" or chargement.statut == "en_verification" %}
+      {% if tout_conforme %}
+        <form method="post" action="{% url 'chargement_valider' chargement.pk %}">{% csrf_token %}<button type="submit" class="bouton-principal h-14 text-lg">Valider le chargement</button></form>
+      {% elif tout_compte %}
+        <form method="post" action="{% url 'chargement_signaler' chargement.pk %}" class="flex flex-col gap-2">
+          {% csrf_token %}
+          <label for="commentaire" class="sr-only">Commentaire pour le gestionnaire</label>
+          <input id="commentaire" name="commentaire" maxlength="255" placeholder="Commentaire pour le gestionnaire (facultatif)" class="champ h-11">
+          <button type="submit" class="flex h-14 cursor-pointer items-center justify-center rounded-md bg-alerte text-lg font-semibold text-white">Signaler l'écart au gestionnaire</button>
+        </form>
+      {% else %}
+        <p class="text-center text-sm text-texte-secondaire">Comptez chaque produit pour valider le chargement.</p>
+      {% endif %}
+      <p class="text-center text-[13px] text-texte-secondaire">Le chauffeur confirmera lui-même la réception depuis son compte.</p>
+    {% elif chargement.statut == "ecart_constate" %}
+      <p role="status" class="rounded-md border border-alerte-bordure bg-alerte-fond px-3 py-2 text-sm text-alerte">
+        Écart constaté{% if demande_en_attente %} : en attente de la décision du gestionnaire{% endif %}.
+        {% if chargement.motif_contestation %}Contesté par le chauffeur : {{ chargement.motif_contestation }}.{% endif %}
+      </p>
+      <form method="post" action="{% url 'chargement_completer' chargement.pk %}">{% csrf_token %}<button type="submit" class="h-12 w-full cursor-pointer rounded-md border border-lien bg-white font-semibold text-lien">Marchandise complétée : recompter</button></form>
+    {% elif chargement.statut == "verifiee_preparation" %}
+      <p role="status" class="rounded-md bg-[#DBEAFE] px-3 py-2 text-sm text-lien">Vérifiée{% if chargement.verifie_par %} par {{ chargement.verifie_par }} à {{ chargement.verifie_le|heure }}{% endif %} · en attente de la réception par le chauffeur.</p>
+    {% elif chargement.statut == "recue_chauffeur" %}
+      <p role="status" class="rounded-md bg-[#DCFCE7] px-3 py-2 text-sm text-[#166534]">Reçue par {{ chargement.recu_par }} à {{ chargement.recu_le|heure }}.</p>
+    {% else %}
+      <p role="status" class="text-sm text-texte-secondaire">{{ chargement.get_statut_display }}.</p>
+    {% endif %}
+  </div>
+</div>

@@ -1,0 +1,35 @@
+{% extends "base_terrain.html" %}
+{% load format_fr %}
+{% comment %}Préparation : tournées à charger et leurs arrêts, dans l'ordre de passage.{% endcomment %}
+{% block titre %}Contrôle du chargement{% endblock %}
+{% block sur_titre %}Contrôle du chargement{% endblock %}
+{% block titre_terrain %}Tournées du {{ date|date_courte }}{% endblock %}
+{% block contenu %}
+{% include "composants/messages.html" %}
+<form method="get">
+  <label for="date-chargement" class="sr-only">Date</label>
+  <input id="date-chargement" type="date" name="date" value="{{ date|date:'Y-m-d' }}" class="champ h-11" onchange="this.form.submit()">
+</form>
+{% for tournee in tournees %}
+  <section aria-labelledby="tournee-{{ tournee.pk }}" class="carte flex flex-col gap-2 p-4">
+    <div class="flex items-baseline justify-between gap-2">
+      <h2 id="tournee-{{ tournee.pk }}" class="font-semibold">{{ tournee.numero }} · {{ tournee.livreur }}</h2>
+      <span class="font-mono text-[13px]">{{ tournee.recap.verifiees }}/{{ tournee.recap.attendues }} vérifiées</span>
+    </div>
+    <ol class="flex flex-col divide-y divide-trait">
+      {% for chargement in tournee.actifs %}
+        <li>
+          <a href="{% url 'chargement_controle' chargement.pk %}" class="flex min-h-12 items-center justify-between gap-2 py-2 no-underline">
+            <span class="text-encre">{{ chargement.ordre_passage }}. {{ chargement.commande.client.nom }}</span>
+            <span class="text-[13px] {% if chargement.statut == 'recue_chauffeur' %}text-[#166534]{% elif chargement.statut == 'ecart_constate' %}text-alerte{% elif chargement.statut == 'a_preparer' %}text-texte-secondaire{% else %}text-lien{% endif %}">{{ chargement.get_statut_display }}</span>
+          </a>
+        </li>
+      {% empty %}
+        <li class="py-2 text-sm text-texte-secondaire">Aucune commande affectée.</li>
+      {% endfor %}
+    </ol>
+  </section>
+{% empty %}
+  <div class="carte text-texte-secondaire">Aucune tournée à charger le {{ date|date_courte }}</div>
+{% endfor %}
+{% endblock %}

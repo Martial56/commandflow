@@ -10,5 +10,6 @@ urlpatterns = [
     path("recurrentes/", include("commandes.urls_recurrentes")),
     path("production/", include("production.urls")),
     path("tournees/", include("logistique.urls")),
+    path("chargement/", include("logistique.urls_chargement")),
     path("", include("comptes.urls")),
 ]

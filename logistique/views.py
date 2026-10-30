@@ -140,6 +140,7 @@ def tableau(request):
         "tournees": tournees,
         "destinations": [t for t in tournees if t.modifiable and t.peut_gerer],
         "peut_creer": request.user.has_perm("logistique.gerer_tournees"),
+        "peut_controler": request.user.has_perm("logistique.acceder_controle"),
         "chauffeurs": _chauffeurs(),
         "prestataires": Prestataire.objects.filter(actif=True).order_by("nom"),
         "vehicules": Vehicule.objects.filter(actif=True).order_by("immatriculation"),

@@ -34,7 +34,9 @@ def prestataire_sans_compte(utilisateur, objet):
 # Créer les tournées, affecter, retirer, réordonner : Gestionnaire, Direction (8.3).
 rules.add_perm("logistique.gerer_tournees", responsable)
 rules.add_perm("logistique.gerer_tournee", responsable & meme_entreprise)
-# Contrôler le chargement : Préparation, Gestionnaire (8.3).
+# Contrôler le chargement : Préparation, Gestionnaire (8.3). La liste des arrêts reste
+# réservée à la Préparation (grille §3.1) ; le Gestionnaire ouvre un arrêt depuis Tournées.
+rules.add_perm("logistique.acceder_controle", a_le_role(Role.PREPARATION, Role.GESTIONNAIRE))
 rules.add_perm(
     "logistique.controler_chargement",
     a_le_role(Role.PREPARATION, Role.GESTIONNAIRE) & meme_entreprise,

@@ -23,7 +23,7 @@
     {% for chargement in tournee.actifs %}
       <li>
         <div class="flex flex-wrap items-center gap-x-1.5">
-          <span>{{ chargement.commande.client.nom }}</span>
+          {% if tournee.modifiable and peut_controler %}<a href="{% url 'chargement_controle' chargement.pk %}" title="Contrôler le chargement">{{ chargement.commande.client.nom }}</a>{% else %}<span>{{ chargement.commande.client.nom }}</span>{% endif %}
           <span class="{% if chargement.statut == 'recue_chauffeur' %}text-[#166534]{% elif chargement.statut == 'ecart_constate' %}text-alerte{% elif chargement.statut == 'a_preparer' %}text-texte-secondaire{% else %}text-lien{% endif %}">· {{ chargement.get_statut_display|lower }}</span>
           {% if tournee.modifiable and tournee.peut_gerer %}
             <span class="ml-auto flex gap-1">
