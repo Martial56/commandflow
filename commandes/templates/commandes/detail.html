@@ -60,6 +60,12 @@
   </section>
 {% endif %}
 
+{% if bloquee_par_tournee %}
+  <div role="status" class="rounded-[10px] border border-trait bg-white px-4 py-3 text-sm">
+    Commande dans la tournée {{ chargement.tournee.numero }} : la retirer de la tournée pour demander une modification ou une annulation.
+  </div>
+{% endif %}
+
 {% if peut_confirmer or peut_annuler or peut_demander %}
   <section aria-labelledby="titre-actions" class="carte flex flex-col gap-4 text-sm">
     <h2 id="titre-actions" class="text-base font-semibold">Actions</h2>
@@ -125,7 +131,7 @@
       <div class="flex justify-between gap-3"><span class="text-texte-secondaire">Livraison</span><span class="text-right">{{ commande.adresse }}</span></div>
       {% if commande.instructions %}<div class="flex justify-between gap-3"><span class="text-texte-secondaire">Instructions</span><span class="text-right">{{ commande.instructions }}</span></div>{% endif %}
       <div class="flex justify-between gap-3"><span class="text-texte-secondaire">Production</span><span class="text-right">{% if plan_production %}{% if voir_plan %}<a href="{% url 'ecran_production' %}?date={{ plan_production.date_livraison|date:'Y-m-d' }}">Plan du {{ plan_production.date_livraison|jour_mois }}</a>{% else %}Plan du {{ plan_production.date_livraison|jour_mois }}{% endif %} · {{ plan_production.get_statut_display|lower }}{% else %}Pas encore planifiée{% endif %}</span></div>
-      <div class="flex justify-between gap-3"><span class="text-texte-secondaire">Tournée</span><span>Non affectée</span></div>
+      <div class="flex justify-between gap-3"><span class="text-texte-secondaire">Tournée</span><span class="text-right">{% if chargement %}{% if voir_tournees %}<a href="{% url 'ecran_tournees' %}?date={{ chargement.tournee.date|date:'Y-m-d' }}">{{ chargement.tournee.numero }}</a>{% else %}{{ chargement.tournee.numero }}{% endif %} · {{ chargement.tournee.livreur }} · arrêt {{ chargement.ordre_passage }} · {{ chargement.get_statut_display|lower }}{% if chargement.tournee.depart_le %} · partie à {{ chargement.tournee.depart_le|heure }}{% endif %}{% else %}Non affectée{% endif %}</span></div>
       <div class="flex justify-between gap-3"><span class="text-texte-secondaire">Facture</span><span>Pas encore facturée</span></div>
       <div class="flex justify-between gap-3"><span class="text-texte-secondaire">Paiement</span><span>{{ commande.client.libelle_conditions }}</span></div>
       {% for piece, lien in pieces %}<div class="flex justify-between gap-3"><span class="text-texte-secondaire">{{ piece.get_type_display }}</span><a href="{{ lien }}">{{ piece.nom_original }}</a></div>{% endfor %}

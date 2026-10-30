@@ -165,8 +165,8 @@ def detail(request, pk):
             and utilisateur.has_perm("commandes.confirmer_commande", commande),
             "peut_annuler": statut in STATUTS_ANNULATION_SIMPLE
             and utilisateur.has_perm("commandes.annuler_commande", commande),
-            "peut_demander": peut_saisir and statut in STATUTS_MODIFICATION_VALIDEE,
             **_production(commande, utilisateur),
+            **_tournee(commande, utilisateur, peut_saisir),
             "formulaire_note": NoteConfirmationForm(),
             "formulaire_motif": MotifForm(),
         },
@@ -186,6 +186,21 @@ def _production(commande, utilisateur):
         "voir_plan": utilisateur.has_perm("ecrans.production"),
         "peut_marquer_prete": preparer,
         "couverte": preparer and commande_couverte(commande),
+    }
+
+
+def _tournee(commande, utilisateur, peut_saisir):
+    """Bloc tournée de la fiche (Sprint 4). Une commande dans une tournée n'est ni
+    modifiée ni annulée : il faut d'abord la retirer (décision 8.3)."""
+    from logistique.etat import chargement_actif
+
+    chargement = chargement_actif(commande)
+    peut_demander = peut_saisir and commande.statut in STATUTS_MODIFICATION_VALIDEE
+    return {
+        "chargement": chargement,
+        "voir_tournees": utilisateur.has_perm("ecrans.tournees"),
+        "peut_demander": peut_demander and chargement is None,
+        "bloquee_par_tournee": peut_demander and chargement is not None,
     }
 
 

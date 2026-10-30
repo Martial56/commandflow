@@ -85,6 +85,11 @@ def historique(commande):
 
     _lignes(commande, entrees, auteur, decisions, contexte_creation)
 
+    # Chargements (Sprint 4) : affectation, contrôle, réception, retrait, exceptions.
+    from logistique.historique import evenements as chargements
+
+    entrees += [Entree(*evenement) for evenement in chargements(commande, auteur)]
+
     for decision in decisions.values():
         if not decision["rattachee"]:
             entrees.append(
@@ -198,6 +203,8 @@ def _texte_statut(evenement, precedent_statut=None):
         return "Plan de production validé : passage en préparation"
     if evenement.statut == Statut.PRETE_CHARGEMENT:
         return "Prête au chargement : quantités réservées"
+    if evenement.statut == Statut.EN_LIVRAISON:
+        return "Départ de la tournée : en livraison"
     return f"Passage au statut « {Statut(evenement.statut).label} »"
 
 
