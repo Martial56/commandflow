@@ -1,0 +1,54 @@
+{% load format_fr %}
+{% comment %}Suivi d'un arrêt d'une tournée partie (§6, décision 8.4) : échec, report, abandon,
+saisie d'un prestataire sans compte à valider.{% endcomment %}
+{% if livraison.statut == "echouee" %}
+  <span class="block text-xs text-alerte">Échec : {{ livraison.get_motif_echec_display|lower }}{% if livraison.commentaire %} · {{ livraison.commentaire }}{% endif %}</span>
+{% elif livraison.statut == "reportee" %}
+  <span class="block text-xs text-texte-secondaire">Reportée au {{ livraison.reportee_au|date_courte }}</span>
+{% elif livraison.statut == "partiellement_livree" %}
+  <span class="block text-xs text-texte-secondaire">Partielle : {{ livraison.get_motif_echec_display|lower }} · reliquat noté</span>
+{% endif %}
+
+{% for demande in livraison.saisies %}
+  <div class="mt-1.5 flex flex-col gap-1.5 rounded-md border border-alerte-bordure bg-alerte-fond px-2.5 py-2 text-[13px]">
+    <span>Livraison saisie pour le prestataire par {{ demande.demandee_par }} : {% if demande.contenu.resultat == "echec" %}échec{% elif demande.contenu.resultat == "partielle" %}partielle{% else %}livrée{% endif %}</span>
+    {% if demande.demandee_par_id != user.pk and perms.logistique.valider_exception %}
+      <form method="post" action="{% url 'livraison_decider' demande.pk %}" class="flex gap-2">
+        {% csrf_token %}
+        <button type="submit" name="decision" value="accepter" class="h-8 cursor-pointer rounded-md bg-lien px-3 text-white">Accepter</button>
+        <button type="submit" name="decision" value="refuser" class="h-8 cursor-pointer rounded-md border border-bordure bg-white px-3">Refuser</button>
+      </form>
+    {% else %}
+      <span class="text-texte-secondaire">En attente d'un autre responsable.</span>
+    {% endif %}
+  </div>
+{% endfor %}
+
+{% for demande in livraison.abandons %}
+  <span class="mt-1 block rounded-md border border-alerte-bordure bg-alerte-fond px-2.5 py-1.5 text-[13px]">Abandon demandé par {{ demande.demandee_par }} : {{ demande.motif }} · <a href="{% url 'commande_detail' livraison.commande_id %}">décider sur la fiche commande</a></span>
+{% endfor %}
+
+{% if livraison.peut_reporter %}
+  <details class="mt-1 text-[13px]">
+    <summary class="cursor-pointer text-lien">Reporter la livraison…</summary>
+    <form method="post" action="{% url 'livraison_reporter' livraison.pk %}" class="mt-1.5 flex flex-col gap-1.5">
+      {% csrf_token %}
+      <label for="report-date-{{ livraison.pk }}" class="text-xs font-medium">Nouvelle date</label>
+      <input id="report-date-{{ livraison.pk }}" type="date" name="date" required class="h-9 rounded-md border border-bordure px-2">
+      <label for="report-consigne-{{ livraison.pk }}" class="text-xs font-medium">Consigne pour la prochaine tentative</label>
+      <input id="report-consigne-{{ livraison.pk }}" name="consigne" maxlength="255" class="h-9 rounded-md border border-bordure px-2">
+      <button type="submit" class="h-8 cursor-pointer self-start rounded-md border border-lien bg-white px-3 text-lien">Reporter</button>
+    </form>
+  </details>
+{% endif %}
+{% if livraison.peut_abandon %}
+  <details class="mt-1 text-[13px]">
+    <summary class="cursor-pointer text-alerte">Demander l'abandon de la commande…</summary>
+    <form method="post" action="{% url 'livraison_abandon' livraison.pk %}" class="mt-1.5 flex flex-col gap-1.5">
+      {% csrf_token %}
+      <label for="abandon-motif-{{ livraison.pk }}" class="sr-only">Motif</label>
+      <input id="abandon-motif-{{ livraison.pk }}" name="motif" required placeholder="Motif de l'abandon" maxlength="255" class="h-9 rounded-md border border-bordure px-2">
+      <button type="submit" class="h-8 cursor-pointer self-start rounded-md border border-alerte-bordure bg-white px-3 text-alerte">Demander l'abandon</button>
+    </form>
+  </details>
+{% endif %}

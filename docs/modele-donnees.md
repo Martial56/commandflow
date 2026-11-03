@@ -375,3 +375,7 @@ Ces choix de modélisation dépendent des arbitrages du §23. Chacun modifie un 
 | Code client à usage unique | Désactivé au Sprint 5 (il faut un canal d'envoi, Sprint 6). Signature et GPS disponibles en option |
 | Prestataire sans compte | Le gestionnaire saisit la livraison à sa place, tracée, avec la validation d'un autre responsable (comme la réception, 8.3) |
 | PWA | Installable ; pas de travail hors connexion au MVP (phase 2, §17 et §21). Service worker écrit à la main (pas de Workbox, qui demande Node) : cache des fichiers statiques et page de repli |
+| Reliquat affectable (3 novembre 2026) | Dès que sa nouvelle date est fixée et égale à celle de la tournée, sans contrôle de disponibilité ; le préparateur le compte au chargement comme une commande |
+| Reliquat qui échoue (3 novembre 2026) | Le reliquat reste ouvert, la commande reste « Partiellement livrée » ; le gestionnaire fixe une nouvelle date ou le solde |
+| Reliquat livré partiellement (3 novembre 2026) | Un nouveau reliquat remplace l'ancien pour la quantité manquante ; la commande reste « Partiellement livrée » |
+| Reliquat et production (3 novembre 2026) | Compté dans le « commandé » du plan de sa nouvelle date, tant qu'il n'est pas soldé |

@@ -19,4 +19,7 @@ urlpatterns = [
     path("demandes/<int:pk>/decider/", views.decider, name="chargement_decider"),
     path("<int:pk>/retours/", views.declarer_retour, name="tournee_retour"),
     path("retours/<int:pk>/decider/", views.decider_retour, name="retour_decider"),
+    path("livraisons/<int:pk>/reporter/", views.reporter, name="livraison_reporter"),
+    path("livraisons/<int:pk>/abandon/", views.demander_abandon, name="livraison_abandon"),
+    path("saisies/<int:pk>/decider/", views.decider_livraison, name="livraison_decider"),
 ]

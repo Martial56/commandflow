@@ -10,7 +10,7 @@ from collections import Counter, defaultdict
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Prefetch, Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -18,7 +18,8 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from catalogue.models import Produit
-from commandes.models import Commande
+from commandes import services as commandes
+from commandes.models import Commande, Statut
 from comptes.models import Role, Utilisateur
 from noyau.contexte import entreprise_obligatoire
 from noyau.models import Validation
@@ -30,16 +31,19 @@ from .models import (
     Chargement,
     DecisionRetour,
     EtatRetour,
+    Incident,
     LigneChargement,
     LigneLivraison,
     Livraison,
     Prestataire,
     Retour,
     StatutChargement,
+    StatutLivraison,
+    StatutTournee,
     Tournee,
     Vehicule,
 )
-from .services import STATUTS_LIVRAISON_TRAITEE, STATUTS_MODIFIABLES
+from .services import STATUTS_LIVRAISON_TRAITEE, STATUTS_MODIFIABLES, arrets_traites
 
 
 def _exiger(request, permission, objet=None):
@@ -116,6 +120,35 @@ def _retours(tournees):
     return retours, retournables
 
 
+def _suivi(tournees):
+    """Tournées parties : livraison de chaque arrêt, demandes en attente, incidents."""
+    parties = [t for t in tournees if t.statut in (StatutTournee.EN_COURS, StatutTournee.TERMINEE)]
+    livraisons = {
+        livraison.chargement_id: livraison
+        for livraison in Livraison.objects.filter(chargement__tournee__in=parties)
+    }
+    saisies = defaultdict(list)  # livraisons saisies pour un prestataire sans compte
+    for demande in Validation.objects.filter(
+        content_type=ContentType.objects.get_for_model(Livraison),
+        object_id__in=[livraison.pk for livraison in livraisons.values()],
+        action=Validation.Action.EXCEPTION,
+        decision=Validation.Decision.EN_ATTENTE,
+    ).select_related("demandee_par"):
+        saisies[demande.object_id].append(demande)
+    abandons = defaultdict(list)  # demandes d'abandon des commandes en anomalie
+    for demande in Validation.objects.filter(
+        content_type=ContentType.objects.get_for_model(Commande),
+        object_id__in=[livraison.commande_id for livraison in livraisons.values()],
+        action=Validation.Action.ANNULATION,
+        decision=Validation.Decision.EN_ATTENTE,
+    ).select_related("demandee_par"):
+        abandons[demande.object_id].append(demande)
+    incidents = defaultdict(list)
+    for incident in Incident.objects.filter(tournee__in=parties).select_related("cree_par"):
+        incidents[incident.tournee_id].append(incident)
+    return livraisons, saisies, abandons, incidents
+
+
 def _tournees(date, utilisateur):
     lignes = LigneChargement.objects.select_related("ligne_commande__produit").order_by("pk")
     tournees = list(
@@ -134,7 +167,11 @@ def _tournees(date, utilisateur):
     )
     demandes = _demandes([c for tournee in tournees for c in tournee.actifs])
     retours, retournables = _retours(tournees)
+    livraisons, saisies, abandons, incidents = _suivi(tournees)
     for tournee in tournees:
+        tournee.partie = tournee.statut in (StatutTournee.EN_COURS, StatutTournee.TERMINEE)
+        tournee.liste_incidents = incidents.get(tournee.pk, [])
+        tournee.traites = 0
         tournee.retours = retours.get(tournee.pk, [])
         tournee.retournables = retournables.get(tournee.pk, [])
         tournee.peut_declarer_retour = utilisateur.has_perm("logistique.declarer_retour", tournee)
@@ -156,6 +193,42 @@ def _tournees(date, utilisateur):
             chargement.peut_decider = utilisateur.has_perm(
                 "logistique.valider_exception", chargement
             )
+            livraison = livraisons.get(chargement.pk)
+            chargement.suivi = livraison
+            if livraison is None:
+                continue
+            tournee.traites += livraison.statut in STATUTS_LIVRAISON_TRAITEE
+            livraison.saisies = saisies.get(livraison.pk, [])
+            livraison.abandons = abandons.get(livraison.commande_id, [])
+            en_anomalie = chargement.commande.statut == Statut.EN_ANOMALIE
+            livraison.peut_reporter = (
+                livraison.statut == StatutLivraison.ECHOUEE
+                and en_anomalie
+                and utilisateur.has_perm("logistique.reporter_livraison", livraison)
+            )
+            livraison.peut_abandon = (
+                en_anomalie
+                and not livraison.abandons
+                and utilisateur.has_perm("commandes.annuler_commande", chargement.commande)
+            )
+        # Tournée en cours : seuls les arrêts restants se réordonnent (décision 8.4).
+        tournee.reordonnables = (
+            [
+                c
+                for c in tournee.actifs
+                if tournee.modifiable
+                or (
+                    tournee.statut == StatutTournee.EN_COURS
+                    and c.suivi is not None
+                    and c.suivi.statut not in STATUTS_LIVRAISON_TRAITEE
+                )
+            ]
+            if tournee.peut_gerer
+            else []
+        )
+        for rang, chargement in enumerate(tournee.reordonnables):
+            chargement.peut_monter = rang > 0
+            chargement.peut_descendre = rang < len(tournee.reordonnables) - 1
     return tournees
 
 
@@ -269,10 +342,18 @@ def deplacer(request, pk):
     chargement = get_object_or_404(Chargement.objects.select_related("tournee"), pk=pk)
     tournee = chargement.tournee
     ordre = list(tournee.chargements_actifs().order_by("ordre_passage", "pk"))
-    rang = ordre.index(chargement) if chargement in ordre else -1
+    # Tournée en cours : l'arrêt s'échange avec le restant voisin (décision 8.4).
+    traites = arrets_traites(tournee) if tournee.statut == StatutTournee.EN_COURS else set()
+    places = [i for i, c in enumerate(ordre) if c.pk not in traites]
+    rang = (
+        places.index(ordre.index(chargement))
+        if chargement in ordre and (chargement.pk not in traites)
+        else -1
+    )
     voisin = rang + (-1 if request.POST.get("sens") == "haut" else 1)
-    if rang >= 0 and 0 <= voisin < len(ordre):
-        ordre[rang], ordre[voisin] = ordre[voisin], ordre[rang]
+    if rang >= 0 and 0 <= voisin < len(places):
+        i, j = places[rang], places[voisin]
+        ordre[i], ordre[j] = ordre[j], ordre[i]
     return _executer(
         request, tournee.date, lambda: services.reordonner(tournee, ordre), "Ordre mis à jour."
     )
@@ -372,3 +453,66 @@ def decider_retour(request, pk):
         lambda: services.decider_retour(retour, request.POST.get("decision", "")),
         "Décision enregistrée.",
     )
+
+
+# --- Anomalies et saisies d'une tournée partie (§6, décision 8.4) -------------------------
+
+
+def _livraison(pk):
+    return get_object_or_404(
+        Livraison.objects.select_related("chargement__tournee", "commande"), pk=pk
+    )
+
+
+@login_required
+@require_POST
+def reporter(request, pk):
+    """Nouvelle date et consigne pour une livraison échouée : la commande est relancée."""
+    _exiger(request, "ecrans.tournees")
+    livraison = _livraison(pk)
+    date = _date(request.POST.get("date")) if request.POST.get("date") else None
+    return _executer(
+        request,
+        livraison.chargement.tournee.date,
+        lambda: services.reporter_livraison(livraison, date, request.POST.get("consigne", "")),
+        f"{livraison.commande} reportée : elle repasse « À planifier ».",
+    )
+
+
+@login_required
+@require_POST
+def demander_abandon(request, pk):
+    """Abandon d'une commande en anomalie, décidé par un autre responsable (8.4)."""
+    _exiger(request, "ecrans.tournees")
+    livraison = _livraison(pk)
+    try:
+        commandes.demander_abandon(livraison.commande, request.POST.get("motif", ""))
+    except commandes.ActionImpossible as erreur:
+        messages.error(request, str(erreur))
+    except ValidationError as erreur:
+        messages.error(request, " ".join(erreur.messages))
+    else:
+        messages.success(request, "Abandon demandé : un autre responsable doit le valider.")
+    return _retour(livraison.chargement.tournee.date)
+
+
+@login_required
+@require_POST
+def decider_livraison(request, pk):
+    """Accepter ou refuser une livraison saisie pour un prestataire sans compte."""
+    _exiger(request, "ecrans.tournees")
+    demande = get_object_or_404(
+        Validation,
+        pk=pk,
+        content_type=ContentType.objects.get_for_model(Livraison),
+        decision=Validation.Decision.EN_ATTENTE,
+    )
+    accepter = request.POST.get("decision") == "accepter"
+    date = _livraison(demande.object_id).chargement.tournee.date
+    try:
+        services.decider_livraison_prestataire(demande, accepter=accepter)
+    except (services.ActionImpossible, ValidationPropreDemande) as erreur:
+        messages.error(request, str(erreur))
+    else:
+        messages.success(request, "Livraison validée." if accepter else "Saisie refusée.")
+    return _retour(date)

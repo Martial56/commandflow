@@ -1,0 +1,2 @@
+{% comment %}Résultat d'un arrêt d'une tournée partie (écran Tournées).{% endcomment %}
+<span class="rounded-full px-2 py-0.5 text-xs font-semibold {% if livraison.statut == 'livree' or livraison.statut == 'partiellement_livree' %}bg-[#DCFCE7] text-[#166534]{% elif livraison.statut == 'echouee' or livraison.statut == 'reportee' %}bg-[#FFEDD5] text-alerte{% elif livraison.statut == 'sur_place' %}bg-[#DBEAFE] text-lien{% else %}bg-[#E7E3DA] text-[#3D3A34]{% endif %}">{{ livraison.get_statut_display }}</span>

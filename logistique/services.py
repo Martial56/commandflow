@@ -242,16 +242,35 @@ def retirer_commande(chargement):
 
 @transaction.atomic
 def reordonner(tournee, chargements):
-    """Fixe l'ordre de passage : `chargements` contient tous les chargements actifs."""
+    """Fixe l'ordre de passage : `chargements` contient tous les chargements actifs.
+
+    Tournée en cours : seuls les arrêts restants changent de place ; un arrêt déjà
+    traité garde son rang (décision 8.4).
+    """
     tournee = _verrouiller(tournee)
     _exiger("logistique.gerer_tournee", tournee)
-    _exiger_modifiable(tournee)
-    actifs = {chargement.pk: chargement for chargement in tournee.chargements_actifs()}
+    if tournee.statut != StatutTournee.EN_COURS:
+        _exiger_modifiable(tournee)
+    actuel = list(tournee.chargements_actifs().order_by("ordre_passage", "pk"))
+    actifs = {chargement.pk: chargement for chargement in actuel}
     ordre = [getattr(chargement, "pk", chargement) for chargement in chargements]
     if sorted(ordre) != sorted(actifs):
         raise ActionImpossible("L'ordre doit reprendre toutes les commandes de la tournée.")
+    if tournee.statut == StatutTournee.EN_COURS:
+        traites = arrets_traites(tournee)
+        if any(c.pk in traites and c.pk != pk for c, pk in zip(actuel, ordre, strict=True)):
+            raise ActionImpossible("Un arrêt déjà traité garde sa place.")
     _numeroter(tournee, [actifs[pk] for pk in ordre])
     return tournee
+
+
+def arrets_traites(tournee):
+    """Chargements dont la livraison est traitée (livrée, partielle, échouée, reportée)."""
+    return set(
+        Livraison.objects.filter(
+            chargement__tournee=tournee, statut__in=STATUTS_LIVRAISON_TRAITEE
+        ).values_list("chargement_id", flat=True)
+    )
 
 
 @transaction.atomic

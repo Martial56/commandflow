@@ -16,7 +16,10 @@
       <div class="rounded-md p-1.5 {% if tournee.recap.ecarts %}bg-alerte-fond text-alerte{% else %}bg-papier{% endif %}"><div class="font-mono text-base">{{ tournee.recap.ecarts }}</div>écart{{ tournee.recap.ecarts|pluralize }}</div>
     </div>
   {% else %}
-    <span class="text-[13px]">{{ tournee.actifs|length }} commande{{ tournee.actifs|length|pluralize }} en livraison</span>
+    <span class="text-[13px]">{{ tournee.traites }}/{{ tournee.actifs|length }} arrêt{{ tournee.actifs|length|pluralize }} traité{{ tournee.traites|pluralize }}{% if tournee.fin_le %} · terminée à {{ tournee.fin_le|heure }}{% endif %}</span>
+    {% for incident in tournee.liste_incidents %}
+      <span class="rounded-md border border-alerte-bordure bg-alerte-fond px-2.5 py-1.5 text-[13px] text-alerte">Incident · {{ incident.get_type_display|lower }} à {{ incident.cree_le|heure }} ({{ incident.cree_par }}){% if incident.commentaire %} : {{ incident.commentaire }}{% endif %}</span>
+    {% endfor %}
   {% endif %}
 
   <ol class="flex list-decimal flex-col gap-2 pl-5 text-sm">
@@ -24,12 +27,12 @@
       <li>
         <div class="flex flex-wrap items-center gap-x-1.5">
           {% if tournee.modifiable and peut_controler %}<a href="{% url 'chargement_controle' chargement.pk %}" title="Contrôler le chargement">{{ chargement.commande.client.nom }}</a>{% else %}<span>{{ chargement.commande.client.nom }}</span>{% endif %}
-          <span class="{% if chargement.statut == 'recue_chauffeur' %}text-[#166534]{% elif chargement.statut == 'ecart_constate' %}text-alerte{% elif chargement.statut == 'a_preparer' %}text-texte-secondaire{% else %}text-lien{% endif %}">· {{ chargement.get_statut_display|lower }}</span>
-          {% if tournee.modifiable and tournee.peut_gerer %}
+          {% if chargement.suivi %}{% include "logistique/_pastille_livraison.html" with livraison=chargement.suivi %}{% else %}<span class="{% if chargement.statut == 'recue_chauffeur' %}text-[#166534]{% elif chargement.statut == 'ecart_constate' %}text-alerte{% elif chargement.statut == 'a_preparer' %}text-texte-secondaire{% else %}text-lien{% endif %}">· {{ chargement.get_statut_display|lower }}</span>{% endif %}
+          {% if chargement in tournee.reordonnables %}
             <span class="ml-auto flex gap-1">
-              {% if not forloop.first %}<form method="post" action="{% url 'chargement_deplacer' chargement.pk %}">{% csrf_token %}<input type="hidden" name="sens" value="haut"><button type="submit" class="h-7 w-7 cursor-pointer rounded border border-trait bg-white" title="Monter" aria-label="Monter {{ chargement.commande.client.nom }}">↑</button></form>{% endif %}
-              {% if not forloop.last %}<form method="post" action="{% url 'chargement_deplacer' chargement.pk %}">{% csrf_token %}<input type="hidden" name="sens" value="bas"><button type="submit" class="h-7 w-7 cursor-pointer rounded border border-trait bg-white" title="Descendre" aria-label="Descendre {{ chargement.commande.client.nom }}">↓</button></form>{% endif %}
-              <form method="post" action="{% url 'chargement_retirer' chargement.pk %}" onsubmit="return confirm('Retirer {{ chargement.commande.numero }} de la tournée ?')">{% csrf_token %}<button type="submit" class="h-7 cursor-pointer rounded border border-trait bg-white px-2 text-xs">Retirer</button></form>
+              {% if chargement.peut_monter %}<form method="post" action="{% url 'chargement_deplacer' chargement.pk %}">{% csrf_token %}<input type="hidden" name="sens" value="haut"><button type="submit" class="h-7 w-7 cursor-pointer rounded border border-trait bg-white" title="Monter" aria-label="Monter {{ chargement.commande.client.nom }}">↑</button></form>{% endif %}
+              {% if chargement.peut_descendre %}<form method="post" action="{% url 'chargement_deplacer' chargement.pk %}">{% csrf_token %}<input type="hidden" name="sens" value="bas"><button type="submit" class="h-7 w-7 cursor-pointer rounded border border-trait bg-white" title="Descendre" aria-label="Descendre {{ chargement.commande.client.nom }}">↓</button></form>{% endif %}
+              {% if tournee.modifiable %}<form method="post" action="{% url 'chargement_retirer' chargement.pk %}" onsubmit="return confirm('Retirer {{ chargement.commande.numero }} de la tournée ?')">{% csrf_token %}<button type="submit" class="h-7 cursor-pointer rounded border border-trait bg-white px-2 text-xs">Retirer</button></form>{% endif %}
             </span>
           {% endif %}
         </div>
@@ -57,6 +60,8 @@
             {% endif %}
           </div>
         {% endfor %}
+
+        {% if chargement.suivi %}{% include "logistique/_suivi_livraison.html" with livraison=chargement.suivi %}{% endif %}
 
         {% if chargement.peut_exception %}
           <details class="mt-1 text-[13px]">
@@ -111,6 +116,12 @@
           </form>
         </details>
       {% endif %}
+    </div>
+  {% endif %}
+
+  {% if tournee.statut == "en_cours" and tournee.peut_gerer and tournee.prestataire_id and not tournee.compte_livreur %}
+    <div class="border-t border-trait pt-2.5">
+      <a href="{% url 'reception_tournee' tournee.pk %}" class="inline-flex h-9 items-center rounded-md border border-lien bg-white px-3 text-sm text-lien no-underline">Saisir les livraisons du prestataire</a>
     </div>
   {% endif %}
 
