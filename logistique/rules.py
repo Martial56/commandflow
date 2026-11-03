@@ -62,6 +62,13 @@ rules.add_perm(
 )
 # Reporter une livraison échouée : Gestionnaire (§6, décision 8.4).
 rules.add_perm("logistique.reporter_livraison", a_le_role(Role.GESTIONNAIRE) & meme_entreprise)
+# Retours (8.4) : déclarés par le livreur sur place ou par le gestionnaire au dépôt ;
+# décidés par la Direction ou le Gestionnaire.
+rules.add_perm(
+    "logistique.declarer_retour",
+    meme_entreprise & (livreur_affecte | a_le_role(Role.GESTIONNAIRE)),
+)
+rules.add_perm("logistique.decider_retour", responsable & meme_entreprise)
 
 # Véhicules et prestataires : administration Django, Direction et Gestionnaire (8.3).
 # Pas de suppression (désactivation).

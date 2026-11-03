@@ -390,6 +390,20 @@ def demander_annulation(commande, motif):
 
 
 @transaction.atomic
+def demander_abandon(commande, motif):
+    """Abandon d'une commande en anomalie (§4) : Gestionnaire ou Direction, avec motif,
+    décidé par un autre responsable (décision 8.4)."""
+    commande = _verrouiller(commande)
+    _exiger("commandes.annuler_commande", commande)
+    if commande.statut != Statut.EN_ANOMALIE:
+        raise ActionImpossible("Seule une commande en anomalie peut être abandonnée.")
+    if not (motif or "").strip():
+        raise ValidationError({"motif": "Indiquer le motif de l'abandon."})
+    _demande_en_attente(commande, Validation.Action.ANNULATION)
+    return demander_validation(commande, Validation.Action.ANNULATION, motif=motif.strip())
+
+
+@transaction.atomic
 def demander_modification(commande, motif, *, lignes=None, **champs):
     """Demande de modification d'une commande confirmée, soumise à un responsable.
 
@@ -456,9 +470,19 @@ def decider_validation_commande(validation, *, accepter):
     if not accepter:
         return validation
 
+    abandon = (
+        validation.action == Validation.Action.ANNULATION and commande.statut == Statut.EN_ANOMALIE
+    )
     if validation.action in (Validation.Action.MODIFICATION, Validation.Action.ANNULATION):
-        _hors_tournee(commande)
-    if validation.action == Validation.Action.MODIFICATION:
+        if not abandon:
+            _hors_tournee(commande)
+    if abandon:
+        # Livraison échouée : la production de ce jour est passée, le plan n'est pas
+        # recalculé (décision 8.4).
+        commande.motif_annulation = validation.motif
+        _transition(commande, "abandonner", "Abandon impossible.")()
+        commande.save()
+    elif validation.action == Validation.Action.MODIFICATION:
         if commande.statut not in STATUTS_MODIFICATION_VALIDEE:
             raise ActionImpossible(
                 f"La commande est passée au statut « {commande.get_statut_display()} »."

@@ -1,34 +1,56 @@
-"""Services de la logistique : toute écriture des tournées et des chargements passe ici.
+"""Services de la logistique : toute écriture des tournées, des chargements et des
+livraisons passe ici.
 
 Les vues appellent ces services ; les services vérifient les droits de l'utilisateur
-courant et appellent les transitions (§5 de modele-donnees.md, décisions 8.3). La tournée
-est verrouillée (`select_for_update`) pendant chaque modification de ses chargements.
+courant et appellent les transitions (§5 et §6 de modele-donnees.md, décisions 8.3 et
+8.4). La tournée est verrouillée (`select_for_update`) pendant chaque modification de ses
+chargements et de ses livraisons.
 """
 
 from decimal import Decimal, InvalidOperation
 
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
-from django.db import transaction
+from django.db import models, transaction
 from django.db.models import Max
+from django.utils import timezone
 from django_fsm import can_proceed
 
 from commandes.models import Commande, Statut
 from comptes.models import Role
 from entreprises.parametres import creneaux
 from noyau.contexte import AutreEntreprise, entreprise_obligatoire, utilisateur_courant
-from noyau.models import Validation
-from noyau.services import decider_validation, demander_validation, prochain_numero
+from noyau.models import PieceJointe, Validation
+from noyau.services import (
+    decider_validation,
+    demander_validation,
+    joindre_fichier,
+    prochain_numero,
+)
 
-from .etat import exceptions
+from .etat import exceptions, preuves_manquantes
 from .models import (
+    AccordClient,
     Chargement,
+    DecisionRetour,
+    EtatRetour,
+    Incident,
     LigneChargement,
     LigneLivraison,
     Livraison,
     MotifEcart,
+    MotifEchec,
+    MoyenAccord,
+    ObjetAccord,
+    Preuve,
+    Reliquat,
+    Retour,
     StatutChargement,
+    StatutLivraison,
     StatutTournee,
     Tournee,
+    TypeIncident,
+    TypePreuve,
 )
 from .rules import livreur_affecte
 
@@ -538,3 +560,365 @@ def _quantite_prevue(ligne, retenue):
     for quantite in (ligne.quantite_recue_chauffeur, retenue, ligne.quantite_attendue):
         if quantite is not None:
             return quantite
+
+
+# --- Livraison (§6, §7, §12 ; décisions 8.4) -----------------------------------------------
+
+
+class Resultat(models.TextChoices):
+    """Issue choisie par le livreur (maquette 6) ; « Refusée » et « Client absent » sont
+    des échecs avec leur motif."""
+
+    LIVREE = "livree", "Livrée"
+    PARTIELLE = "partielle", "Partielle"
+    ECHEC = "echec", "Échec"
+
+
+LIBELLES_PREUVE = dict(TypePreuve.choices)
+STATUTS_LIVRAISON_TRAITEE = [
+    StatutLivraison.LIVREE,
+    StatutLivraison.PARTIELLEMENT_LIVREE,
+    StatutLivraison.ECHOUEE,
+    StatutLivraison.REPORTEE,
+]
+
+
+def _verrouiller_livraison(livraison):
+    """Verrouille la tournée puis la livraison (même ordre partout)."""
+    _verrouiller(livraison.chargement.tournee)
+    return (
+        Livraison.objects.select_for_update()
+        .select_related("chargement__tournee", "commande__client")
+        .get(pk=livraison.pk)
+    )
+
+
+def _coordonnee(valeur, limite):
+    if valeur in (None, ""):
+        return None
+    try:
+        coordonnee = Decimal(str(valeur)).quantize(Decimal("0.000001"))
+    except (InvalidOperation, TypeError, ValueError):
+        raise ActionImpossible("Position GPS invalide.") from None
+    if not coordonnee.is_finite() or abs(coordonnee) > limite:
+        raise ActionImpossible("Position GPS invalide.")
+    return coordonnee
+
+
+def _enregistrer_position(livraison, latitude, longitude):
+    latitude, longitude = _coordonnee(latitude, 90), _coordonnee(longitude, 180)
+    if latitude is not None and longitude is not None:
+        livraison.latitude, livraison.longitude = latitude, longitude
+
+
+def message_preuves(livraison):
+    """« Preuve manquante : photo du bordereau ou nom du réceptionnaire. »"""
+    manquantes = preuves_manquantes(livraison)
+    exigences = " ; ".join(
+        " ou ".join(LIBELLES_PREUVE.get(moyen, moyen).lower() for moyen in exigence)
+        for exigence in manquantes
+    )
+    return f"Preuve manquante : {exigences}."
+
+
+@transaction.atomic
+def arriver_chez_client(livraison, latitude=None, longitude=None):
+    """« Je suis arrivé » : heure, et position si le téléphone la donne (§6)."""
+    livraison = _verrouiller_livraison(livraison)
+    _autoriser(livraison, "arriver")
+    _enregistrer_position(livraison, latitude, longitude)
+    _transition(livraison, "arriver", "Position GPS requise pour ce client : l'autoriser.")()
+    livraison.save()
+    return livraison
+
+
+def _preuves_jointes(livraison, photo, signature):
+    """Photo du bordereau et signature : fichiers privés, liés à la livraison (§12.2)."""
+    for fichier, type_preuve in (
+        (photo, TypePreuve.PHOTO_BORDEREAU),
+        (signature, TypePreuve.SIGNATURE),
+    ):
+        if fichier:
+            piece = joindre_fichier(livraison, fichier, PieceJointe.Type.PHOTO)
+            Preuve.objects.create(livraison=livraison, type=type_preuve, piece=piece)
+
+
+def _saisie(resultat, quantites, motif, accord, champs):
+    """Saisie du livreur, sous une forme enregistrable dans une demande de validation."""
+    if resultat not in Resultat.values:
+        raise ActionImpossible("Choisir le résultat de la livraison.")
+    if motif and motif not in MotifEchec.values:
+        raise ActionImpossible("Motif inconnu.")
+    if accord and accord.get("moyen") not in MoyenAccord.values:
+        raise ActionImpossible("Indiquer comment le client a donné son accord.")
+    return {
+        "resultat": resultat,
+        "lignes": {
+            str(getattr(ligne, "pk", ligne)): str(_quantite(valeur))
+            for ligne, valeur in (quantites or {}).items()
+        },
+        "motif": motif or "",
+        "accord": {k: (accord.get(k) or "").strip() for k in ("nom_client", "moyen")}
+        if accord
+        else None,
+        "champs": {nom: (valeur or "").strip() for nom, valeur in champs.items()},
+    }
+
+
+def _appliquer_saisie(livraison, saisie):
+    """Quantités, réceptionnaire, motif, accord, puis transition (sans contrôle du rôle :
+    vérifié par l'appelant). Retourne la méthode de transition à appeler."""
+    for nom, valeur in saisie["champs"].items():
+        setattr(livraison, nom, valeur)
+    livraison.motif_echec = saisie["motif"]
+    resultat = saisie["resultat"]
+    if resultat == Resultat.ECHEC:
+        if not livraison.motif_echec:
+            raise ActionImpossible("Indiquer le motif de l'échec.")
+        return livraison.echouer, "Échec impossible depuis ce statut."
+
+    lignes = list(livraison.lignes.select_related("ligne_commande__produit"))
+    if sorted(saisie["lignes"]) != sorted(str(ligne.pk) for ligne in lignes):
+        raise ActionImpossible("Indiquer la quantité livrée pour chaque produit.")
+    for ligne in lignes:
+        livree = Decimal(saisie["lignes"][str(ligne.pk)])
+        if livree > ligne.quantite_prevue:
+            raise ActionImpossible(
+                f"{ligne.ligne_commande.produit} : jamais plus que le prévu "
+                f"({ligne.quantite_prevue.normalize():f})."
+            )
+        ligne.quantite_livree = livree
+        ligne.save()
+    if livraison.statut == StatutLivraison.EN_ATTENTE:
+        # Arrivée non signalée : elle est datée de la validation.
+        if not can_proceed(livraison.arriver):
+            raise ActionImpossible("Position GPS requise pour ce client : l'autoriser.")
+        livraison.arriver()
+    if resultat == Resultat.LIVREE:
+        if not livraison.tout_livre():
+            raise ActionImpossible("Quantités inférieures au prévu : choisir « Partielle ».")
+        if not livraison.preuves_presentes():
+            raise ActionImpossible(message_preuves(livraison))
+        return livraison.livrer, "Livraison impossible."
+
+    if not livraison.motif_echec:
+        raise ActionImpossible("Indiquer le motif de la livraison partielle.")
+    accord = saisie["accord"]
+    if not accord or not accord["nom_client"]:
+        raise ActionImpossible("Livraison partielle : enregistrer l'accord du client.")
+    AccordClient.objects.create(livraison=livraison, objet=ObjetAccord.PARTIELLE, **accord)
+    if not livraison.preuves_presentes():
+        raise ActionImpossible(message_preuves(livraison))
+    return (
+        livraison.livrer_partiellement,
+        "Livraison partielle : au moins un produit sous le prévu et un produit livré.",
+    )
+
+
+def _apres_livraison(livraison):
+    """Cascade (§7) : reliquat, statut de la commande, fin de tournée."""
+    commande = Commande.objects.select_for_update().get(pk=livraison.commande_id)
+    if livraison.statut == StatutLivraison.PARTIELLEMENT_LIVREE:
+        for ligne in livraison.lignes.all():
+            if ligne.manque > 0:
+                Reliquat.objects.create(
+                    commande_origine=commande,
+                    livraison=livraison,
+                    ligne_commande_id=ligne.ligne_commande_id,
+                    quantite=ligne.manque,
+                )
+    transition = {
+        StatutLivraison.LIVREE: "cloturer_livree",
+        StatutLivraison.PARTIELLEMENT_LIVREE: "cloturer_partielle",
+        StatutLivraison.ECHOUEE: "signaler_anomalie",
+    }[livraison.statut]
+    methode = getattr(commande, transition)
+    if not can_proceed(methode):
+        raise ActionImpossible(
+            f"{commande} est au statut « {commande.get_statut_display()} » : "
+            "la livraison ne peut pas la clôturer."
+        )
+    methode()
+    commande.save()
+    tournee = Tournee.objects.select_for_update().get(pk=livraison.chargement.tournee_id)
+    if can_proceed(tournee.terminer):
+        tournee.terminer()
+        tournee.save()
+    return commande
+
+
+@transaction.atomic
+def cloturer_livraison(
+    livraison,
+    resultat,
+    *,
+    quantites=None,
+    motif="",
+    accord=None,
+    photo=None,
+    signature=None,
+    latitude=None,
+    longitude=None,
+    receptionnaire_nom="",
+    receptionnaire_fonction="",
+    numero_bordereau="",
+    commentaire="",
+):
+    """Le livreur valide la livraison (maquette 6) : quantités réelles, preuve, accord
+    client si partielle, motif si échec ; cascade vers la commande et la tournée (§7).
+
+    Pour un prestataire sans compte, le gestionnaire saisit à sa place : les preuves
+    sont jointes, et la saisie n'est appliquée qu'à l'acceptation par un autre
+    responsable (décision 8.4).
+    """
+    livraison = _verrouiller_livraison(livraison)
+    _exiger("logistique.livrer", livraison)
+    if livraison.statut not in (StatutLivraison.EN_ATTENTE, StatutLivraison.SUR_PLACE):
+        raise ActionImpossible(f"Livraison déjà traitée ({livraison.get_statut_display()}).")
+    saisie = _saisie(
+        resultat,
+        quantites,
+        motif,
+        accord,
+        {
+            "receptionnaire_nom": receptionnaire_nom,
+            "receptionnaire_fonction": receptionnaire_fonction,
+            "numero_bordereau": numero_bordereau,
+            "commentaire": commentaire,
+        },
+    )
+    _enregistrer_position(livraison, latitude, longitude)
+    _preuves_jointes(livraison, photo, signature)
+
+    if not livreur_affecte(_utilisateur(), livraison):
+        if _exceptions_livraison(livraison, Validation.Decision.EN_ATTENTE).exists():
+            raise ActionImpossible("Une saisie attend déjà la décision d'un responsable.")
+        livraison.save()
+        demander_validation(
+            livraison,
+            Validation.Action.EXCEPTION,
+            motif=f"Livraison saisie pour le prestataire {livraison.tournee.livreur}",
+            contenu={"objet": "livraison", **saisie},
+        )
+        return livraison
+
+    methode, message = _appliquer_saisie(livraison, saisie)
+    if not can_proceed(methode):
+        raise ActionImpossible(message)
+    methode()
+    livraison.save()
+    _apres_livraison(livraison)
+    return livraison
+
+
+def _exceptions_livraison(livraison, *decisions):
+    return Validation.objects.filter(
+        content_type=ContentType.objects.get_for_model(Livraison),
+        object_id=livraison.pk,
+        action=Validation.Action.EXCEPTION,
+        decision__in=decisions,
+    )
+
+
+@transaction.atomic
+def decider_livraison_prestataire(validation, *, accepter):
+    """Décision d'un autre responsable sur une livraison saisie pour un prestataire sans
+    compte (8.4). Acceptée : la saisie est appliquée, avec sa cascade."""
+    livraison = _verrouiller_livraison(validation.objet)
+    _exiger("logistique.valider_exception", livraison.chargement)
+    validation = decider_validation(validation, accepter=accepter)
+    if not accepter:
+        return validation
+    if livraison.statut not in (StatutLivraison.EN_ATTENTE, StatutLivraison.SUR_PLACE):
+        raise ActionImpossible("Demande dépassée : la livraison a changé depuis ; la refuser.")
+    methode, message = _appliquer_saisie(livraison, validation.contenu)
+    if not can_proceed(methode):
+        raise ActionImpossible(message)
+    methode()
+    livraison.save()
+    _apres_livraison(livraison)
+    return validation
+
+
+@transaction.atomic
+def reporter_livraison(livraison, nouvelle_date, consigne=""):
+    """Le gestionnaire fixe une nouvelle date (§6, décision 8.4) : la commande repasse
+    « À planifier » à cette date et entre dans le plan de production de ce jour, où elle
+    est entièrement reproduite. Le plan de l'ancienne date n'est pas recalculé."""
+    from production.services import commande_modifiee
+
+    livraison = _verrouiller_livraison(livraison)
+    _autoriser(livraison, "reporter")
+    if nouvelle_date is None or nouvelle_date < timezone.localdate():
+        raise ActionImpossible("Choisir une nouvelle date, à partir d'aujourd'hui.")
+    livraison.reportee_au = nouvelle_date
+    livraison.reporter()
+    livraison.save()
+
+    commande = Commande.objects.select_for_update().get(pk=livraison.commande_id)
+    commande.date_livraison = nouvelle_date
+    if (consigne or "").strip():
+        commande.instructions = consigne.strip()
+    _transition(commande, "relancer", "La commande ne peut pas être relancée.")()
+    commande.save()
+    commande_modifiee(commande)
+    return livraison
+
+
+# --- Retours et incidents (§12.3, décision 8.4) --------------------------------------------
+
+
+@transaction.atomic
+def declarer_retour(livraison, *, produit, quantite, motif, etat):
+    """Retour de marchandise depuis une livraison traitée : par le livreur sur place, ou
+    par le gestionnaire au retour au dépôt (8.4)."""
+    livraison = _verrouiller_livraison(livraison)
+    _exiger("logistique.declarer_retour", livraison)
+    if livraison.statut not in STATUTS_LIVRAISON_TRAITEE:
+        raise ActionImpossible("Retour possible une fois la livraison traitée.")
+    _meme_entreprise(produit)
+    prevues = {
+        ligne.ligne_commande.produit_id: ligne.quantite_prevue
+        for ligne in livraison.lignes.select_related("ligne_commande")
+    }
+    if produit.pk not in prevues:
+        raise ActionImpossible(f"{produit} ne fait pas partie de cette livraison.")
+    quantite = _quantite(quantite)
+    if quantite <= 0 or quantite > prevues[produit.pk]:
+        raise ActionImpossible("Quantité retournée invalide (au plus la quantité prévue).")
+    if etat not in EtatRetour.values:
+        raise ActionImpossible("Indiquer l'état de la marchandise.")
+    if not (motif or "").strip():
+        raise ActionImpossible("Indiquer le motif du retour.")
+    return Retour.objects.create(
+        livraison=livraison, produit=produit, quantite=quantite, motif=motif.strip(), etat=etat
+    )
+
+
+@transaction.atomic
+def decider_retour(retour, decision):
+    """Décision du responsable (Gestionnaire, Direction) sur un retour (8.4)."""
+    retour = Retour.objects.select_for_update().get(pk=retour.pk)
+    _exiger("logistique.decider_retour", retour)
+    if retour.decision:
+        raise ActionImpossible("Décision déjà prise sur ce retour.")
+    if decision not in DecisionRetour.values:
+        raise ActionImpossible("Choisir une décision.")
+    retour.decision = decision
+    retour.decide_par = _utilisateur()
+    retour.decide_le = timezone.now()
+    retour.save()
+    return retour
+
+
+@transaction.atomic
+def signaler_incident(tournee, type, commentaire=""):
+    """Panne, accident… signalé par le livreur pendant la tournée ; sans effet sur les
+    statuts (décision 8.4)."""
+    tournee = _verrouiller(tournee)
+    _exiger("logistique.livrer", tournee)
+    if tournee.statut != StatutTournee.EN_COURS:
+        raise ActionImpossible("Incident à signaler pendant la tournée.")
+    if type not in TypeIncident.values:
+        raise ActionImpossible("Choisir le type d'incident.")
+    return Incident.objects.create(tournee=tournee, type=type, commentaire=commentaire.strip())
