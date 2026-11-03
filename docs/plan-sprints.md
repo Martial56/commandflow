@@ -39,7 +39,7 @@ Coche les cases au fur et à mesure.
 
 ## Sprint 5 — Application chauffeur
 
-- [ ] Livraisons, preuves, échecs, reliquats, retours (maquettes 5 et 6), PWA installable
+- [x] Livraisons, preuves, échecs, reliquats, retours (maquettes 5 et 6), PWA installable
 
 ## Sprint 6 — Facturation, paiements, pilotage
 

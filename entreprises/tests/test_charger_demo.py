@@ -108,11 +108,13 @@ def test_tournees_du_jour(mode_developpement):
     tournees = Tournee.toutes_entreprises.filter(
         entreprise=mie_dore, date=timezone.localdate()
     ).order_by("numero")
-    assert [t.livreur.__str__() for t in tournees] == ["Konan K.", "Express Livr."]
+    assert [t.livreur.__str__() for t in tournees] == ["Konan K.", "Express Livr.", "Yao S."]
     assert Prestataire.toutes_entreprises.get(nom="Express Livr.").compte.username == "express.livr"
     assert Vehicule.toutes_entreprises.filter(entreprise=mie_dore).count() == 2
     statuts = sorted(
-        Chargement.toutes_entreprises.filter(tournee__in=tournees).values_list("statut", flat=True)
+        Chargement.toutes_entreprises.filter(tournee__in=tournees[:2]).values_list(
+            "statut", flat=True
+        )
     )
     assert statuts == sorted(
         [
@@ -127,7 +129,37 @@ def test_tournees_du_jour(mode_developpement):
     ).exists()
 
     call_command("charger_demo")
-    assert Tournee.toutes_entreprises.filter(entreprise=mie_dore).count() == 2
+    assert Tournee.toutes_entreprises.filter(entreprise=mie_dore).count() == 3
+
+
+def test_tournee_en_cours_de_livraison(mode_developpement):
+    """Sprint 5 : tournée de Yao S. partie, arrêts à différents stades (maquettes 5 et 6)."""
+    from commandes.models import Statut
+    from logistique.models import Incident, Livraison, Reliquat, Retour, StatutTournee, Tournee
+
+    call_command("charger_demo")
+    tournee = Tournee.toutes_entreprises.get(
+        entreprise__slug="mie-dore", date=timezone.localdate(), chauffeur__username="yao.s"
+    )
+    assert tournee.statut == StatutTournee.EN_COURS
+    livraisons = Livraison.toutes_entreprises.filter(chargement__tournee=tournee).order_by(
+        "chargement__ordre_passage"
+    )
+    assert [livraison.statut for livraison in livraisons] == [
+        "livree",
+        "partiellement_livree",
+        "echouee",
+        "en_attente",
+    ]
+    assert [livraison.commande.statut for livraison in livraisons] == [
+        Statut.LIVREE,
+        Statut.PARTIELLEMENT_LIVREE,
+        Statut.EN_ANOMALIE,
+        Statut.EN_LIVRAISON,
+    ]
+    assert Reliquat.toutes_entreprises.get(livraison=livraisons[1]).quantite == 15
+    assert Retour.toutes_entreprises.get(livraison=livraisons[0]).decision == ""
+    assert Incident.toutes_entreprises.filter(tournee=tournee).count() == 1
 
 
 def test_pas_de_tournees_si_le_plan_du_jour_est_cloture(mode_developpement):

@@ -1,5 +1,7 @@
-"""Données de démonstration du Sprint 4 pour Mie Doré : véhicules, prestataire et tournées
-du jour à différents stades du chargement (maquettes 3, 4 et 14).
+"""Données de démonstration des Sprints 4 et 5 pour Mie Doré : véhicules, prestataire,
+tournées du jour à différents stades du chargement (maquettes 3, 4 et 14), et une tournée
+en cours de livraison (maquettes 5 et 6) avec un arrêt livré, un partiel, un échec, un
+retour et un incident.
 
 Tout passe par les services, sous l'identité de chaque acteur (gestionnaire, préparatrice,
 chauffeur). Relançable : les tournées du jour ne sont créées que s'il n'y en a aucune.
@@ -11,7 +13,18 @@ from commandes import services as commandes
 from commandes.models import Canal
 from comptes.models import Utilisateur
 from logistique import services as logistique
-from logistique.models import MotifEcart, Prestataire, Tournee, Vehicule
+from logistique.models import (
+    EtatRetour,
+    Livraison,
+    MotifEcart,
+    MotifEchec,
+    MoyenAccord,
+    Prestataire,
+    Tournee,
+    TypeIncident,
+    Vehicule,
+)
+from logistique.services import Resultat
 from noyau.contexte import activer_utilisateur
 from production import services as production
 from production.models import PlanProduction, StatutPlan
@@ -25,6 +38,11 @@ COMMANDES_DU_JOUR = [
     ("Supérette Les Palmiers", "08h–10h", {"BAG": 100, "CRO": 60, "MIE": 20}),
     ("Supermarché Prosuma Riviera", "08h–10h", {"BAG": 150, "MIE": 40}),
     ("Boutique Chez Fatou", "08h–10h", {"BAG": 40}),
+    # Tournée en cours de Yao S. (Sprint 5).
+    ("Café Le Plateau", "06h–08h", {"BAG": 60, "CRO": 30}),
+    ("Traiteur Saveurs d'Akwaba", "08h–10h", {"BAG": 80, "CHO": 40}),
+    ("Supermarché Prosuma Riviera", "10h–12h", {"BAG": 100}),
+    ("Restaurant Le Baobab", "16h–18h", {"BAG": 50}),
 ]
 
 
@@ -41,7 +59,7 @@ def charger(fiches, produits, sortie):
     pretes = _commandes_pretes(fiches, produits, jour)
 
     personne = {u.username: u for u in Utilisateur.objects.filter(entreprise__slug="mie-dore")}
-    hotel, baobab, palmiers, prosuma, _fatou = pretes  # Chez Fatou reste « à affecter »
+    hotel, baobab, palmiers, prosuma, _fatou = pretes[:5]  # Chez Fatou reste « à affecter »
     konan = logistique.creer_tournee(
         date=jour, chauffeur=personne["konan.k"], vehicule=vehicules[0]
     )
@@ -67,10 +85,71 @@ def charger(fiches, produits, sortie):
         logistique.confirmer_reception(
             recue, {ligne: ligne.quantite_preparee for ligne in recue.lignes.all()}
         )
+    en_cours = _tournee_en_cours(jour, pretes[5:], personne, produits)
     sortie.write(
         f"Tournées du {jour:%d/%m} : {konan} (Konan K.) et {express} (prestataire), "
-        "une commande à affecter, un écart à décider."
+        f"une commande à affecter, un écart à décider ; {en_cours} (Yao S.) en livraison."
     )
+
+
+def _tournee_en_cours(jour, pretes, personne, produits):
+    """Tournée de Yao S. partie : arrêt livré (avec un retour), partiel (reliquat), en
+    échec, et un dernier à faire ; un incident signalé (maquettes 5, 6 et 14)."""
+    tournee = logistique.creer_tournee(date=jour, chauffeur=personne["yao.s"])
+    chargements = [logistique.affecter_commande(tournee, commande) for commande in pretes]
+    with activer_utilisateur(personne["awa.d"]):
+        for chargement in chargements:
+            for ligne in chargement.lignes.all():
+                logistique.compter_ligne(ligne, ligne.quantite_attendue)
+            logistique.valider_preparation(chargement)
+    with activer_utilisateur(personne["yao.s"]):
+        for chargement in chargements:
+            logistique.confirmer_reception(
+                chargement, {ligne: ligne.quantite_preparee for ligne in chargement.lignes.all()}
+            )
+        logistique.demarrer_tournee(tournee)
+        livree, partielle, echec, _a_faire = (
+            Livraison.objects.get(chargement=chargement) for chargement in chargements
+        )
+        logistique.arriver_chez_client(livree, latitude="5.3197", longitude="-4.0168")
+        logistique.cloturer_livraison(
+            livree,
+            Resultat.LIVREE,
+            quantites={ligne: ligne.quantite_prevue for ligne in livree.lignes.all()},
+            receptionnaire_nom="Mme Touré",
+            numero_bordereau="BL-0412",
+            latitude="5.3197",
+            longitude="-4.0168",
+        )
+        logistique.declarer_retour(
+            livree,
+            produit=produits["CRO"],
+            quantite=5,
+            motif="Croissants écrasés dans le bac",
+            etat=EtatRetour.ABIME,
+        )
+        logistique.arriver_chez_client(partielle)
+        logistique.cloturer_livraison(
+            partielle,
+            Resultat.PARTIELLE,
+            quantites={
+                ligne: 25 if ligne.ligne_commande.produit.code == "CHO" else ligne.quantite_prevue
+                for ligne in partielle.lignes.select_related("ligne_commande__produit")
+            },
+            motif=MotifEchec.MARCHANDISE_MANQUANTE,
+            accord={"nom_client": "M. Kouadio", "moyen": MoyenAccord.ORAL},
+            receptionnaire_nom="M. Kouadio",
+        )
+        logistique.cloturer_livraison(
+            echec,
+            Resultat.ECHEC,
+            motif=MotifEchec.CLIENT_ABSENT,
+            commentaire="Magasin fermé à l'arrivée",
+        )
+        logistique.signaler_incident(
+            tournee, TypeIncident.PANNE, "Crevaison à Marcory, 20 minutes de retard"
+        )
+    return tournee
 
 
 def _vehicules():
