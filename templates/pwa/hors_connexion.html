@@ -1,0 +1,20 @@
+{% load static %}<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1c1b19">
+  <title>Hors connexion · ComandFlow</title>
+  <link rel="stylesheet" href="{% static 'css/comandflow.css' %}">
+</head>
+{% comment %}Page de repli du service worker (décision 8.4) : mise en cache à l'installation,
+sans donnée personnelle. Pas de travail hors connexion au MVP.{% endcomment %}
+<body>
+  <main class="mx-auto flex min-h-screen max-w-md flex-col gap-4 p-6">
+    <img src="{% static 'icones/comandflow-192.png' %}" alt="" width="64" height="64" class="rounded-xl">
+    <h1 class="text-[22px] font-semibold">Pas de connexion</h1>
+    <p>ComandFlow a besoin du réseau pour enregistrer une livraison ou un contrôle. Rien n'a été envoyé : reprenez dès que la connexion revient.</p>
+    <a href="/" class="bouton-principal h-12 text-white hover:text-white">Réessayer</a>
+  </main>
+</body>
+</html>

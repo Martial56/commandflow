@@ -4,6 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block titre %}Accueil{% endblock %} · ComandFlow</title>
+  <link rel="manifest" href="{% url 'noyau:manifeste' %}">
+  <meta name="theme-color" content="#1c1b19">
+  <link rel="apple-touch-icon" href="{% static 'icones/comandflow-180.png' %}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
   {% tailwind_css %}

@@ -1,4 +1,10 @@
 // Composants Alpine des écrans de terrain (maquettes 5 et 6).
+
+// Application installable (décision 8.4) : service worker servi à la racine (noyau/pwa.py).
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js"));
+}
+
 document.addEventListener("alpine:init", () => {
   // Joint la position du téléphone au formulaire si elle arrive en 5 secondes ; sinon le
   // formulaire part sans elle : le GPS n'est jamais bloquant (§13).
