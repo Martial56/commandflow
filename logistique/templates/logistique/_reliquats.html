@@ -1,0 +1,50 @@
+{% load format_fr %}
+{% comment %}Reliquats à planifier (décisions 8.4 et du 3 novembre 2026) : nouvelle date, ou solde
+validé par un autre responsable. Toutes dates confondues.{% endcomment %}
+<section aria-labelledby="titre-reliquats" class="flex flex-col gap-2.5 rounded-[10px] bg-[#FEF3C7] p-3.5">
+  <h2 id="titre-reliquats" class="flex justify-between text-[15px] font-semibold">Reliquats à planifier <span class="font-mono">{{ reliquats|length }}</span></h2>
+  {% for commande in reliquats %}
+    <div class="flex flex-col gap-1.5 rounded-lg border border-trait bg-white px-3 py-2.5 text-sm">
+      <strong class="font-semibold"><a href="{% url 'commande_detail' commande.pk %}">{{ commande.client.nom }}</a></strong>
+      <span class="text-texte-secondaire">{{ commande.numero }} · {% for reliquat in commande.restes %}{{ reliquat.quantite|quantite }} {{ reliquat.ligne_commande.produit.nom }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>
+      {% if commande.date_prevue %}<span class="text-[13px]">Prévu le {{ commande.date_prevue|date_courte }} : à affecter à une tournée de ce jour</span>{% endif %}
+
+      {% if commande.solde %}
+        <div class="flex flex-col gap-1.5 rounded-md border border-alerte-bordure bg-alerte-fond px-2.5 py-2 text-[13px]">
+          <span>Solde demandé par {{ commande.solde.demandee_par }} : {{ commande.solde.motif }}</span>
+          {% if commande.peut_decider_solde %}
+            <form method="post" action="{% url 'solde_decider' commande.solde.pk %}" class="flex gap-2">
+              {% csrf_token %}
+              <input type="hidden" name="retour" value="{{ date|date:'Y-m-d' }}">
+              <button type="submit" name="decision" value="accepter" class="h-8 cursor-pointer rounded-md bg-lien px-3 text-white">Accepter</button>
+              <button type="submit" name="decision" value="refuser" class="h-8 cursor-pointer rounded-md border border-bordure bg-white px-3">Refuser</button>
+            </form>
+          {% else %}
+            <span class="text-texte-secondaire">En attente d'un autre responsable.</span>
+          {% endif %}
+        </div>
+      {% else %}
+        {% if peut_planifier %}
+          <form method="post" action="{% url 'reliquat_planifier' commande.pk %}" class="flex flex-wrap items-center gap-2">
+            {% csrf_token %}
+            <label for="reliquat-date-{{ commande.pk }}" class="sr-only">Nouvelle date</label>
+            <input id="reliquat-date-{{ commande.pk }}" type="date" name="date" required value="{{ commande.date_prevue|default:demain|date:'Y-m-d' }}" class="h-[34px] rounded-md border border-bordure bg-white px-2 text-[13px]">
+            <button type="submit" class="h-[34px] cursor-pointer rounded-md border border-lien bg-white px-2.5 text-[13px] text-lien">{% if commande.date_prevue %}Changer la date{% else %}Planifier{% endif %}</button>
+          </form>
+        {% endif %}
+        {% if peut_solder %}
+          <details class="text-[13px]">
+            <summary class="cursor-pointer text-alerte">Solder le reliquat…</summary>
+            <form method="post" action="{% url 'reliquat_solder' commande.pk %}" class="mt-1.5 flex flex-col gap-1.5">
+              {% csrf_token %}
+              <input type="hidden" name="retour" value="{{ date|date:'Y-m-d' }}">
+              <label for="solde-motif-{{ commande.pk }}" class="sr-only">Motif</label>
+              <input id="solde-motif-{{ commande.pk }}" name="motif" required maxlength="255" placeholder="Pourquoi le reliquat n'est pas livré" class="h-9 rounded-md border border-bordure px-2">
+              <button type="submit" class="h-8 cursor-pointer self-start rounded-md border border-alerte-bordure bg-white px-3 text-alerte">Demander le solde</button>
+            </form>
+          </details>
+        {% endif %}
+      {% endif %}
+    </div>
+  {% endfor %}
+</section>

@@ -69,6 +69,10 @@ rules.add_perm(
     meme_entreprise & (livreur_affecte | a_le_role(Role.GESTIONNAIRE)),
 )
 rules.add_perm("logistique.decider_retour", responsable & meme_entreprise)
+# Reliquats (8.4) : le Gestionnaire fixe la nouvelle date ; le solde est demandé par un
+# responsable et décidé par un autre (`logistique.valider_exception`).
+rules.add_perm("logistique.planifier_reliquat", a_le_role(Role.GESTIONNAIRE) & meme_entreprise)
+rules.add_perm("logistique.solder_reliquat", responsable & meme_entreprise)
 
 # Véhicules et prestataires : administration Django, Direction et Gestionnaire (8.3).
 # Pas de suppression (désactivation).

@@ -873,7 +873,18 @@ class Reliquat(ModeleEntreprise, ModeleTrace):
     )
     quantite = models.DecimalField("quantité", **QUANTITE)
     nouvelle_date = models.DateField("nouvelle date", null=True, blank=True)
+    # Chargement de la tournée qui livre ce reliquat (vide tant qu'il n'est pas affecté).
+    chargement = models.ForeignKey(
+        Chargement,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="reliquats",
+        verbose_name="chargement",
+    )
     traite = models.BooleanField("traité", default=False)
+    # Soldé : le client renonce, avec la validation d'un autre responsable (8.4).
+    solde = models.BooleanField("soldé", default=False)
 
     class Meta:
         verbose_name = "reliquat"

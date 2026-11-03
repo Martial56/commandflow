@@ -81,13 +81,18 @@ def _sommes_par_produit(plan, statuts):
 def recalculer_besoin(plan):
     """Recalcule les besoins du plan à partir des commandes et des saisies.
 
-    - commandé : commandes confirmées non annulées de la date ;
+    - commandé : commandes confirmées non annulées de la date, et reliquats planifiés ;
     - à produire : égal au commandé pour un nouveau besoin ; ensuite, la marge fixée
       par le responsable est conservée (8.2) ;
     - produit : cumul des saisies non annulées ; réservé : commandes prêtes et au-delà.
     """
+    from logistique.etat import reliquats_par_produit
+
     plan = PlanProduction.objects.select_for_update().get(pk=plan.pk)
     commandes = _sommes_par_produit(plan, STATUTS_PLANIFIES)
+    # Reliquats planifiés à cette date (décision du 3 novembre 2026).
+    for produit_id, quantite in reliquats_par_produit(plan.date_livraison).items():
+        commandes[produit_id] = commandes.get(produit_id, ZERO) + quantite
     reserves = _sommes_par_produit(plan, STATUTS_RESERVES)
     produites = dict(
         SaisieProduction.objects.filter(besoin__plan=plan, annulee=False)

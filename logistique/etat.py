@@ -6,7 +6,7 @@ from django.contrib.contenttypes.models import ContentType
 
 from noyau.models import Validation
 
-from .models import Chargement, StatutChargement
+from .models import Chargement, StatutChargement, StatutLivraison
 
 
 def exceptions(chargement, objet, *decisions):
@@ -55,10 +55,27 @@ def recapitulatif(tournee):
     }
 
 
+# Livraison traitée : le chargement n'est plus « en cours » (la commande peut être relancée
+# ou son reliquat chargé dans une autre tournée).
+STATUTS_LIVRAISON_TRAITEE = [
+    StatutLivraison.LIVREE,
+    StatutLivraison.PARTIELLEMENT_LIVREE,
+    StatutLivraison.ECHOUEE,
+    StatutLivraison.REPORTEE,
+]
+
+
+def chargements_en_cours():
+    """Chargements dans une tournée, non retirés, dont la livraison n'est pas traitée."""
+    return Chargement.objects.exclude(statut=StatutChargement.RETIRE).exclude(
+        livraison__statut__in=STATUTS_LIVRAISON_TRAITEE
+    )
+
+
 def chargement_actif(commande):
     return (
-        Chargement.objects.filter(commande=commande)
-        .exclude(statut=StatutChargement.RETIRE)
+        chargements_en_cours()
+        .filter(commande=commande)
         .select_related("tournee")
         .order_by("-pk")
         .first()
@@ -116,3 +133,18 @@ def reliquats_ouverts(commande):
     from .models import Reliquat
 
     return Reliquat.objects.filter(commande_origine=commande, traite=False)
+
+
+def reliquats_par_produit(date_livraison):
+    """Reliquats planifiés à cette date, non soldés : comptés dans le « commandé » du plan
+    de production (décision du 3 novembre 2026)."""
+    from django.db.models import Sum
+
+    from .models import Reliquat
+
+    return dict(
+        Reliquat.objects.filter(nouvelle_date=date_livraison, solde=False)
+        .values("ligne_commande__produit")
+        .annotate(total=Sum("quantite"))
+        .values_list("ligne_commande__produit", "total")
+    )

@@ -22,4 +22,7 @@ urlpatterns = [
     path("livraisons/<int:pk>/reporter/", views.reporter, name="livraison_reporter"),
     path("livraisons/<int:pk>/abandon/", views.demander_abandon, name="livraison_abandon"),
     path("saisies/<int:pk>/decider/", views.decider_livraison, name="livraison_decider"),
+    path("reliquats/<int:pk>/planifier/", views.planifier_reliquat, name="reliquat_planifier"),
+    path("reliquats/<int:pk>/solder/", views.demander_solde, name="reliquat_solder"),
+    path("soldes/<int:pk>/decider/", views.decider_solde, name="solde_decider"),
 ]

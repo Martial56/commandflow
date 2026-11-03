@@ -6,12 +6,13 @@ le fragment `_tableau.html`. Chaque action appelle un service de `logistique.ser
 
 import datetime
 from collections import Counter, defaultdict
+from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db.models import Prefetch, Q, Sum
+from django.db.models import Prefetch, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -19,7 +20,7 @@ from django.views.decorators.http import require_POST
 
 from catalogue.models import Produit
 from commandes import services as commandes
-from commandes.models import Commande, Statut
+from commandes.models import Commande, LigneCommande, Statut
 from comptes.models import Role, Utilisateur
 from noyau.contexte import entreprise_obligatoire
 from noyau.models import Validation
@@ -36,6 +37,7 @@ from .models import (
     LigneLivraison,
     Livraison,
     Prestataire,
+    Reliquat,
     Retour,
     StatutChargement,
     StatutLivraison,
@@ -133,6 +135,7 @@ def _suivi(tournees):
         object_id__in=[livraison.pk for livraison in livraisons.values()],
         action=Validation.Action.EXCEPTION,
         decision=Validation.Decision.EN_ATTENTE,
+        contenu__objet="livraison",
     ).select_related("demandee_par"):
         saisies[demande.object_id].append(demande)
     abandons = defaultdict(list)  # demandes d'abandon des commandes en anomalie
@@ -232,14 +235,64 @@ def _tournees(date, utilisateur):
     return tournees
 
 
+def _pieces(affectables, date):
+    """Pièces à charger : la commande entière, ou son reliquat planifié ce jour-là."""
+    reliquats = defaultdict(Decimal)
+    for reliquat in Reliquat.objects.filter(
+        commande_origine__in=affectables, traite=False, nouvelle_date=date
+    ):
+        reliquats[reliquat.commande_origine_id] += reliquat.quantite
+    totaux = dict(
+        LigneCommande.objects.filter(commande__in=affectables, retiree=False)
+        .values("commande")
+        .annotate(total=Sum("quantite"))
+        .values_list("commande", "total")
+    )
+    for commande in affectables:
+        commande.reliquat = commande.statut == Statut.PARTIELLEMENT_LIVREE
+        commande.pieces = reliquats[commande.pk] if commande.reliquat else totaux.get(commande.pk)
+
+
+def _reliquats_a_planifier(utilisateur):
+    """Commandes dont le reliquat est ouvert et hors tournée (décision 8.4) : produits
+    restants, date prévue, demande de solde en attente."""
+    commandes = {}
+    for reliquat in (
+        Reliquat.objects.filter(traite=False, chargement__isnull=True)
+        .select_related("commande_origine__client", "ligne_commande__produit")
+        .order_by("commande_origine__numero", "pk")
+    ):
+        commande = commandes.setdefault(reliquat.commande_origine_id, reliquat.commande_origine)
+        commande.restes = [*getattr(commande, "restes", []), reliquat]
+        commande.date_prevue = reliquat.nouvelle_date
+        commande.livraison_id = reliquat.livraison_id
+    soldes = {
+        demande.contenu.get("commande"): demande
+        for demande in Validation.objects.filter(
+            content_type=ContentType.objects.get_for_model(Livraison),
+            action=Validation.Action.EXCEPTION,
+            decision=Validation.Decision.EN_ATTENTE,
+            contenu__objet="solde_reliquat",
+        ).select_related("demandee_par")
+    }
+    peut_decider = utilisateur.has_perm("logistique.valider_exception")
+    for commande in commandes.values():
+        commande.solde = soldes.get(commande.pk)
+        commande.peut_decider_solde = (
+            commande.solde is not None
+            and peut_decider
+            and commande.solde.demandee_par_id != utilisateur.pk
+        )
+    return list(commandes.values())
+
+
 @login_required
 def tableau(request):
     """Tournées d'une date (maquette 14), rafraîchies toutes les 30 secondes."""
     _exiger(request, "ecrans.tournees")
     date = _date(request.GET.get("date"))
-    affectables = services.commandes_affectables(date).annotate(
-        pieces=Sum("lignes__quantite", filter=Q(lignes__retiree=False))
-    )
+    affectables = list(services.commandes_affectables(date))
+    _pieces(affectables, date)
     tournees = _tournees(date, request.user)
     contexte = {
         "date": date,
@@ -254,6 +307,10 @@ def tableau(request):
         "heure": timezone.localtime(),
         "etats_retour": EtatRetour.choices,
         "decisions_retour": DecisionRetour.choices,
+        "reliquats": _reliquats_a_planifier(request.user),
+        "peut_planifier": request.user.has_perm("logistique.planifier_reliquat"),
+        "peut_solder": request.user.has_perm("logistique.solder_reliquat"),
+        "demain": timezone.localdate() + datetime.timedelta(days=1),
     }
     if request.headers.get("HX-Request"):
         return render(request, "logistique/_tableau.html", contexte)
@@ -516,3 +573,56 @@ def decider_livraison(request, pk):
     else:
         messages.success(request, "Livraison validée." if accepter else "Saisie refusée.")
     return _retour(date)
+
+
+# --- Reliquats (décisions 8.4 et du 3 novembre 2026) ------------------------------------
+
+
+@login_required
+@require_POST
+def planifier_reliquat(request, pk):
+    """Nouvelle date du reliquat : il entre au plan de production et devient affectable."""
+    _exiger(request, "ecrans.tournees")
+    commande = get_object_or_404(Commande, pk=pk)
+    date = _date(request.POST.get("date")) if request.POST.get("date") else None
+    return _executer(
+        request,
+        date or timezone.localdate(),
+        lambda: services.planifier_reliquat(commande, date),
+        f"Reliquat de {commande} planifié : il est à affecter à une tournée de ce jour.",
+    )
+
+
+@login_required
+@require_POST
+def demander_solde(request, pk):
+    _exiger(request, "ecrans.tournees")
+    commande = get_object_or_404(Commande, pk=pk)
+    return _executer(
+        request,
+        _date(request.POST.get("retour")),
+        lambda: services.demander_solde_reliquat(commande, request.POST.get("motif", "")),
+        "Solde demandé : un autre responsable doit le valider.",
+    )
+
+
+@login_required
+@require_POST
+def decider_solde(request, pk):
+    _exiger(request, "ecrans.tournees")
+    demande = get_object_or_404(
+        Validation,
+        pk=pk,
+        content_type=ContentType.objects.get_for_model(Livraison),
+        decision=Validation.Decision.EN_ATTENTE,
+    )
+    accepter = request.POST.get("decision") == "accepter"
+    try:
+        services.decider_solde_reliquat(demande, accepter=accepter)
+    except (services.ActionImpossible, ValidationPropreDemande) as erreur:
+        messages.error(request, str(erreur))
+    else:
+        messages.success(
+            request, "Reliquat soldé : la commande est livrée." if accepter else "Solde refusé."
+        )
+    return _retour(_date(request.POST.get("retour")))

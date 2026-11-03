@@ -89,6 +89,7 @@ def _contexte(tournee):
             object_id__in=[livraison.pk for livraison in livraisons],
             action=Validation.Action.EXCEPTION,
             decision=Validation.Decision.EN_ATTENTE,
+            contenu__objet="livraison",
         ).values_list("object_id", flat=True)
     )
     retours = Counter(

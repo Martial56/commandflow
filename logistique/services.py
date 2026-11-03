@@ -12,7 +12,7 @@ from decimal import Decimal, InvalidOperation
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
 from django.db import models, transaction
-from django.db.models import Max
+from django.db.models import Max, Q
 from django.utils import timezone
 from django_fsm import can_proceed
 
@@ -28,7 +28,13 @@ from noyau.services import (
     prochain_numero,
 )
 
-from .etat import exceptions, preuves_manquantes
+from .etat import (
+    STATUTS_LIVRAISON_TRAITEE,
+    chargements_en_cours,
+    exceptions,
+    preuves_manquantes,
+    reliquats_ouverts,
+)
 from .models import (
     AccordClient,
     Chargement,
@@ -60,8 +66,6 @@ STATUTS_MODIFIABLES = [
     StatutTournee.EN_CHARGEMENT,
     StatutTournee.DEPART_AUTORISE,
 ]
-# Chargement encore dans sa tournée (tout sauf « Retiré »).
-STATUTS_CHARGEMENT_ACTIFS = [s for s in StatutChargement.values if s != StatutChargement.RETIRE]
 
 
 class ActionImpossible(Exception):
@@ -180,10 +184,19 @@ def changer_livreur(tournee, *, chauffeur=None, prestataire=None, vehicule=None)
 
 
 def commandes_affectables(date):
-    """Commandes « Prête au chargement » de la date, sans chargement actif (8.3)."""
+    """Commandes « Prête au chargement » de la date (8.3), et commandes partiellement
+    livrées dont le reliquat est planifié ce jour-là (décisions du 3 novembre 2026) ;
+    aucune n'est déjà dans une tournée en cours."""
+    reliquat = Q(
+        statut=Statut.PARTIELLEMENT_LIVREE,
+        reliquats__traite=False,
+        reliquats__chargement__isnull=True,
+        reliquats__nouvelle_date=date,
+    )
     return (
-        Commande.objects.filter(statut=Statut.PRETE_CHARGEMENT, date_livraison=date)
-        .exclude(chargements__statut__in=STATUTS_CHARGEMENT_ACTIFS)
+        Commande.objects.filter(Q(statut=Statut.PRETE_CHARGEMENT, date_livraison=date) | reliquat)
+        .exclude(pk__in=chargements_en_cours().values("commande"))
+        .distinct()
         .select_related("client", "adresse")
         .order_by("creneau", "adresse__commune", "numero")
     )
@@ -196,23 +209,44 @@ def affecter_commande(tournee, commande):
     _exiger("logistique.gerer_tournee", tournee)
     _exiger_modifiable(tournee)
     commande = Commande.objects.select_for_update().get(pk=commande.pk)
-    if commande.statut != Statut.PRETE_CHARGEMENT:
+    reliquats = []
+    if commande.statut == Statut.PARTIELLEMENT_LIVREE:
+        # Reliquat planifié ce jour-là : seules ses quantités sont attendues (3 novembre).
+        reliquats = list(
+            reliquats_ouverts(commande)
+            .select_for_update()
+            .filter(chargement__isnull=True, nouvelle_date=tournee.date)
+            .order_by("pk")
+        )
+        if not reliquats:
+            raise ActionImpossible(f"{commande} : aucun reliquat à livrer le jour de la tournée.")
+    elif commande.statut != Statut.PRETE_CHARGEMENT:
         raise ActionImpossible(
             f"{commande} n'est pas prête au chargement ({commande.get_statut_display()})."
         )
-    if commande.date_livraison != tournee.date:
+    elif commande.date_livraison != tournee.date:
         raise ActionImpossible(f"{commande} n'est pas à livrer le jour de la tournée.")
-    if commande.chargements.filter(statut__in=STATUTS_CHARGEMENT_ACTIFS).exists():
+    if chargements_en_cours().filter(commande=commande).exists():
         raise ActionImpossible(f"{commande} est déjà affectée à une tournée.")
 
     dernier = tournee.chargements_actifs().aggregate(Max("ordre_passage"))["ordre_passage__max"]
     chargement = Chargement.objects.create(
         tournee=tournee, commande=commande, ordre_passage=(dernier or 0) + 1
     )
-    for ligne in commande.lignes_actives.order_by("pk"):
-        LigneChargement.objects.create(
-            chargement=chargement, ligne_commande=ligne, quantite_attendue=ligne.quantite
-        )
+    if reliquats:
+        for reliquat in reliquats:
+            LigneChargement.objects.create(
+                chargement=chargement,
+                ligne_commande_id=reliquat.ligne_commande_id,
+                quantite_attendue=reliquat.quantite,
+            )
+            reliquat.chargement = chargement
+            reliquat.save()
+    else:
+        for ligne in commande.lignes_actives.order_by("pk"):
+            LigneChargement.objects.create(
+                chargement=chargement, ligne_commande=ligne, quantite_attendue=ligne.quantite
+            )
     actualiser_tournee(tournee)
     return chargement
 
@@ -232,6 +266,9 @@ def retirer_commande(chargement):
         raise ActionImpossible("Tournée partie : elle ne peut plus être modifiée.")
     chargement.retirer()
     chargement.save()
+    for reliquat in Reliquat.objects.filter(chargement=chargement):
+        reliquat.chargement = None  # le reliquat redevient affectable
+        reliquat.save()
     _numeroter(tournee, tournee.chargements_actifs().order_by("ordre_passage", "pk"))
     actualiser_tournee(tournee)
     return chargement
@@ -553,13 +590,16 @@ def demarrer_tournee(tournee):
     chargements = list(tournee.chargements_actifs().select_related("commande"))
     for chargement in chargements:
         commande = Commande.objects.select_for_update().get(pk=chargement.commande_id)
-        if not can_proceed(commande.partir_en_livraison):
+        if commande.statut == Statut.PARTIELLEMENT_LIVREE and chargement.reliquats.exists():
+            pass  # livraison d'un reliquat : la commande reste partiellement livrée (§4)
+        elif not can_proceed(commande.partir_en_livraison):
             raise ActionImpossible(
                 f"{commande} est au statut « {commande.get_statut_display()} » : "
                 "la retirer de la tournée."
             )
-        commande.partir_en_livraison()
-        commande.save()
+        else:
+            commande.partir_en_livraison()
+            commande.save()
         livraison = Livraison.objects.create(chargement=chargement, commande=commande)
         retenues = chargement.quantites_retenues()
         for ligne in chargement.lignes.all():
@@ -594,12 +634,6 @@ class Resultat(models.TextChoices):
 
 
 LIBELLES_PREUVE = dict(TypePreuve.choices)
-STATUTS_LIVRAISON_TRAITEE = [
-    StatutLivraison.LIVREE,
-    StatutLivraison.PARTIELLEMENT_LIVREE,
-    StatutLivraison.ECHOUEE,
-    StatutLivraison.REPORTEE,
-]
 
 
 def _verrouiller_livraison(livraison):
@@ -742,18 +776,56 @@ def _appliquer_saisie(livraison, saisie):
     )
 
 
+def _creer_reliquats(livraison, commande):
+    for ligne in livraison.lignes.all():
+        if ligne.manque > 0:
+            Reliquat.objects.create(
+                commande_origine=commande,
+                livraison=livraison,
+                ligne_commande_id=ligne.ligne_commande_id,
+                quantite=ligne.manque,
+            )
+
+
+def _terminer_si_fini(livraison):
+    tournee = Tournee.objects.select_for_update().get(pk=livraison.chargement.tournee_id)
+    if can_proceed(tournee.terminer):
+        tournee.terminer()
+        tournee.save()
+
+
+def _apres_reliquat(livraison, commande, reliquats):
+    """Livraison d'un reliquat (décisions du 3 novembre 2026) : livré, la commande passe
+    « Livrée » ; partiel, un nouveau reliquat remplace l'ancien ; échec, il reste ouvert
+    et le gestionnaire fixe une nouvelle date ou le solde."""
+    if livraison.statut == StatutLivraison.ECHOUEE:
+        for reliquat in reliquats:
+            reliquat.chargement, reliquat.nouvelle_date = None, None
+            reliquat.save()
+        return commande
+    for reliquat in reliquats:
+        reliquat.traite = True
+        reliquat.save()
+    if livraison.statut == StatutLivraison.PARTIELLEMENT_LIVREE:
+        _creer_reliquats(livraison, commande)
+    elif can_proceed(commande.cloturer_reliquat):
+        commande.cloturer_reliquat()
+        commande.save()
+    return commande
+
+
 def _apres_livraison(livraison):
     """Cascade (§7) : reliquat, statut de la commande, fin de tournée."""
     commande = Commande.objects.select_for_update().get(pk=livraison.commande_id)
+    reliquats = list(
+        Reliquat.objects.select_for_update().filter(chargement_id=livraison.chargement_id)
+    )
+    if reliquats:
+        _apres_reliquat(livraison, commande, reliquats)
+        _terminer_si_fini(livraison)
+        return commande
     if livraison.statut == StatutLivraison.PARTIELLEMENT_LIVREE:
-        for ligne in livraison.lignes.all():
-            if ligne.manque > 0:
-                Reliquat.objects.create(
-                    commande_origine=commande,
-                    livraison=livraison,
-                    ligne_commande_id=ligne.ligne_commande_id,
-                    quantite=ligne.manque,
-                )
+        _creer_reliquats(livraison, commande)
     transition = {
         StatutLivraison.LIVREE: "cloturer_livree",
         StatutLivraison.PARTIELLEMENT_LIVREE: "cloturer_partielle",
@@ -767,10 +839,7 @@ def _apres_livraison(livraison):
         )
     methode()
     commande.save()
-    tournee = Tournee.objects.select_for_update().get(pk=livraison.chargement.tournee_id)
-    if can_proceed(tournee.terminer):
-        tournee.terminer()
-        tournee.save()
+    _terminer_si_fini(livraison)
     return commande
 
 
@@ -838,12 +907,15 @@ def cloturer_livraison(
     return livraison
 
 
-def _exceptions_livraison(livraison, *decisions):
+def _exceptions_livraison(livraison, *decisions, objet="livraison"):
+    """Demandes sur une livraison : « livraison » (saisie pour un prestataire sans
+    compte) ou « solde_reliquat »."""
     return Validation.objects.filter(
         content_type=ContentType.objects.get_for_model(Livraison),
         object_id=livraison.pk,
         action=Validation.Action.EXCEPTION,
         decision__in=decisions,
+        contenu__objet=objet,
     )
 
 
@@ -853,6 +925,8 @@ def decider_livraison_prestataire(validation, *, accepter):
     compte (8.4). Acceptée : la saisie est appliquée, avec sa cascade."""
     livraison = _verrouiller_livraison(validation.objet)
     _exiger("logistique.valider_exception", livraison.chargement)
+    if (validation.contenu or {}).get("objet") != "livraison":
+        raise ActionImpossible("Cette demande ne porte pas sur une saisie de livraison.")
     validation = decider_validation(validation, accepter=accepter)
     if not accepter:
         return validation
@@ -949,3 +1023,96 @@ def signaler_incident(tournee, type, commentaire=""):
     if type not in TypeIncident.values:
         raise ActionImpossible("Choisir le type d'incident.")
     return Incident.objects.create(tournee=tournee, type=type, commentaire=commentaire.strip())
+
+
+# --- Reliquats (§12.3, décisions 8.4 et du 3 novembre 2026) --------------------------------
+
+
+def _recalculer_plans(*dates):
+    """Besoins des plans de ces dates recalculés (le reliquat compte dans le commandé)."""
+    from production.models import PlanProduction
+    from production.services import plan_verrouille, recalculer_besoin
+
+    for date in sorted(set(dates) - {None}):
+        plan = PlanProduction.objects.filter(date_livraison=date, creneau="").first()
+        if plan is None and date >= timezone.localdate():
+            plan = plan_verrouille(date)
+        if plan is not None:
+            recalculer_besoin(plan)
+
+
+def _reliquats_libres(commande):
+    """Reliquats ouverts de la commande, verrouillés, hors de toute tournée."""
+    reliquats = list(reliquats_ouverts(commande).select_for_update().order_by("pk"))
+    if not reliquats:
+        raise ActionImpossible(f"{commande} n'a pas de reliquat à livrer.")
+    if any(reliquat.chargement_id for reliquat in reliquats):
+        raise ActionImpossible("Reliquat dans une tournée : le retirer de la tournée d'abord.")
+    return reliquats
+
+
+@transaction.atomic
+def planifier_reliquat(commande, date):
+    """Le gestionnaire fixe la nouvelle date du reliquat : il entre dans le plan de
+    production de ce jour, puis devient affectable aux tournées de ce jour (8.4)."""
+    commande = Commande.objects.select_for_update().get(pk=commande.pk)
+    _exiger("logistique.planifier_reliquat", commande)
+    if date is None or date < timezone.localdate():
+        raise ActionImpossible("Choisir une date de livraison, à partir d'aujourd'hui.")
+    reliquats = _reliquats_libres(commande)
+    anciennes = {reliquat.nouvelle_date for reliquat in reliquats}
+    for reliquat in reliquats:
+        reliquat.nouvelle_date = date
+        reliquat.save()
+    _recalculer_plans(date, *anciennes)
+    return reliquats
+
+
+def _livraison_du_reliquat(reliquats):
+    # Les reliquats ouverts d'une commande viennent tous de sa dernière livraison partielle.
+    return Livraison.objects.select_related("chargement").get(pk=reliquats[-1].livraison_id)
+
+
+@transaction.atomic
+def demander_solde_reliquat(commande, motif):
+    """Le client renonce au reliquat : motif, puis validation d'un autre responsable (8.4)."""
+    commande = Commande.objects.select_for_update().get(pk=commande.pk)
+    _exiger("logistique.solder_reliquat", commande)
+    reliquats = _reliquats_libres(commande)
+    if not (motif or "").strip():
+        raise ActionImpossible("Indiquer pourquoi le reliquat n'est pas livré.")
+    livraison = _livraison_du_reliquat(reliquats)
+    if _exceptions_livraison(
+        livraison, Validation.Decision.EN_ATTENTE, objet="solde_reliquat"
+    ).exists():
+        raise ActionImpossible("Une demande de solde attend déjà la décision d'un responsable.")
+    return demander_validation(
+        livraison,
+        Validation.Action.EXCEPTION,
+        motif=motif.strip(),
+        contenu={"objet": "solde_reliquat", "commande": commande.pk},
+    )
+
+
+@transaction.atomic
+def decider_solde_reliquat(validation, *, accepter):
+    """Acceptée : les reliquats ouverts sont soldés et la commande passe « Livrée »."""
+    livraison = Livraison.objects.select_related("chargement").get(pk=validation.object_id)
+    _exiger("logistique.valider_exception", livraison.chargement)
+    if (validation.contenu or {}).get("objet") != "solde_reliquat":
+        raise ActionImpossible("Cette demande ne porte pas sur un reliquat.")
+    validation = decider_validation(validation, accepter=accepter)
+    if not accepter:
+        return validation
+    commande = Commande.objects.select_for_update().get(pk=validation.contenu["commande"])
+    reliquats = _reliquats_libres(commande)
+    dates = {reliquat.nouvelle_date for reliquat in reliquats}
+    for reliquat in reliquats:
+        reliquat.traite, reliquat.solde = True, True
+        reliquat.save()
+    if not can_proceed(commande.cloturer_reliquat):
+        raise ActionImpossible("Demande dépassée : la commande a changé depuis ; la refuser.")
+    commande.cloturer_reliquat()
+    commande.save()
+    _recalculer_plans(*dates)
+    return validation
