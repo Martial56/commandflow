@@ -1,16 +1,20 @@
-"""Tournée en cours du livreur, sur téléphone (maquette 5).
+"""Tournée en cours et preuve de livraison du livreur, sur téléphone (maquettes 5 et 6).
 
 Une fois la tournée partie, « Ma tournée » montre la progression, le prochain arrêt
 (« Je suis arrivé », itinéraire, preuve attendue), les arrêts à venir et ceux déjà
-traités ; le livreur peut signaler un incident (décision 8.4). Un livreur ne voit jamais
-la tournée d'un autre (§22-25).
+traités ; le livreur peut signaler un incident (décision 8.4). À l'arrêt, il saisit le
+résultat, les quantités livrées et la preuve (maquette 6). Un livreur ne voit jamais la
+tournée d'un autre (§22-25).
 """
 
+import base64
+import binascii
 from urllib.parse import quote
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.contenttypes.models import ContentType
+from django.core.files.base import ContentFile
 from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
@@ -20,8 +24,15 @@ from entreprises.parametres import preuves_obligatoires
 from noyau.models import Validation
 
 from . import services
-from .models import LigneLivraison, Livraison, StatutLivraison, TypeIncident
-from .services import STATUTS_LIVRAISON_TRAITEE, libelle_exigences
+from .models import (
+    LigneLivraison,
+    Livraison,
+    MotifEchec,
+    MoyenAccord,
+    StatutLivraison,
+    TypeIncident,
+)
+from .services import STATUTS_LIVRAISON_TRAITEE, Resultat, libelle_exigences
 from .views_reception import _tournee
 
 PASTILLES = {
@@ -124,7 +135,8 @@ def arriver(request, pk):
         )
     except services.ActionImpossible as erreur:
         messages.error(request, str(erreur))
-    return redirect("reception_tournee", tournee.pk)
+        return redirect("reception_tournee", tournee.pk)
+    return redirect("livraison_saisie", livraison.pk)
 
 
 @login_required
@@ -141,3 +153,147 @@ def incident(request, pk):
     else:
         messages.success(request, "Incident signalé au gestionnaire.")
     return redirect("reception_tournee", tournee.pk)
+
+
+# --- Preuve de livraison (maquette 6) ----------------------------------------------------
+
+# Les quatre choix de la maquette 6 ; « Refusée » ouvre la liste des motifs du §12.3 (8.4).
+RESULTATS = [
+    ("livree", "Livrée"),
+    ("partielle", "Partielle"),
+    ("refusee", "Refusée"),
+    ("client_absent", "Client absent"),
+]
+MOTIFS_REFUS = [(v, libelle) for v, libelle in MotifEchec.choices if v != MotifEchec.CLIENT_ABSENT]
+TAILLE_MAX_PHOTO = 15 * 1024 * 1024
+TAILLE_MAX_SIGNATURE = 512 * 1024
+ENTETE_SIGNATURE = "data:image/png;base64,"
+MESSAGES_RESULTAT = {
+    StatutLivraison.LIVREE: "Livraison enregistrée.",
+    StatutLivraison.PARTIELLEMENT_LIVREE: "Livraison partielle enregistrée : le reliquat est noté.",
+    StatutLivraison.ECHOUEE: "Échec enregistré : le gestionnaire est prévenu.",
+}
+
+
+class SaisieInvalide(Exception):
+    """Formulaire illisible (photo, signature, résultat) : message affiché tel quel."""
+
+
+def _photo(fichier):
+    if not fichier:
+        return None
+    if not (getattr(fichier, "content_type", "") or "").startswith("image/"):
+        raise SaisieInvalide("La photo du bordereau doit être une image.")
+    if fichier.size > TAILLE_MAX_PHOTO:
+        raise SaisieInvalide("Photo trop lourde (15 Mo au plus).")
+    return fichier
+
+
+def _signature(donnee):
+    """Signature dessinée à l'écran (signature_pad), reçue en PNG encodé."""
+    if not donnee:
+        return None
+    illisible = SaisieInvalide("Signature illisible : la refaire.")
+    if not donnee.startswith(ENTETE_SIGNATURE) or len(donnee) > TAILLE_MAX_SIGNATURE:
+        raise illisible
+    try:
+        contenu = base64.b64decode(donnee[len(ENTETE_SIGNATURE) :], validate=True)
+    except (binascii.Error, ValueError):
+        raise illisible from None
+    if not contenu.startswith(b"\x89PNG"):
+        raise illisible
+    return ContentFile(contenu, name="signature.png")
+
+
+def _lire_saisie(request, livraison):
+    """Formulaire de la maquette 6 → arguments de `services.cloturer_livraison`."""
+    donnees = request.POST
+    choix = donnees.get("resultat", "")
+    if choix == "livree":
+        resultat, motif = Resultat.LIVREE, ""
+    elif choix == "partielle":
+        resultat, motif = Resultat.PARTIELLE, donnees.get("motif_partielle", "")
+    elif choix == "refusee":
+        resultat, motif = Resultat.ECHEC, donnees.get("motif_refus", "")
+    elif choix == "client_absent":
+        resultat, motif = Resultat.ECHEC, MotifEchec.CLIENT_ABSENT
+    else:
+        raise SaisieInvalide("Choisir le résultat de la livraison.")
+    arguments = {
+        "motif": motif,
+        "latitude": donnees.get("latitude"),
+        "longitude": donnees.get("longitude"),
+        "receptionnaire_nom": donnees.get("receptionnaire_nom", ""),
+        "numero_bordereau": donnees.get("numero_bordereau", ""),
+        "commentaire": donnees.get("commentaire", ""),
+        "photo": _photo(request.FILES.get("photo")),
+        "signature": _signature(donnees.get("signature", "")),
+    }
+    if resultat != Resultat.ECHEC:
+        arguments["quantites"] = {
+            ligne.pk: donnees.get(f"livre-{ligne.pk}", "").strip().replace(",", ".")
+            for ligne in livraison.lignes.all()
+        }
+    if resultat == Resultat.PARTIELLE:
+        arguments["accord"] = {
+            "nom_client": donnees.get("accord_nom", ""),
+            "moyen": donnees.get("accord_moyen", ""),
+        }
+    return resultat, arguments
+
+
+@login_required
+def saisir(request, pk):
+    """Résultat, quantités livrées et preuve d'un arrêt (maquette 6)."""
+    livraison = get_object_or_404(
+        Livraison.objects.select_related(
+            "chargement__tournee", "commande__client", "commande__adresse"
+        ),
+        pk=pk,
+    )
+    tournee = _tournee(request, livraison.chargement.tournee_id)
+    if livraison.statut not in (StatutLivraison.EN_ATTENTE, StatutLivraison.SUR_PLACE):
+        messages.info(request, f"Arrêt déjà traité ({livraison.get_statut_display()}).")
+        return redirect("reception_tournee", tournee.pk)
+    erreur = ""
+    if request.method == "POST":
+        try:
+            resultat, arguments = _lire_saisie(request, livraison)
+            livraison = services.cloturer_livraison(livraison, resultat, **arguments)
+        except (SaisieInvalide, services.ActionImpossible) as exception:
+            erreur = str(exception)
+        else:
+            messages.success(
+                request,
+                MESSAGES_RESULTAT.get(
+                    livraison.statut, "Saisie enregistrée : un autre responsable doit la valider."
+                ),
+            )
+            return redirect("reception_tournee", tournee.pk)
+
+    lignes = livraison.lignes.select_related("ligne_commande__produit").order_by("pk")
+    return render(
+        request,
+        "logistique/livraison.html",
+        {
+            "livraison": livraison,
+            "tournee": tournee,
+            "lignes": [
+                (
+                    ligne,
+                    request.POST.get(f"livre-{ligne.pk}", f"{ligne.quantite_prevue.normalize():f}"),
+                )
+                for ligne in lignes
+            ],
+            "arrets": Livraison.objects.filter(chargement__tournee=tournee).count(),
+            "itineraire": lien_itineraire(livraison.commande.adresse),
+            "preuve": preuve_attendue(livraison.commande),
+            "resultats": RESULTATS,
+            "motifs_refus": MOTIFS_REFUS,
+            "moyens_accord": MoyenAccord.choices,
+            "valeurs": request.POST,
+            "erreur": erreur,
+            "pour_le_prestataire": tournee.compte_livreur is None,
+        },
+        status=400 if erreur else 200,
+    )

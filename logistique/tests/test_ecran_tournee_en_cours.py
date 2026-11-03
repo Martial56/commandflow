@@ -107,7 +107,7 @@ def test_je_suis_arrive(chauffeur, tournee_partie):
         reverse("livraison_arriver", args=[premiere.pk]),
         {"latitude": "5.3364", "longitude": "-4.0267"},
     )
-    assert reponse.url == reverse("reception_tournee", args=[tournee.pk])
+    assert reponse.url == reverse("livraison_saisie", args=[premiere.pk])
     premiere.refresh_from_db()
     assert premiere.statut == StatutLivraison.SUR_PLACE
     assert premiere.latitude == Decimal("5.336400")

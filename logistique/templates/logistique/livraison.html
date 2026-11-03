@@ -1,0 +1,110 @@
+{% extends "base_terrain.html" %}
+{% load static format_fr %}
+{% comment %}Preuve de livraison (maquette 6) : résultat, quantités livrées, preuve, accord client si partielle, motif si échec.
+Heure et position enregistrées à la validation.{% endcomment %}
+{% block titre %}Preuve de livraison{% endblock %}
+{% block scripts %}<script src="{% static 'vendor/signature_pad-5.0.4.min.js' %}" defer></script>{{ block.super }}{% endblock %}
+{% block sur_titre %}Arrêt {{ livraison.chargement.ordre_passage }} sur {{ arrets }} · {{ livraison.commande.numero }}{% if pour_le_prestataire %} · {{ tournee.livreur }} (saisie par {{ user }}){% endif %}{% endblock %}
+{% block titre_terrain %}{{ livraison.commande.client.nom }}{% endblock %}
+{% block entete %}<a href="{{ itineraire }}" target="_blank" rel="noopener" class="inline-flex min-h-8 items-center text-sm text-[#BFDBFE] hover:text-white">Ouvrir l'itinéraire</a>{% endblock %}
+{% block contenu %}
+{% include "composants/messages.html" %}
+{% if erreur %}<p role="alert" class="rounded-md border border-alerte-bordure bg-alerte-fond px-3 py-2 text-sm text-alerte">{{ erreur }}</p>{% endif %}
+<form method="post" enctype="multipart/form-data" class="flex flex-1 flex-col gap-3"
+      x-data="livraison('{{ valeurs.resultat|default:'livree'|escapejs }}')"
+      x-on:submit.prevent="envoyer($el)">
+  {% csrf_token %}
+  <input type="hidden" name="latitude"><input type="hidden" name="longitude">
+
+  <fieldset class="grid grid-cols-2 gap-2">
+    <legend class="pb-2 text-sm font-semibold">Résultat</legend>
+    {% for valeur, libelle in resultats %}
+      <label class="flex min-h-12 cursor-pointer items-center gap-2 rounded-lg px-3"
+             x-bind:class="resultat === '{{ valeur }}' ? 'border-2 border-lien bg-[#DBEAFE] font-semibold' : 'border border-bordure bg-white'">
+        <input type="radio" name="resultat" value="{{ valeur }}" x-model="resultat" class="h-4 w-4"> {{ libelle }}
+      </label>
+    {% endfor %}
+  </fieldset>
+
+  <div class="flex flex-col rounded-xl border border-trait bg-white px-4 py-3.5" x-show="resultat === 'livree' || resultat === 'partielle'">
+    <div class="grid grid-cols-[minmax(0,1fr)_56px_92px] gap-2 border-b border-[#EFECE6] pb-1.5 text-xs text-texte-secondaire">
+      <span>Produit</span><span class="text-right">Prévu</span><span class="text-right">Livré</span>
+    </div>
+    {% for ligne, valeur in lignes %}
+      <div class="grid grid-cols-[minmax(0,1fr)_56px_92px] items-center gap-2 py-2 {% if not forloop.last %}border-b border-[#EFECE6]{% endif %}">
+        <label for="livre-{{ ligne.pk }}">{{ ligne.ligne_commande.produit.nom }}</label>
+        <span class="text-right font-mono">{{ ligne.quantite_prevue|quantite }}</span>
+        <input id="livre-{{ ligne.pk }}" name="livre-{{ ligne.pk }}" value="{{ valeur }}"
+               inputmode="{% if ligne.ligne_commande.produit.quantites_decimales %}decimal{% else %}numeric{% endif %}"
+               class="h-11 w-full rounded-lg border border-bordure bg-white px-2.5 text-right font-mono text-base">
+      </div>
+    {% endfor %}
+  </div>
+
+  <div class="flex flex-col gap-3 rounded-xl border border-trait bg-white px-4 py-3.5" x-show="resultat === 'partielle'" x-cloak>
+    <h2 class="text-sm font-semibold">Accord du client pour la livraison partielle</h2>
+    <div class="flex flex-col gap-1.5">
+      <label for="motif_partielle" class="text-[13px] font-medium">Motif</label>
+      <select id="motif_partielle" name="motif_partielle" class="champ h-11">
+        {% for valeur, libelle in motifs_refus %}<option value="{{ valeur }}" {% if valeurs.motif_partielle == valeur or not valeurs.motif_partielle and valeur == "marchandise_manquante" %}selected{% endif %}>{{ libelle }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="flex flex-col gap-1.5">
+      <label for="accord_nom" class="text-[13px] font-medium">Accord donné par</label>
+      <input id="accord_nom" name="accord_nom" value="{{ valeurs.accord_nom|default:'' }}" maxlength="120" class="champ h-11">
+    </div>
+    <div class="flex flex-col gap-1.5">
+      <label for="accord_moyen" class="text-[13px] font-medium">Comment</label>
+      <select id="accord_moyen" name="accord_moyen" class="champ h-11">
+        {% for valeur, libelle in moyens_accord %}<option value="{{ valeur }}" {% if valeurs.accord_moyen == valeur %}selected{% endif %}>{{ libelle }}</option>{% endfor %}
+      </select>
+    </div>
+    <p class="text-xs text-texte-secondaire">Le reste est noté en reliquat, à livrer plus tard.</p>
+  </div>
+
+  <div class="flex flex-col gap-3 rounded-xl border border-trait bg-white px-4 py-3.5" x-show="resultat === 'refusee'" x-cloak>
+    <div class="flex flex-col gap-1.5">
+      <label for="motif_refus" class="text-[13px] font-medium">Motif du refus</label>
+      <select id="motif_refus" name="motif_refus" class="champ h-11">
+        {% for valeur, libelle in motifs_refus %}<option value="{{ valeur }}" {% if valeurs.motif_refus == valeur %}selected{% endif %}>{{ libelle }}</option>{% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <div class="flex flex-col gap-3 rounded-xl border border-trait bg-white px-4 py-3.5" x-show="resultat === 'livree' || resultat === 'partielle'">
+    <h2 class="text-sm font-semibold">Preuve de livraison</h2>
+    <p class="text-xs text-texte-secondaire">Exigée : {{ preuve }}.</p>
+    <label x-data="{ nom: '' }" class="flex min-h-18 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-lien bg-[#F5F8FF] px-3 text-center font-semibold text-lien">
+      <span x-text="nom ? 'Photo prise : ' + nom : 'Photographier le bordereau signé'">Photographier le bordereau signé</span>
+      <input type="file" name="photo" accept="image/*" capture="environment" class="sr-only" x-on:change="nom = $event.target.files[0]?.name || ''">
+    </label>
+    <div class="flex flex-col gap-1.5">
+      <label for="receptionnaire_nom" class="text-[13px] font-medium">Nom du réceptionnaire</label>
+      <input id="receptionnaire_nom" name="receptionnaire_nom" value="{{ valeurs.receptionnaire_nom|default:'' }}" maxlength="120" class="champ h-11">
+    </div>
+    <div class="flex flex-col gap-1.5">
+      <label for="numero_bordereau" class="text-[13px] font-medium">N° de bordereau (optionnel)</label>
+      <input id="numero_bordereau" name="numero_bordereau" value="{{ valeurs.numero_bordereau|default:'' }}" maxlength="60" class="champ h-11">
+    </div>
+    <div x-data="signature" class="flex flex-col gap-2">
+      <input type="hidden" name="signature" x-ref="valeur">
+      <button type="button" x-show="!ouverte" x-on:click="ouvrir()" class="h-11 cursor-pointer rounded-lg border border-bordure bg-white text-sm">Signature</button>
+      <div x-show="ouverte" x-cloak class="flex flex-col gap-1.5">
+        <span class="text-[13px] font-medium">Signature du réceptionnaire</span>
+        <canvas x-ref="toile" class="h-40 w-full touch-none rounded-lg border border-bordure bg-white"></canvas>
+        <button type="button" x-on:click="effacer()" class="self-end text-sm text-lien underline">Effacer</button>
+      </div>
+    </div>
+    <p class="text-xs text-texte-secondaire">Heure et position enregistrées automatiquement à la validation.</p>
+  </div>
+
+  <div class="flex flex-col gap-1.5">
+    <label for="commentaire" class="text-[13px] font-medium">Commentaire</label>
+    <textarea id="commentaire" name="commentaire" rows="2" class="champ h-auto py-2">{{ valeurs.commentaire|default:'' }}</textarea>
+  </div>
+
+  <button type="submit" x-bind:disabled="envoi" class="bouton-principal mt-auto h-14 text-[17px] disabled:cursor-wait disabled:bg-bordure"
+          x-text="resultat === 'livree' || resultat === 'partielle' ? 'Valider la livraison' : 'Enregistrer l\'échec'">Valider la livraison</button>
+  <a href="{% url 'reception_tournee' tournee.pk %}" class="self-center text-sm">Retour à la tournée</a>
+</form>
+{% endblock %}

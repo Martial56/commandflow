@@ -20,6 +20,9 @@
           <input type="hidden" name="latitude"><input type="hidden" name="longitude">
           <button type="submit" x-bind:disabled="envoi" class="bouton-principal mt-1 h-12 disabled:cursor-wait disabled:bg-bordure">Je suis arrivé</button>
         </form>
+        <a href="{% url 'livraison_saisie' prochain.pk %}" class="self-center text-sm">Arrêt non effectué</a>
+      {% else %}
+        <a href="{% url 'livraison_saisie' prochain.pk %}" class="bouton-principal mt-1 h-12 text-white hover:text-white">Saisir la livraison</a>
       {% endif %}
     </section>
   {% elif tournee.statut == "en_cours" %}

@@ -12,4 +12,6 @@ urlpatterns = [
     # Tournée partie (maquette 5).
     path("<int:pk>/incident/", views_livraison.incident, name="tournee_incident"),
     path("livraisons/<int:pk>/arriver/", views_livraison.arriver, name="livraison_arriver"),
+    # Preuve de livraison (maquette 6).
+    path("livraisons/<int:pk>/", views_livraison.saisir, name="livraison_saisie"),
 ]

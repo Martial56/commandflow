@@ -652,7 +652,12 @@ def _saisie(resultat, quantites, motif, accord, champs):
         raise ActionImpossible("Choisir le résultat de la livraison.")
     if motif and motif not in MotifEchec.values:
         raise ActionImpossible("Motif inconnu.")
-    if accord and accord.get("moyen") not in MoyenAccord.values:
+    # Sans nom, l'accord manque : message donné par `_appliquer_saisie`.
+    if (
+        accord
+        and (accord.get("nom_client") or "").strip()
+        and (accord.get("moyen") not in MoyenAccord.values)
+    ):
         raise ActionImpossible("Indiquer comment le client a donné son accord.")
     return {
         "resultat": resultat,

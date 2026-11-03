@@ -2,7 +2,7 @@
 document.addEventListener("alpine:init", () => {
   // Joint la position du téléphone au formulaire si elle arrive en 5 secondes ; sinon le
   // formulaire part sans elle : le GPS n'est jamais bloquant (§13).
-  Alpine.data("avecPosition", () => ({
+  const avecPosition = () => ({
     envoi: false,
     envoyer(formulaire) {
       if (this.envoi) return;
@@ -18,6 +18,42 @@ document.addEventListener("alpine:init", () => {
         partir,
         { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 },
       );
+    },
+  });
+  Alpine.data("avecPosition", avecPosition);
+
+  // Preuve de livraison (maquette 6) : résultat choisi, position jointe à l'envoi.
+  Alpine.data("livraison", (resultat) => ({ ...avecPosition(), resultat }));
+
+  // Signature du réceptionnaire à l'écran (signature_pad) : le PNG est recopié dans le
+  // champ caché `signature` à chaque trait.
+  Alpine.data("signature", () => ({
+    ouverte: false,
+    signee: false,
+    pad: null,
+    ouvrir() {
+      this.ouverte = true;
+      // La toile n'a sa taille qu'une fois affichée : attendre l'image suivante.
+      this.$nextTick(() =>
+        requestAnimationFrame(() => {
+          if (this.pad) return;
+          const toile = this.$refs.toile;
+          const ratio = Math.max(window.devicePixelRatio || 1, 1);
+          toile.width = toile.offsetWidth * ratio;
+          toile.height = toile.offsetHeight * ratio;
+          toile.getContext("2d").scale(ratio, ratio);
+          this.pad = new SignaturePad(toile);
+          this.pad.addEventListener("endStroke", () => {
+            this.$refs.valeur.value = this.pad.toDataURL("image/png");
+            this.signee = true;
+          });
+        }),
+      );
+    },
+    effacer() {
+      if (this.pad) this.pad.clear();
+      this.$refs.valeur.value = "";
+      this.signee = false;
     },
   }));
 
