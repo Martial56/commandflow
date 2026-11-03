@@ -286,7 +286,7 @@ Ces choix de modélisation dépendent des arbitrages du §23. Chacun modifie un 
 - [x] Sort d'une commande récurrente non confirmée à l'heure limite : maintien en `a_confirmer` avec alerte (voir 8.1)
 - [x] Heure limite de confirmation des récurrentes et heure de génération : génération la veille à 18 h, limite à 20 h, réglables par entreprise (voir 8.1)
 - [x] Profils autorisés à valider les modifications, les urgences et les annulations : Direction et Gestionnaire (voir 8.1)
-- [ ] Preuves obligatoires par catégorie de client
+- [x] Preuves obligatoires par catégorie de client : photo du bordereau ou nom du réceptionnaire par défaut, réglable par catégorie (voir 8.4)
 - [ ] Une facture peut-elle couvrir plusieurs livraisons (modèle actuel, M2M) ou une seule
 - [ ] TVA appliquée et produits exonérés, pour fixer `montant_ht` / `montant_ttc`
 - [x] Quantités entières uniquement ou décimales (vente au poids) : décimales seulement pour les produits vendus au kg (voir 8.1)
@@ -354,3 +354,24 @@ Ces choix de modélisation dépendent des arbitrages du §23. Chacun modifie un 
 | Exception de départ (30 octobre 2026) | Demandée par le Gestionnaire, décidée par un autre responsable (Direction ou Gestionnaire) |
 | Commande dans une tournée (30 octobre 2026) | Ni annulation ni modification tant qu'elle est dans une tournée : la retirer d'abord ; une demande antérieure peut être refusée, mais n'est acceptée qu'après le retrait |
 | Maquettes | Sprint 4 : maquettes 3, 4 (réception par le chauffeur) et 14 ; Sprint 5 : maquettes 5 et 6 |
+
+### 8.4 Décisions validées le 1er novembre 2026 (Sprint 5 — livraisons)
+
+| Sujet | Décision |
+| --- | --- |
+| Preuves obligatoires | Par défaut, pour toutes les catégories de client : photo du bordereau **ou** nom du réceptionnaire. Réglable par catégorie dans `Entreprise.options` (signature, GPS…) sans changer le code |
+| Résultats proposés au chauffeur (maquette 6) | Quatre choix : Livrée, Partielle, Refusée, Client absent. « Refusée » ouvre la liste des motifs du §12.3 : refus, adresse incorrecte, marchandise manquante, retard, problème de véhicule, autre |
+| Report d'une livraison échouée | Réservé au Gestionnaire (transition `reporter`, §6) ; le chauffeur ne reporte pas lui-même |
+| Quantité livrée supérieure au prévu | Interdite au MVP |
+| Substitution de produit | Reportée après le MVP ; le champ `substitution_produit` reste vide |
+| Reliquat | Créé par le système à la livraison partielle. Le Gestionnaire fixe la nouvelle date et l'affecte à une tournée ; le reliquat est ajouté au besoin du plan de production de cette date |
+| Client qui renonce au reliquat | « Solder le reliquat » : motif et validation d'un autre responsable ; la commande passe « Livrée » |
+| Échec puis report | La commande revient « À planifier » à la nouvelle date et est entièrement reproduite (nouveau besoin dans le plan de cette date) |
+| Abandon d'une commande en anomalie | Gestionnaire ou Direction, avec motif et validation d'un autre responsable (comme les annulations tardives, 8.1) |
+| Retours : déclaration | Par le chauffeur sur place, ou par le gestionnaire au retour au dépôt ; depuis une livraison livrée, partielle ou échouée |
+| Retours : décision | Gestionnaire ou Direction. Décisions possibles : remise en vente, destruction, avoir à étudier (l'avoir lui-même relève du Sprint 6) |
+| Modification d'une tournée partie (§11) | Au Sprint 5, seul l'ordre des arrêts restants peut être modifié. Réaffecter une commande ou ajouter une urgence (nouveau contrôle du chargement) est reporté |
+| Incident de tournée (maquette 5) | Objet `Incident` rattaché à la tournée : type (panne, accident, autre), commentaire, heure ; signalé au gestionnaire, sans effet sur les statuts |
+| Code client à usage unique | Désactivé au Sprint 5 (il faut un canal d'envoi, Sprint 6). Signature et GPS disponibles en option |
+| Prestataire sans compte | Le gestionnaire saisit la livraison à sa place, tracée, avec la validation d'un autre responsable (comme la réception, 8.3) |
+| PWA | Installable ; pas de travail hors connexion au MVP (phase 2, §17 et §21). Service worker écrit à la main (pas de Workbox, qui demande Node) : cache des fichiers statiques et page de repli |
