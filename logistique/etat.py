@@ -76,3 +76,43 @@ def commande_chargee(commande):
     """La commande peut partir en livraison : son chargement actif peut partir."""
     chargement = chargement_actif(commande)
     return chargement is not None and peut_partir(chargement)
+
+
+# --- Livraison (Sprint 5) -------------------------------------------------------------
+
+
+def moyens_de_preuve(livraison):
+    """Moyens de preuve réunis : preuves jointes, réceptionnaire, n° de bordereau, GPS."""
+    moyens = set(livraison.preuves.values_list("type", flat=True))
+    if livraison.receptionnaire_nom.strip():
+        moyens.add("receptionnaire")
+    if livraison.numero_bordereau.strip():
+        moyens.add("numero_bordereau")
+    if livraison.latitude is not None and livraison.longitude is not None:
+        moyens.add("gps")
+    return moyens
+
+
+def preuves_manquantes(livraison):
+    """Exigences de preuve non remplies, selon la catégorie du client (décision 8.4)."""
+    from entreprises.parametres import preuves_obligatoires
+
+    commande = livraison.commande
+    moyens = moyens_de_preuve(livraison)
+    return [
+        exigence
+        for exigence in preuves_obligatoires(commande.entreprise, commande.client.categorie)
+        if not moyens.intersection(exigence)
+    ]
+
+
+def derniere_livraison(commande):
+    from .models import Livraison
+
+    return Livraison.objects.filter(commande=commande).order_by("-pk").first()
+
+
+def reliquats_ouverts(commande):
+    from .models import Reliquat
+
+    return Reliquat.objects.filter(commande_origine=commande, traite=False)

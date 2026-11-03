@@ -54,6 +54,15 @@ rules.add_perm(
 # Décider des exceptions de chargement et de départ : Direction, Gestionnaire.
 rules.add_perm("logistique.valider_exception", responsable & meme_entreprise)
 
+# Livrer (arrivée, livraison, échec) : le livreur affecté ; pour un prestataire sans
+# compte, le gestionnaire à sa place (avec validation d'un autre responsable, 8.4).
+rules.add_perm(
+    "logistique.livrer",
+    meme_entreprise & (livreur_affecte | (prestataire_sans_compte & a_le_role(Role.GESTIONNAIRE))),
+)
+# Reporter une livraison échouée : Gestionnaire (§6, décision 8.4).
+rules.add_perm("logistique.reporter_livraison", a_le_role(Role.GESTIONNAIRE) & meme_entreprise)
+
 # Véhicules et prestataires : administration Django, Direction et Gestionnaire (8.3).
 # Pas de suppression (désactivation).
 rules.add_perm("logistique", responsable)

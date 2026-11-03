@@ -336,6 +336,103 @@ class Commande(FSMModelMixin, ModeleEntreprise, ModeleTrace):
     def partir_en_livraison(self):
         """Action du système, au départ de la tournée (`logistique.services`)."""
 
+    # --- Transitions (Sprint 5 : livraison) ----------------------------------
+
+    def _statut_livraison(self):
+        from logistique.etat import derniere_livraison
+
+        livraison = derniere_livraison(self)
+        return livraison.statut if livraison else None
+
+    def livraison_livree(self):
+        return self._statut_livraison() == "livree"
+
+    def livraison_partielle(self):
+        """Livraison partielle et reliquat créé (§4)."""
+        from logistique.etat import reliquats_ouverts
+
+        return (
+            self._statut_livraison() == "partiellement_livree" and reliquats_ouverts(self).exists()
+        )
+
+    def livraison_echouee(self):
+        return self._statut_livraison() == "echouee"
+
+    def livraison_reportee(self):
+        return self._statut_livraison() == "reportee"
+
+    def sans_reliquat_ouvert(self):
+        """Reliquats livrés ou soldés (décision 8.4)."""
+        from logistique.etat import reliquats_ouverts
+
+        return not reliquats_ouverts(self).exists()
+
+    def abandon_autorise(self):
+        """Motif et validation d'annulation acceptée (décision 8.4)."""
+        return bool(self.motif_annulation.strip()) and self.validation_acceptee(
+            Validation.Action.ANNULATION
+        )
+
+    @transition(
+        field=statut,
+        source=Statut.EN_LIVRAISON,
+        target=Statut.LIVREE,
+        conditions=[livraison_livree],
+    )
+    def cloturer_livree(self):
+        """Action du système : livraison complète (`logistique.services`)."""
+
+    @transition(
+        field=statut,
+        source=Statut.EN_LIVRAISON,
+        target=Statut.PARTIELLEMENT_LIVREE,
+        conditions=[livraison_partielle],
+    )
+    def cloturer_partielle(self):
+        """Action du système : livraison partielle, accord client et reliquat."""
+
+    @transition(
+        field=statut,
+        source=Statut.PARTIELLEMENT_LIVREE,
+        target=Statut.LIVREE,
+        conditions=[sans_reliquat_ouvert],
+    )
+    def cloturer_reliquat(self):
+        """Action du système : reliquat livré, ou soldé avec validation (décision 8.4)."""
+
+    @transition(
+        field=statut,
+        source=Statut.EN_LIVRAISON,
+        target=Statut.EN_ANOMALIE,
+        conditions=[livraison_echouee],
+    )
+    def signaler_anomalie(self):
+        """Action du système : livraison échouée, refusée ou client absent."""
+
+    @transition(
+        field=statut,
+        source=Statut.EN_ANOMALIE,
+        target=Statut.A_PLANIFIER,
+        conditions=[livraison_reportee],
+        permission=lambda commande, utilisateur: utilisateur.has_perm(
+            "commandes.relancer_commande", commande
+        ),
+    )
+    def relancer(self):
+        """Nouvelle tentative à la date du report : la commande est reproduite (8.4)."""
+
+    @transition(
+        field=statut,
+        source=Statut.EN_ANOMALIE,
+        target=Statut.ANNULEE,
+        conditions=[abandon_autorise],
+        permission=lambda commande, utilisateur: utilisateur.has_perm(
+            "commandes.annuler_commande", commande
+        ),
+    )
+    def abandonner(self):
+        """Abandon validé par un autre responsable (§4, décision 8.4)."""
+
     # --- Annulation -----------------------------------------------------------
 
     @transition(

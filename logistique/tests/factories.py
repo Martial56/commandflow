@@ -6,7 +6,15 @@ from commandes.tests.factories import CommandeFactory
 from comptes.models import Role
 from comptes.tests.factories import UtilisateurFactory
 from entreprises.tests.factories import EntrepriseFactory
-from logistique.models import Chargement, LigneChargement, Prestataire, Tournee, Vehicule
+from logistique.models import (
+    Chargement,
+    LigneChargement,
+    LigneLivraison,
+    Livraison,
+    Prestataire,
+    Tournee,
+    Vehicule,
+)
 from noyau.tests.factories import FabriqueModeleEntreprise
 
 
@@ -66,3 +74,26 @@ class LigneChargementFactory(FabriqueModeleEntreprise):
         ).first()
     )
     quantite_attendue = 100
+
+
+class LivraisonFactory(FabriqueModeleEntreprise):
+    class Meta:
+        model = Livraison
+
+    chargement = factory.SubFactory(ChargementFactory)
+    entreprise = factory.SelfAttribute("chargement.entreprise")
+    commande = factory.SelfAttribute("chargement.commande")
+
+
+class LigneLivraisonFactory(FabriqueModeleEntreprise):
+    class Meta:
+        model = LigneLivraison
+
+    livraison = factory.SubFactory(LivraisonFactory)
+    entreprise = factory.SelfAttribute("livraison.entreprise")
+    ligne_commande = factory.LazyAttribute(
+        lambda o: o.livraison.commande.lignes.model.toutes_entreprises.filter(
+            commande=o.livraison.commande
+        ).first()
+    )
+    quantite_prevue = 100

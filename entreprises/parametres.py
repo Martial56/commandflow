@@ -29,3 +29,18 @@ def heure_generation_recurrentes(entreprise):
 def heure_limite_confirmation(entreprise):
     """Heure limite, la veille, de confirmation des commandes récurrentes."""
     return _heure(entreprise, "heure_limite_confirmation", HEURE_LIMITE_CONFIRMATION_PAR_DEFAUT)
+
+
+# Preuves exigées à la livraison (décision 8.4) : chaque exigence est une liste de moyens
+# dont un seul suffit. Par défaut : photo du bordereau ou nom du réceptionnaire.
+PREUVES_PAR_DEFAUT = [["photo_bordereau", "receptionnaire"]]
+
+
+def preuves_obligatoires(entreprise, categorie):
+    """Exigences de preuve pour une catégorie de client, lues dans
+    `options["preuves"][categorie]`. Un moyen seul (« signature ») vaut une exigence
+    à un seul moyen : `["photo_bordereau", "receptionnaire"]` exige donc les deux."""
+    reglage = ((entreprise.options or {}).get("preuves") or {}).get(categorie)
+    if reglage is None:
+        return [list(exigence) for exigence in PREUVES_PAR_DEFAUT]
+    return [[exigence] if isinstance(exigence, str) else list(exigence) for exigence in reglage]

@@ -201,9 +201,24 @@ class Tournee(_StatutProtege, ModeleEntreprise, ModeleTrace):
         """Le livreur démarre la tournée : l'heure de départ est figée (§10)."""
         self.depart_le = timezone.now()
 
-    @transition(field="statut", source=StatutTournee.EN_COURS, target=StatutTournee.TERMINEE)
+    def livraisons_traitees(self):
+        """Plus aucune livraison en attente ni sur place (§7)."""
+        livraisons = Livraison.objects.filter(chargement__tournee=self)
+        return (
+            livraisons.exists()
+            and not livraisons.filter(
+                statut__in=[StatutLivraison.EN_ATTENTE, StatutLivraison.SUR_PLACE]
+            ).exists()
+        )
+
+    @transition(
+        field="statut",
+        source=StatutTournee.EN_COURS,
+        target=StatutTournee.TERMINEE,
+        conditions=[livraisons_traitees],
+    )
     def terminer(self):
-        """Action du système : toutes les livraisons traitées (Sprint 5)."""
+        """Action du système : toutes les livraisons traitées (§7)."""
         self.fin_le = timezone.now()
 
 
@@ -542,6 +557,112 @@ class Livraison(_StatutProtege, ModeleEntreprise, ModeleTrace):
 
     def __str__(self):
         return f"Livraison {self.commande}"
+
+    @property
+    def tournee(self):
+        return self.chargement.tournee
+
+    # --- Conditions (§6, décisions 8.4) ---
+
+    def tournee_en_cours(self):
+        return self.tournee.statut == StatutTournee.EN_COURS
+
+    def position_si_exigee(self):
+        """GPS à l'arrivée seulement si la catégorie du client l'exige (§6)."""
+        from entreprises.parametres import preuves_obligatoires
+
+        commande = self.commande
+        exigences = preuves_obligatoires(commande.entreprise, commande.client.categorie)
+        if ["gps"] not in exigences:
+            return True
+        return self.latitude is not None and self.longitude is not None
+
+    def preuves_presentes(self):
+        from .etat import preuves_manquantes
+
+        return not preuves_manquantes(self)
+
+    def tout_livre(self):
+        """Quantité livrée saisie et égale au prévu sur chaque ligne."""
+        lignes = list(self.lignes.all())
+        return bool(lignes) and all(
+            ligne.quantite_livree == ligne.quantite_prevue for ligne in lignes
+        )
+
+    def partielle_motivee(self):
+        """Toutes les lignes saisies, au moins une sous le prévu, quelque chose de livré,
+        un motif et l'accord du client (§12.3)."""
+        lignes = list(self.lignes.all())
+        if not lignes or any(ligne.quantite_livree is None for ligne in lignes):
+            return False
+        return (
+            any(ligne.quantite_livree < ligne.quantite_prevue for ligne in lignes)
+            and any(ligne.quantite_livree > 0 for ligne in lignes)
+            and bool(self.motif_echec)
+            and self.accords.filter(objet=ObjetAccord.PARTIELLE).exists()
+        )
+
+    def echec_motive(self):
+        return bool(self.motif_echec)
+
+    def date_de_report(self):
+        return self.reportee_au is not None
+
+    # --- Transitions (§6 « Machine à états — Livraison ») ---
+
+    @transition(
+        field="statut",
+        source=StatutLivraison.EN_ATTENTE,
+        target=StatutLivraison.SUR_PLACE,
+        conditions=[tournee_en_cours, position_si_exigee],
+        permission=_permission("logistique.livrer"),
+    )
+    def arriver(self):
+        """Le livreur est chez le client : l'heure est enregistrée."""
+        self.arrivee_le = timezone.now()
+
+    @transition(
+        field="statut",
+        source=StatutLivraison.SUR_PLACE,
+        target=StatutLivraison.LIVREE,
+        conditions=[tournee_en_cours, tout_livre, preuves_presentes],
+        permission=_permission("logistique.livrer"),
+    )
+    def livrer(self):
+        """Quantités complètes et preuve exigée pour la catégorie du client."""
+        self.traitee_le = timezone.now()
+
+    @transition(
+        field="statut",
+        source=StatutLivraison.SUR_PLACE,
+        target=StatutLivraison.PARTIELLEMENT_LIVREE,
+        conditions=[tournee_en_cours, partielle_motivee, preuves_presentes],
+        permission=_permission("logistique.livrer"),
+    )
+    def livrer_partiellement(self):
+        """Accord du client et motif ; le service crée le reliquat."""
+        self.traitee_le = timezone.now()
+
+    @transition(
+        field="statut",
+        source=[StatutLivraison.EN_ATTENTE, StatutLivraison.SUR_PLACE],
+        target=StatutLivraison.ECHOUEE,
+        conditions=[tournee_en_cours, echec_motive],
+        permission=_permission("logistique.livrer"),
+    )
+    def echouer(self):
+        """Refus, client absent ou autre incident : motif obligatoire (§12.3)."""
+        self.traitee_le = timezone.now()
+
+    @transition(
+        field="statut",
+        source=StatutLivraison.ECHOUEE,
+        target=StatutLivraison.REPORTEE,
+        conditions=[date_de_report],
+        permission=_permission("logistique.reporter_livraison"),
+    )
+    def reporter(self):
+        """Nouvelle date fixée par le gestionnaire ; la commande repasse « À planifier »."""
 
 
 @pghistory.track(model_name="HistoriqueLigneLivraison")

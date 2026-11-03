@@ -15,7 +15,6 @@ from logistique.models import (
     MotifEcart,
     StatutChargement,
     StatutTournee,
-    Tournee,
 )
 from logistique.tests.factories import (
     ChargementFactory,
@@ -322,13 +321,7 @@ def test_demarrer_refuse_avant_l_autorisation(chargement):
         tournee.demarrer()
 
 
-def test_terminer(chargement):
-    tournee = forcer(chargement.tournee, StatutTournee.EN_COURS)
-    tournee.terminer()
-    assert tournee.statut == StatutTournee.TERMINEE and tournee.fin_le
-    tournee = forcer(Tournee.objects.get(pk=tournee.pk), StatutTournee.DEPART_AUTORISE)
-    with pytest.raises(TransitionNotAllowed):
-        tournee.terminer()
+# `terminer` (toutes les livraisons traitées) : voir test_transitions_livraison.py.
 
 
 # --- Commande « En livraison » -------------------------------------------------------

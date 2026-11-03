@@ -58,6 +58,8 @@ rules.add_perm(
     "commandes.preparer_commande",
     a_le_role(Role.GESTIONNAIRE, Role.PRODUCTION) & meme_entreprise,
 )
+# Relancer une commande en anomalie (nouvelle date) : Gestionnaire (§4, décision 8.4).
+rules.add_perm("commandes.relancer_commande", a_le_role(Role.GESTIONNAIRE) & meme_entreprise)
 # Décider des validations (modification, urgence, annulation) : décision 8.1.
 rules.add_perm("commandes.valider_commande", responsable & meme_entreprise)
 
