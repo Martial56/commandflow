@@ -1,0 +1,47 @@
+{% load format_fr %}
+{% comment %}Livraisons de la commande (fiche, maquette 10) : quantités, réceptionnaire, preuves, accord, reliquats, retours.{% endcomment %}
+<section aria-labelledby="titre-livraisons" class="carte flex flex-col gap-3 text-sm">
+  <h2 id="titre-livraisons" class="text-base font-semibold">Livraison{{ livraisons|length|pluralize }}</h2>
+  {% for livraison in livraisons %}
+    <div class="flex flex-col gap-2 {% if not forloop.last %}border-b border-trait pb-3{% endif %}">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <span class="font-medium">{{ livraison.chargement.tournee.numero }} · {{ livraison.chargement.tournee.date|date_courte }}</span>
+        {% include "logistique/_pastille_livraison.html" %}
+      </div>
+      <span class="text-[13px] text-texte-secondaire">
+        {% if livraison.arrivee_le %}Arrivée à {{ livraison.arrivee_le|heure }}{% endif %}{% if livraison.traitee_le %} · traitée à {{ livraison.traitee_le|heure }}{% endif %}{% if livraison.receptionnaire_nom %} · reçue par {{ livraison.receptionnaire_nom }}{% if livraison.receptionnaire_fonction %} ({{ livraison.receptionnaire_fonction }}){% endif %}{% endif %}{% if livraison.numero_bordereau %} · bordereau {{ livraison.numero_bordereau }}{% endif %}
+      </span>
+      {% if livraison.motif_echec %}<span class="text-[13px] {% if livraison.statut == 'echouee' or livraison.statut == 'reportee' %}text-alerte{% endif %}">Motif : {{ livraison.get_motif_echec_display|lower }}{% if livraison.reportee_au %} · reportée au {{ livraison.reportee_au|date_courte }}{% endif %}</span>{% endif %}
+      {% if livraison.commentaire %}<span class="text-[13px]">« {{ livraison.commentaire }} »</span>{% endif %}
+
+      {% if livraison.statut != "echouee" and livraison.statut != "reportee" %}
+        <table class="w-full">
+          <thead><tr class="text-left text-[13px] text-texte-secondaire"><th class="pb-1 font-medium">Produit</th><th class="pb-1 text-right font-medium">Prévu</th><th class="pb-1 text-right font-medium">Livré</th></tr></thead>
+          <tbody>
+            {% for ligne in livraison.lignes.all %}
+              <tr class="border-t border-trait"><td class="py-1.5">{{ ligne.ligne_commande.produit.nom }}</td><td class="py-1.5 text-right font-mono">{{ ligne.quantite_prevue|quantite }}</td><td class="py-1.5 text-right font-mono {% if ligne.manque %}text-alerte{% endif %}">{% if ligne.quantite_livree is not None %}{{ ligne.quantite_livree|quantite }}{% else %}—{% endif %}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+
+      {% if livraison.liste_preuves or livraison.latitude is not None %}
+        <div class="flex flex-wrap gap-x-3 gap-y-1 text-[13px]">
+          <span class="text-texte-secondaire">Preuves :</span>
+          {% for preuve, lien in livraison.liste_preuves %}{% if lien %}<a href="{{ lien }}">{{ preuve.get_type_display }}</a>{% else %}<span>{{ preuve.get_type_display }}{% if preuve.valeur %} {{ preuve.valeur }}{% endif %}</span>{% endif %}{% endfor %}
+          {% if livraison.latitude is not None %}<a href="https://www.openstreetmap.org/?mlat={{ livraison.latitude }}&amp;mlon={{ livraison.longitude }}#map=18/{{ livraison.latitude }}/{{ livraison.longitude }}" target="_blank" rel="noopener">Position GPS</a>{% endif %}
+        </div>
+      {% endif %}
+
+      {% for accord in livraison.accords.all %}
+        <span class="text-[13px]">Accord du client : {{ accord.nom_client }} ({{ accord.get_moyen_display|lower }})</span>
+      {% endfor %}
+      {% for reliquat in livraison.reliquats.all %}
+        <span class="text-[13px]">Reliquat : {{ reliquat.quantite|quantite }} {{ reliquat.ligne_commande.produit.nom }} · {% if reliquat.solde %}soldé{% elif reliquat.traite %}traité{% elif reliquat.chargement_id %}dans une tournée{% elif reliquat.nouvelle_date %}prévu le {{ reliquat.nouvelle_date|date_courte }}{% else %}à planifier{% endif %}</span>
+      {% endfor %}
+      {% for retour in livraison.retours.all %}
+        <span class="text-[13px]">Retour : {{ retour.quantite|quantite }} {{ retour.produit.nom }} · {{ retour.get_etat_display|lower }} · {{ retour.motif }} · {% if retour.decision %}{{ retour.get_decision_display|lower }} ({{ retour.decide_par }}){% else %}décision attendue{% endif %}</span>
+      {% endfor %}
+    </div>
+  {% endfor %}
+</section>

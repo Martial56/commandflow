@@ -190,17 +190,19 @@ def _production(commande, utilisateur):
 
 
 def _tournee(commande, utilisateur, peut_saisir):
-    """Bloc tournée de la fiche (Sprint 4). Une commande dans une tournée n'est ni
-    modifiée ni annulée : il faut d'abord la retirer (décision 8.3)."""
+    """Blocs tournée et livraisons de la fiche (Sprints 4 et 5). Une commande dans une
+    tournée en cours n'est ni modifiée ni annulée : il faut d'abord la retirer (8.3)."""
     from logistique.etat import chargement_actif
+    from logistique.fiche import dernier_chargement, livraisons
 
-    chargement = chargement_actif(commande)
+    en_cours = chargement_actif(commande)
     peut_demander = peut_saisir and commande.statut in STATUTS_MODIFICATION_VALIDEE
     return {
-        "chargement": chargement,
+        "chargement": en_cours or dernier_chargement(commande),
+        "livraisons": livraisons(commande, utilisateur),
         "voir_tournees": utilisateur.has_perm("ecrans.tournees"),
-        "peut_demander": peut_demander and chargement is None,
-        "bloquee_par_tournee": peut_demander and chargement is not None,
+        "peut_demander": peut_demander and en_cours is None,
+        "bloquee_par_tournee": peut_demander and en_cours is not None,
     }
 
 

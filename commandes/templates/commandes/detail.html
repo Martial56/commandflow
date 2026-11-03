@@ -126,6 +126,7 @@
       </table>
       <p class="flex justify-end gap-3"><span class="text-texte-secondaire">Total</span><span class="font-mono text-lg">{{ commande.montant_total|fcfa }} FCFA</span></p>
     </section>
+    {% if livraisons %}{% include "logistique/_livraisons_commande.html" %}{% endif %}
     <section aria-labelledby="titre-suivi" class="carte flex flex-col gap-2 text-sm">
       <h2 id="titre-suivi" class="text-base font-semibold">Suivi lié</h2>
       <div class="flex justify-between gap-3"><span class="text-texte-secondaire">Livraison</span><span class="text-right">{{ commande.adresse }}</span></div>

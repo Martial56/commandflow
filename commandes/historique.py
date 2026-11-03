@@ -85,7 +85,8 @@ def historique(commande):
 
     _lignes(commande, entrees, auteur, decisions, contexte_creation)
 
-    # Chargements (Sprint 4) : affectation, contrôle, réception, retrait, exceptions.
+    # Chargements (Sprint 4) et livraisons (Sprint 5) : affectation, contrôle, réception,
+    # arrivée, résultat, report, reliquats, retours, exceptions.
     from logistique.historique import evenements as chargements
 
     entrees += [Entree(*evenement) for evenement in chargements(commande, auteur)]
@@ -205,6 +206,14 @@ def _texte_statut(evenement, precedent_statut=None):
         return "Prête au chargement : quantités réservées"
     if evenement.statut == Statut.EN_LIVRAISON:
         return "Départ de la tournée : en livraison"
+    if evenement.statut == Statut.LIVREE:
+        if precedent_statut == Statut.PARTIELLEMENT_LIVREE:
+            return "Commande livrée : reliquat livré ou soldé"
+        return "Commande livrée"
+    if evenement.statut == Statut.PARTIELLEMENT_LIVREE:
+        return "Partiellement livrée : un reliquat reste à livrer"
+    if evenement.statut == Statut.EN_ANOMALIE:
+        return "En anomalie : livraison non effectuée"
     return f"Passage au statut « {Statut(evenement.statut).label} »"
 
 
