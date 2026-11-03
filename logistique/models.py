@@ -475,7 +475,7 @@ class LigneChargement(ModeleEntreprise, ModeleTrace):
         return self.ecart == Decimal("0")
 
 
-# --- Livraison (créée au départ ; complétée au Sprint 5) -------------------------------
+# --- Livraison (§6, §12 ; décisions 8.4) ---------------------------------------------
 
 
 class StatutLivraison(models.TextChoices):
@@ -485,6 +485,18 @@ class StatutLivraison(models.TextChoices):
     PARTIELLEMENT_LIVREE = "partiellement_livree", "Partiellement livrée"
     ECHOUEE = "echouee", "Échouée"
     REPORTEE = "reportee", "Reportée"
+
+
+class MotifEchec(models.TextChoices):
+    """Motifs du §12.3, pour un échec ou une livraison partielle."""
+
+    CLIENT_ABSENT = "client_absent", "Client absent"
+    REFUS = "refus", "Refus"
+    ADRESSE_INCORRECTE = "adresse_incorrecte", "Adresse incorrecte"
+    MARCHANDISE_MANQUANTE = "marchandise_manquante", "Marchandise manquante"
+    RETARD = "retard", "Retard"
+    VEHICULE = "vehicule", "Problème de véhicule"
+    AUTRE = "autre", "Autre"
 
 
 @pghistory.track(model_name="HistoriqueLivraison")
@@ -507,6 +519,22 @@ class Livraison(_StatutProtege, ModeleEntreprise, ModeleTrace):
         default=StatutLivraison.EN_ATTENTE,
         protected=True,
     )
+    arrivee_le = models.DateTimeField("arrivée le", null=True, blank=True)
+    traitee_le = models.DateTimeField("traitée le", null=True, blank=True)
+    receptionnaire_nom = models.CharField("nom du réceptionnaire", max_length=120, blank=True)
+    receptionnaire_fonction = models.CharField(
+        "fonction du réceptionnaire", max_length=120, blank=True
+    )
+    numero_bordereau = models.CharField("n° de bordereau", max_length=60, blank=True)
+    motif_echec = models.CharField("motif", max_length=30, choices=MotifEchec.choices, blank=True)
+    commentaire = models.TextField("commentaire", blank=True)
+    latitude = models.DecimalField(
+        "latitude", max_digits=9, decimal_places=6, null=True, blank=True
+    )
+    longitude = models.DecimalField(
+        "longitude", max_digits=9, decimal_places=6, null=True, blank=True
+    )
+    reportee_au = models.DateField("reportée au", null=True, blank=True)
 
     class Meta:
         verbose_name = "livraison"
@@ -514,3 +542,254 @@ class Livraison(_StatutProtege, ModeleEntreprise, ModeleTrace):
 
     def __str__(self):
         return f"Livraison {self.commande}"
+
+
+@pghistory.track(model_name="HistoriqueLigneLivraison")
+class LigneLivraison(ModeleEntreprise, ModeleTrace):
+    """Produit d'une livraison : prévu (quantité chargée retenue, 8.3) et livré (§12.1)."""
+
+    livraison = models.ForeignKey(
+        Livraison, on_delete=models.PROTECT, related_name="lignes", verbose_name="livraison"
+    )
+    ligne_commande = models.ForeignKey(
+        "commandes.LigneCommande",
+        on_delete=models.PROTECT,
+        related_name="+",
+        verbose_name="ligne de commande",
+    )
+    quantite_prevue = models.DecimalField("prévu", **QUANTITE)
+    quantite_livree = models.DecimalField("livré", null=True, blank=True, **QUANTITE)
+    # Substitution reportée après le MVP (décision 8.4) : le champ reste vide.
+    substitution_produit = models.ForeignKey(
+        "catalogue.Produit",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="+",
+        verbose_name="produit de substitution",
+    )
+
+    class Meta:
+        verbose_name = "ligne de livraison"
+        verbose_name_plural = "lignes de livraison"
+        ordering = ["pk"]
+        constraints = [
+            # Jamais plus que le prévu au MVP (décision 8.4).
+            models.CheckConstraint(
+                condition=Q(quantite_prevue__gte=0)
+                & (
+                    Q(quantite_livree__isnull=True)
+                    | Q(quantite_livree__gte=0, quantite_livree__lte=models.F("quantite_prevue"))
+                ),
+                name="ligne_livraison_quantites_valides",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.ligne_commande.produit} · {self.quantite_prevue}"
+
+    @property
+    def manque(self):
+        """Prévu − livré ; nul tant que rien n'est saisi."""
+        if self.quantite_livree is None:
+            return None
+        return self.quantite_prevue - self.quantite_livree
+
+
+class TypePreuve(models.TextChoices):
+    """Moyens de preuve du §12.2 ; le code à usage unique est désactivé au Sprint 5 (8.4)."""
+
+    PHOTO_BORDEREAU = "photo_bordereau", "Photo du bordereau"
+    RECEPTIONNAIRE = "receptionnaire", "Nom du réceptionnaire"
+    SIGNATURE = "signature", "Signature"
+    CODE = "code", "Code client"
+    GPS = "gps", "Position GPS"
+    NUMERO_BORDEREAU = "numero_bordereau", "N° de bordereau"
+    AUTRE = "autre", "Autre"
+
+
+@pghistory.track(model_name="HistoriquePreuve")
+class Preuve(ModeleEntreprise, ModeleTrace):
+    """Preuve d'une livraison : fichier privé (`PieceJointe`) ou valeur saisie."""
+
+    livraison = models.ForeignKey(
+        Livraison, on_delete=models.PROTECT, related_name="preuves", verbose_name="livraison"
+    )
+    type = models.CharField("type", max_length=20, choices=TypePreuve.choices)
+    piece = models.ForeignKey(
+        "noyau.PieceJointe",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="+",
+        verbose_name="fichier",
+    )
+    valeur = models.CharField("valeur", max_length=255, blank=True)
+    capturee_le = models.DateTimeField("capturée le", default=timezone.now)
+
+    class Meta:
+        verbose_name = "preuve"
+        verbose_name_plural = "preuves"
+        ordering = ["pk"]
+
+    def __str__(self):
+        return f"{self.get_type_display()} · {self.livraison}"
+
+
+class ObjetAccord(models.TextChoices):
+    PARTIELLE = "partielle", "Livraison partielle"
+    SUBSTITUTION = "substitution", "Substitution"
+
+
+class MoyenAccord(models.TextChoices):
+    ORAL = "oral", "Oral"
+    SIGNATURE = "signature", "Signature"
+    ECRIT = "ecrit", "Écrit"
+
+
+@pghistory.track(model_name="HistoriqueAccordClient")
+class AccordClient(ModeleEntreprise, ModeleTrace):
+    """Accord du client, obligatoire pour une livraison partielle (§12.3)."""
+
+    livraison = models.ForeignKey(
+        Livraison, on_delete=models.PROTECT, related_name="accords", verbose_name="livraison"
+    )
+    objet = models.CharField("objet", max_length=20, choices=ObjetAccord.choices)
+    nom_client = models.CharField("nom de la personne", max_length=120)
+    moyen = models.CharField("moyen", max_length=20, choices=MoyenAccord.choices)
+    preuve = models.ForeignKey(
+        Preuve,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="+",
+        verbose_name="preuve",
+    )
+
+    class Meta:
+        verbose_name = "accord client"
+        verbose_name_plural = "accords client"
+
+    def __str__(self):
+        return f"{self.get_objet_display()} · {self.nom_client}"
+
+
+class EtatRetour(models.TextChoices):
+    REVENDABLE = "revendable", "Revendable"
+    A_CONTROLER = "a_controler", "À contrôler"
+    ABIME = "abime", "Abîmé, à détruire"
+
+
+class DecisionRetour(models.TextChoices):
+    """Décisions du responsable (8.4) ; l'avoir lui-même relève du Sprint 6."""
+
+    REMISE_EN_VENTE = "remise_en_vente", "Remise en vente"
+    DESTRUCTION = "destruction", "Destruction"
+    AVOIR_A_ETUDIER = "avoir_a_etudier", "Avoir à étudier"
+
+
+@pghistory.track(model_name="HistoriqueRetour")
+class Retour(ModeleEntreprise, ModeleTrace):
+    """Marchandise revenue d'une livraison ; ce n'est pas un statut (§6). La décision
+    du responsable reste vide tant qu'elle n'est pas prise."""
+
+    livraison = models.ForeignKey(
+        Livraison, on_delete=models.PROTECT, related_name="retours", verbose_name="livraison"
+    )
+    produit = models.ForeignKey(
+        "catalogue.Produit", on_delete=models.PROTECT, related_name="+", verbose_name="produit"
+    )
+    quantite = models.DecimalField("quantité", **QUANTITE)
+    motif = models.CharField("motif", max_length=255)
+    etat = models.CharField("état", max_length=20, choices=EtatRetour.choices)
+    decision = models.CharField(
+        "décision", max_length=20, choices=DecisionRetour.choices, blank=True
+    )
+    decide_par = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="+",
+        verbose_name="décidé par",
+    )
+    decide_le = models.DateTimeField("décidé le", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "retour"
+        verbose_name_plural = "retours"
+        ordering = ["pk"]
+        constraints = [
+            models.CheckConstraint(condition=Q(quantite__gt=0), name="retour_quantite_positive"),
+        ]
+
+    def __str__(self):
+        return f"Retour {self.produit} · {self.quantite}"
+
+
+@pghistory.track(model_name="HistoriqueReliquat")
+class Reliquat(ModeleEntreprise, ModeleTrace):
+    """Quantité restant à livrer après une livraison partielle (§12.3, décision 8.4) ;
+    le gestionnaire fixe sa nouvelle date et l'affecte à une tournée."""
+
+    commande_origine = models.ForeignKey(
+        "commandes.Commande",
+        on_delete=models.PROTECT,
+        related_name="reliquats",
+        verbose_name="commande",
+    )
+    livraison = models.ForeignKey(
+        Livraison,
+        on_delete=models.PROTECT,
+        related_name="reliquats",
+        verbose_name="livraison d'origine",
+    )
+    ligne_commande = models.ForeignKey(
+        "commandes.LigneCommande",
+        on_delete=models.PROTECT,
+        related_name="+",
+        verbose_name="ligne de commande",
+    )
+    quantite = models.DecimalField("quantité", **QUANTITE)
+    nouvelle_date = models.DateField("nouvelle date", null=True, blank=True)
+    traite = models.BooleanField("traité", default=False)
+
+    class Meta:
+        verbose_name = "reliquat"
+        verbose_name_plural = "reliquats"
+        ordering = ["pk"]
+        constraints = [
+            models.CheckConstraint(condition=Q(quantite__gt=0), name="reliquat_quantite_positive"),
+        ]
+
+    def __str__(self):
+        return f"Reliquat {self.commande_origine} · {self.ligne_commande.produit}"
+
+
+# --- Incident de tournée (maquette 5, décision 8.4) ----------------------------------
+
+
+class TypeIncident(models.TextChoices):
+    PANNE = "panne", "Panne"
+    ACCIDENT = "accident", "Accident"
+    AUTRE = "autre", "Autre"
+
+
+@pghistory.track(model_name="HistoriqueIncident")
+class Incident(ModeleEntreprise, ModeleTrace):
+    """Incident signalé pendant une tournée, sans effet sur les statuts (8.4).
+    L'heure est `cree_le`, l'auteur `cree_par`."""
+
+    tournee = models.ForeignKey(
+        Tournee, on_delete=models.PROTECT, related_name="incidents", verbose_name="tournée"
+    )
+    type = models.CharField("type", max_length=20, choices=TypeIncident.choices)
+    commentaire = models.TextField("commentaire", blank=True)
+
+    class Meta:
+        verbose_name = "incident"
+        verbose_name_plural = "incidents"
+        ordering = ["-pk"]
+
+    def __str__(self):
+        return f"{self.get_type_display()} · {self.tournee}"

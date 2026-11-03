@@ -23,6 +23,7 @@ from .etat import exceptions
 from .models import (
     Chargement,
     LigneChargement,
+    LigneLivraison,
     Livraison,
     MotifEcart,
     StatutChargement,
@@ -501,7 +502,7 @@ def decider_exception_chargement(validation, *, accepter):
 def demarrer_tournee(tournee):
     """Le livreur démarre la tournée (§7) : l'heure de départ et la liste des commandes
     chargées sont figées, chaque commande passe « En livraison » et une livraison
-    « En attente » est créée par chargement."""
+    « En attente » est créée par chargement, avec ses lignes prévues."""
     tournee = _verrouiller(tournee)
     _transition(
         tournee,
@@ -518,7 +519,22 @@ def demarrer_tournee(tournee):
             )
         commande.partir_en_livraison()
         commande.save()
-        Livraison.objects.create(chargement=chargement, commande=commande)
+        livraison = Livraison.objects.create(chargement=chargement, commande=commande)
+        retenues = chargement.quantites_retenues()
+        for ligne in chargement.lignes.all():
+            LigneLivraison.objects.create(
+                livraison=livraison,
+                ligne_commande_id=ligne.ligne_commande_id,
+                quantite_prevue=_quantite_prevue(ligne, retenues[ligne.pk]),
+            )
     tournee.demarrer()
     tournee.save()
     return tournee
+
+
+def _quantite_prevue(ligne, retenue):
+    """Prévu de la livraison : la quantité reçue par le livreur ; à défaut (départ par
+    exception), la quantité retenue au chargement, puis l'attendu (décision 8.3)."""
+    for quantite in (ligne.quantite_recue_chauffeur, retenue, ligne.quantite_attendue):
+        if quantite is not None:
+            return quantite

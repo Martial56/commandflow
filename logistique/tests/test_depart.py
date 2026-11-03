@@ -146,7 +146,9 @@ def test_depart_annule_tout_en_cas_d_erreur(tournee, personnes, monkeypatch):
         if appels:
             raise RuntimeError("panne")
         appels.append(kwargs)
-        return Livraison(**kwargs).save()
+        livraison = Livraison(**kwargs)
+        livraison.save()
+        return livraison
 
     monkeypatch.setattr(Livraison.objects, "create", creer)
     with pytest.raises(RuntimeError):
