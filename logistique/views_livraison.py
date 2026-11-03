@@ -9,6 +9,7 @@ tournée d'un autre (§22-25).
 
 import base64
 import binascii
+from collections import Counter
 from urllib.parse import quote
 
 from django.contrib import messages
@@ -25,14 +26,17 @@ from noyau.models import Validation
 
 from . import services
 from .models import (
+    EtatRetour,
     LigneLivraison,
     Livraison,
     MotifEchec,
     MoyenAccord,
+    Retour,
     StatutLivraison,
     TypeIncident,
 )
 from .services import STATUTS_LIVRAISON_TRAITEE, Resultat, libelle_exigences
+from .views import _entier
 from .views_reception import _tournee
 
 PASTILLES = {
@@ -87,9 +91,13 @@ def _contexte(tournee):
             decision=Validation.Decision.EN_ATTENTE,
         ).values_list("object_id", flat=True)
     )
+    retours = Counter(
+        Retour.objects.filter(livraison__in=livraisons).values_list("livraison_id", flat=True)
+    )
     a_faire, traitees = [], []
     for livraison in livraisons:
         livraison.en_validation = livraison.pk in en_validation
+        livraison.nombre_retours = retours[livraison.pk]
         if livraison.statut in STATUTS_LIVRAISON_TRAITEE:
             livraison.pastille = PASTILLES[livraison.statut]
             traitees.append(livraison)
@@ -112,6 +120,7 @@ def _contexte(tournee):
         "total": total,
         "progression": round(100 * len(traitees) / total) if total else 0,
         "types_incident": TypeIncident.choices,
+        "etats_retour": EtatRetour.choices,
         "pour_le_prestataire": tournee.compte_livreur is None,
     }
 
@@ -137,6 +146,34 @@ def arriver(request, pk):
         messages.error(request, str(erreur))
         return redirect("reception_tournee", tournee.pk)
     return redirect("livraison_saisie", livraison.pk)
+
+
+@login_required
+@require_POST
+def retour(request, pk):
+    """Retour de marchandise déclaré par le livreur sur place (§12.3, décision 8.4)."""
+    livraison = get_object_or_404(Livraison.objects.select_related("chargement"), pk=pk)
+    tournee = _tournee(request, livraison.chargement.tournee_id)
+    ligne = (
+        LigneLivraison.objects.filter(livraison=livraison, pk=_entier(request.POST.get("ligne")))
+        .select_related("ligne_commande__produit")
+        .first()
+    )
+    try:
+        if ligne is None:
+            raise services.ActionImpossible("Choisir le produit retourné.")
+        services.declarer_retour(
+            livraison,
+            produit=ligne.ligne_commande.produit,
+            quantite=request.POST.get("quantite", "").strip().replace(",", "."),
+            motif=request.POST.get("motif", ""),
+            etat=request.POST.get("etat", ""),
+        )
+    except services.ActionImpossible as erreur:
+        messages.error(request, str(erreur))
+    else:
+        messages.success(request, "Retour déclaré au gestionnaire.")
+    return redirect("reception_tournee", tournee.pk)
 
 
 @login_required

@@ -17,4 +17,6 @@ urlpatterns = [
         name="chargement_exception_depart",
     ),
     path("demandes/<int:pk>/decider/", views.decider, name="chargement_decider"),
+    path("<int:pk>/retours/", views.declarer_retour, name="tournee_retour"),
+    path("retours/<int:pk>/decider/", views.decider_retour, name="retour_decider"),
 ]

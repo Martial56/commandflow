@@ -17,6 +17,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from catalogue.models import Produit
 from commandes.models import Commande
 from comptes.models import Role, Utilisateur
 from noyau.contexte import entreprise_obligatoire
@@ -27,13 +28,18 @@ from . import services
 from .etat import recapitulatif
 from .models import (
     Chargement,
+    DecisionRetour,
+    EtatRetour,
     LigneChargement,
+    LigneLivraison,
+    Livraison,
     Prestataire,
+    Retour,
     StatutChargement,
     Tournee,
     Vehicule,
 )
-from .services import STATUTS_MODIFIABLES
+from .services import STATUTS_LIVRAISON_TRAITEE, STATUTS_MODIFIABLES
 
 
 def _exiger(request, permission, objet=None):
@@ -87,6 +93,29 @@ def _demandes(chargements):
     return demandes
 
 
+def _retours(tournees):
+    """Retours déclarés et produits retournables (livraisons traitées), par tournée."""
+    retours, retournables = defaultdict(list), defaultdict(list)
+    for retour in (
+        Retour.objects.filter(livraison__chargement__tournee__in=tournees)
+        .select_related("produit", "livraison__chargement", "livraison__commande__client")
+        .select_related("cree_par", "decide_par")
+        .order_by("pk")
+    ):
+        retours[retour.livraison.chargement.tournee_id].append(retour)
+    for ligne in (
+        LigneLivraison.objects.filter(
+            livraison__chargement__tournee__in=tournees,
+            livraison__statut__in=STATUTS_LIVRAISON_TRAITEE,
+        )
+        .select_related("livraison__chargement", "livraison__commande__client")
+        .select_related("ligne_commande__produit")
+        .order_by("livraison__chargement__ordre_passage", "pk")
+    ):
+        retournables[ligne.livraison.chargement.tournee_id].append(ligne)
+    return retours, retournables
+
+
 def _tournees(date, utilisateur):
     lignes = LigneChargement.objects.select_related("ligne_commande__produit").order_by("pk")
     tournees = list(
@@ -104,7 +133,12 @@ def _tournees(date, utilisateur):
         .order_by("numero")
     )
     demandes = _demandes([c for tournee in tournees for c in tournee.actifs])
+    retours, retournables = _retours(tournees)
     for tournee in tournees:
+        tournee.retours = retours.get(tournee.pk, [])
+        tournee.retournables = retournables.get(tournee.pk, [])
+        tournee.peut_declarer_retour = utilisateur.has_perm("logistique.declarer_retour", tournee)
+        tournee.peut_decider_retour = utilisateur.has_perm("logistique.decider_retour", tournee)
         communes = Counter(c.commande.adresse.commune for c in tournee.actifs)
         tournee.commune = communes.most_common(1)[0][0] if communes else ""
         tournee.recap = recapitulatif(tournee)
@@ -145,6 +179,8 @@ def tableau(request):
         "prestataires": Prestataire.objects.filter(actif=True).order_by("nom"),
         "vehicules": Vehicule.objects.filter(actif=True).order_by("immatriculation"),
         "heure": timezone.localtime(),
+        "etats_retour": EtatRetour.choices,
+        "decisions_retour": DecisionRetour.choices,
     }
     if request.headers.get("HX-Request"):
         return render(request, "logistique/_tableau.html", contexte)
@@ -288,3 +324,51 @@ def decider(request, pk):
     else:
         messages.success(request, "Demande acceptée." if accepter else "Demande refusée.")
     return _retour(date)
+
+
+# --- Retours (§12.3, décision 8.4) ----------------------------------------------------
+
+
+def _entier(valeur):
+    try:
+        return int(valeur)
+    except (TypeError, ValueError):
+        return 0
+
+
+@login_required
+@require_POST
+def declarer_retour(request, pk):
+    """Retour déclaré par le gestionnaire au retour au dépôt : `ligne` = livraison-produit."""
+    _exiger(request, "ecrans.tournees")
+    tournee = get_object_or_404(Tournee, pk=pk)
+    livraison_pk, _, produit_pk = request.POST.get("ligne", "").partition("-")
+    livraison = get_object_or_404(Livraison, pk=_entier(livraison_pk), chargement__tournee=tournee)
+    produit = get_object_or_404(Produit, pk=_entier(produit_pk))
+    return _executer(
+        request,
+        tournee.date,
+        lambda: services.declarer_retour(
+            livraison,
+            produit=produit,
+            quantite=request.POST.get("quantite", "").strip().replace(",", "."),
+            motif=request.POST.get("motif", ""),
+            etat=request.POST.get("etat", ""),
+        ),
+        "Retour enregistré.",
+    )
+
+
+@login_required
+@require_POST
+def decider_retour(request, pk):
+    _exiger(request, "ecrans.tournees")
+    retour = get_object_or_404(
+        Retour.objects.select_related("livraison__chargement__tournee"), pk=pk
+    )
+    return _executer(
+        request,
+        retour.livraison.chargement.tournee.date,
+        lambda: services.decider_retour(retour, request.POST.get("decision", "")),
+        "Décision enregistrée.",
+    )

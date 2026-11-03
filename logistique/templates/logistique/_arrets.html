@@ -41,9 +41,31 @@
   {% if traitees %}
     <h2 class="mx-1 mt-1.5 text-sm font-semibold text-[#3D3A34]">Déjà traités</h2>
     {% for livraison in traitees %}
-      <div class="flex items-center justify-between gap-2 rounded-xl border border-trait bg-white px-4 py-3">
-        <span>{{ livraison.chargement.ordre_passage }} · {{ livraison.commande.client.nom }}</span>
-        <span class="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold {% if livraison.pastille.1 == 'succes' %}bg-[#DCFCE7] text-[#166534]{% else %}bg-[#FFEDD5] text-alerte{% endif %}">{{ livraison.pastille.0 }}</span>
+      <div class="flex flex-col gap-1 rounded-xl border border-trait bg-white px-4 py-3">
+        <div class="flex items-center justify-between gap-2">
+          <span>{{ livraison.chargement.ordre_passage }} · {{ livraison.commande.client.nom }}</span>
+          <span class="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold {% if livraison.pastille.1 == 'succes' %}bg-[#DCFCE7] text-[#166534]{% else %}bg-[#FFEDD5] text-alerte{% endif %}">{{ livraison.pastille.0 }}</span>
+        </div>
+        {% if livraison.nombre_retours %}<span class="text-[13px] text-texte-secondaire">{{ livraison.nombre_retours }} retour{{ livraison.nombre_retours|pluralize }} déclaré{{ livraison.nombre_retours|pluralize }}</span>{% endif %}
+        <details class="text-sm">
+          <summary class="flex min-h-10 cursor-pointer items-center text-lien">Déclarer un retour de marchandise</summary>
+          <form method="post" action="{% url 'livraison_retour' livraison.pk %}" class="flex flex-col gap-2 pt-1">
+            {% csrf_token %}
+            <label for="retour-ligne-{{ livraison.pk }}" class="text-[13px] font-medium">Produit</label>
+            <select id="retour-ligne-{{ livraison.pk }}" name="ligne" required class="champ h-11">
+              {% for ligne in livraison.lignes.all %}<option value="{{ ligne.pk }}">{{ ligne.ligne_commande.produit.nom }} (prévu {{ ligne.quantite_prevue|quantite }})</option>{% endfor %}
+            </select>
+            <label for="retour-quantite-{{ livraison.pk }}" class="text-[13px] font-medium">Quantité</label>
+            <input id="retour-quantite-{{ livraison.pk }}" name="quantite" inputmode="decimal" required class="champ h-11 font-mono">
+            <label for="retour-etat-{{ livraison.pk }}" class="text-[13px] font-medium">État</label>
+            <select id="retour-etat-{{ livraison.pk }}" name="etat" required class="champ h-11">
+              {% for valeur, libelle in etats_retour %}<option value="{{ valeur }}">{{ libelle }}</option>{% endfor %}
+            </select>
+            <label for="retour-motif-{{ livraison.pk }}" class="text-[13px] font-medium">Motif</label>
+            <input id="retour-motif-{{ livraison.pk }}" name="motif" required maxlength="255" class="champ h-11">
+            <button type="submit" class="bouton-principal h-12">Déclarer le retour</button>
+          </form>
+        </details>
       </div>
     {% endfor %}
   {% endif %}

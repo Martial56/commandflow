@@ -75,6 +75,45 @@
     {% endfor %}
   </ol>
 
+  {% if tournee.retours or tournee.retournables and tournee.peut_declarer_retour %}
+    <div class="flex flex-col gap-2 border-t border-trait pt-2.5 text-[13px]">
+      <h3 class="text-sm font-semibold">Retours</h3>
+      {% for retour in tournee.retours %}
+        <div class="flex flex-col gap-1.5 rounded-md px-2.5 py-2 {% if retour.decision %}bg-papier{% else %}border border-alerte-bordure bg-alerte-fond{% endif %}">
+          <span><strong class="font-semibold">{{ retour.quantite|quantite }} {{ retour.produit.nom }}</strong> · {{ retour.livraison.commande.client.nom }} · {{ retour.get_etat_display|lower }} · {{ retour.motif }}</span>
+          <span class="text-texte-secondaire">Déclaré par {{ retour.cree_par }} à {{ retour.cree_le|heure }}{% if retour.decision %} · {{ retour.get_decision_display }} ({{ retour.decide_par }}){% endif %}</span>
+          {% if not retour.decision and tournee.peut_decider_retour %}
+            <form method="post" action="{% url 'retour_decider' retour.pk %}" class="flex flex-wrap gap-1.5">
+              {% csrf_token %}
+              {% for valeur, libelle in decisions_retour %}<button type="submit" name="decision" value="{{ valeur }}" class="h-8 cursor-pointer rounded-md border border-bordure bg-white px-2.5">{{ libelle }}</button>{% endfor %}
+            </form>
+          {% endif %}
+        </div>
+      {% endfor %}
+      {% if tournee.retournables and tournee.peut_declarer_retour %}
+        <details>
+          <summary class="cursor-pointer text-lien">Déclarer un retour au dépôt…</summary>
+          <form method="post" action="{% url 'tournee_retour' tournee.pk %}" class="mt-1.5 grid grid-cols-2 gap-1.5">
+            {% csrf_token %}
+            <label for="retour-ligne-t{{ tournee.pk }}" class="sr-only">Produit</label>
+            <select id="retour-ligne-t{{ tournee.pk }}" name="ligne" required class="col-span-2 h-9 rounded-md border border-bordure bg-white px-2">
+              {% for ligne in tournee.retournables %}<option value="{{ ligne.livraison_id }}-{{ ligne.ligne_commande.produit_id }}">{{ ligne.livraison.commande.client.nom }} · {{ ligne.ligne_commande.produit.nom }} (prévu {{ ligne.quantite_prevue|quantite }})</option>{% endfor %}
+            </select>
+            <label for="retour-quantite-t{{ tournee.pk }}" class="sr-only">Quantité</label>
+            <input id="retour-quantite-t{{ tournee.pk }}" name="quantite" required placeholder="Quantité" inputmode="decimal" class="h-9 rounded-md border border-bordure px-2">
+            <label for="retour-etat-t{{ tournee.pk }}" class="sr-only">État</label>
+            <select id="retour-etat-t{{ tournee.pk }}" name="etat" required class="h-9 rounded-md border border-bordure bg-white px-2">
+              {% for valeur, libelle in etats_retour %}<option value="{{ valeur }}">{{ libelle }}</option>{% endfor %}
+            </select>
+            <label for="retour-motif-t{{ tournee.pk }}" class="sr-only">Motif</label>
+            <input id="retour-motif-t{{ tournee.pk }}" name="motif" required placeholder="Motif du retour" maxlength="255" class="col-span-2 h-9 rounded-md border border-bordure px-2">
+            <button type="submit" class="col-span-2 h-8 cursor-pointer justify-self-start rounded-md border border-lien bg-white px-3 text-lien">Enregistrer le retour</button>
+          </form>
+        </details>
+      {% endif %}
+    </div>
+  {% endif %}
+
   {% if tournee.modifiable and tournee.peut_gerer %}
     <div class="flex flex-wrap gap-2 border-t border-trait pt-2.5">
       {% if tournee.prestataire_id and not tournee.compte_livreur and tournee.actifs %}

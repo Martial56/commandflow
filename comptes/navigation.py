@@ -82,6 +82,7 @@ ECRANS = [
         "tournees/",
         a_le_role(R.DIRECTION, R.GESTIONNAIRE),
         sprint=4,
+        compteur="logistique.alertes.nombre_alertes",
     ),
     Ecran(
         "facturation",

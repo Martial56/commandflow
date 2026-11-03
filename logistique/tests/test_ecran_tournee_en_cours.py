@@ -128,10 +128,10 @@ def test_arrets_deja_traites(chauffeur, tournee_partie):
     page = texte(chauffeur.get(ECRAN))
     assert "2 arrêts traités sur 3" in page
     assert f"Arrêt 3 · prochain 06h–08h {troisieme.commande.client.nom}" in page
-    assert (
-        f"Déjà traités 2 · {seconde.commande.client.nom} Échec "
-        f"1 · {premiere.commande.client.nom} Livrée"
-    ) in page
+    # Du plus récent au plus ancien, chacun avec sa pastille.
+    traites = page.split("Déjà traités", 1)[1]
+    echec = traites.index(f"2 · {seconde.commande.client.nom} Échec")
+    assert echec < traites.index(f"1 · {premiere.commande.client.nom} Livrée")
 
 
 def test_tournee_terminee_du_jour(client, entreprise, personnes):

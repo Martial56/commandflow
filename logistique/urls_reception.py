@@ -14,4 +14,5 @@ urlpatterns = [
     path("livraisons/<int:pk>/arriver/", views_livraison.arriver, name="livraison_arriver"),
     # Preuve de livraison (maquette 6).
     path("livraisons/<int:pk>/", views_livraison.saisir, name="livraison_saisie"),
+    path("livraisons/<int:pk>/retour/", views_livraison.retour, name="livraison_retour"),
 ]
