@@ -1,0 +1,7 @@
+{% comment %}Progression de la tournée, dans l'en-tête (maquette 5) ; renvoyée hors bande lors du rafraîchissement.{% endcomment %}
+<div id="progression" class="flex flex-col gap-2.5 pt-1"{% if oob %} hx-swap-oob="true"{% endif %}>
+  <div class="h-2 rounded-full bg-nav-actif" role="progressbar" aria-label="Arrêts traités" aria-valuemin="0" aria-valuemax="{{ total }}" aria-valuenow="{{ nombre_traitees }}">
+    <div class="h-full rounded-full bg-papier" style="width: {{ progression }}%"></div>
+  </div>
+  <span class="text-[13px] text-nav-texte">{% if tournee.statut == "terminee" %}Tournée terminée · {% endif %}{{ nombre_traitees }} arrêt{{ nombre_traitees|pluralize }} traité{{ nombre_traitees|pluralize }} sur {{ total }}</span>
+</div>

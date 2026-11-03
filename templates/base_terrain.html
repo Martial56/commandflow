@@ -1,5 +1,7 @@
 {% extends "base.html" %}
+{% load static %}
 {% comment %}Écrans de terrain, sur téléphone : pas de menu (maquettes 2 à 6).{% endcomment %}
+{% block scripts %}<script src="{% static 'js/terrain.js' %}" defer></script>{% endblock %}
 {% block corps %}
 <div class="mx-auto flex min-h-screen max-w-md flex-col">
   <header class="flex flex-col gap-1 bg-encre px-5 pt-5 pb-4 text-papier">
@@ -12,6 +14,7 @@
     </div>
     <div class="text-[13px] text-nav-secondaire">{% block sur_titre %}{% endblock %}</div>
     <h1 class="text-[22px] font-semibold">{% block titre_terrain %}{% endblock %}</h1>
+    {% block entete %}{% endblock %}
   </header>
   <div class="flex flex-1 flex-col gap-3 p-4">
     {% block contenu %}{% endblock %}

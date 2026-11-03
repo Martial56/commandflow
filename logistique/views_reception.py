@@ -62,6 +62,11 @@ def _contexte(request, tournee):
 
 
 def _afficher(request, tournee):
+    if tournee.statut in (StatutTournee.EN_COURS, StatutTournee.TERMINEE):
+        # Tournée partie : les arrêts à livrer (maquette 5).
+        from .views_livraison import afficher
+
+        return afficher(request, tournee)
     contexte = _contexte(request, tournee)
     if request.headers.get("HX-Request"):
         return render(request, "logistique/_reception.html", contexte)
@@ -70,18 +75,22 @@ def _afficher(request, tournee):
 
 @login_required
 def ma_tournee(request):
-    """Écran d'arrivée du livreur : sa prochaine tournée (pas encore terminée)."""
+    """Écran d'arrivée du livreur : sa prochaine tournée pas encore terminée ; à défaut,
+    sa dernière tournée terminée du jour."""
     if not request.user.has_perm("ecrans.ma_tournee"):
         raise PermissionDenied
+    aujourd_hui = timezone.localdate()
+    siennes = Tournee.objects.filter(
+        Q(chauffeur=request.user) | Q(prestataire__compte=request.user)
+    ).select_related("chauffeur", "prestataire__compte", "vehicule")
     tournee = (
-        Tournee.objects.filter(
-            Q(chauffeur=request.user) | Q(prestataire__compte=request.user),
-            date__gte=timezone.localdate(),
-            statut__in=[*STATUTS_MODIFIABLES, StatutTournee.EN_COURS],
+        siennes.filter(
+            date__gte=aujourd_hui, statut__in=[*STATUTS_MODIFIABLES, StatutTournee.EN_COURS]
         )
-        .select_related("chauffeur", "prestataire__compte", "vehicule")
         .order_by("date", "numero")
         .first()
+    ) or (
+        siennes.filter(date=aujourd_hui, statut=StatutTournee.TERMINEE).order_by("-fin_le").first()
     )
     if tournee is None:
         return render(request, "logistique/reception.html", {"tournee": None})

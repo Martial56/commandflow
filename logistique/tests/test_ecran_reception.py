@@ -107,7 +107,7 @@ def test_confirmer_la_reception_puis_demarrer(chauffeur, tournee, personnes):
     chauffeur.post(reverse("reception_demarrer", args=[tournee.pk]))
     assert statut(tournee) == StatutTournee.EN_COURS
     assert statut(chargement.commande) == Statut.EN_LIVRAISON
-    assert "Tournée partie à" in chauffeur.get(ECRAN).content.decode()
+    assert "en cours depuis" in chauffeur.get(ECRAN).content.decode()
 
 
 def test_demarrer_desactive_tant_que_tout_n_est_pas_recu(chauffeur, tournee, personnes):

@@ -611,14 +611,17 @@ def _enregistrer_position(livraison, latitude, longitude):
         livraison.latitude, livraison.longitude = latitude, longitude
 
 
+def libelle_exigences(exigences):
+    """« photo du bordereau ou nom du réceptionnaire ; signature »."""
+    return " ; ".join(
+        " ou ".join(LIBELLES_PREUVE.get(moyen, moyen).lower() for moyen in exigence)
+        for exigence in exigences
+    )
+
+
 def message_preuves(livraison):
     """« Preuve manquante : photo du bordereau ou nom du réceptionnaire. »"""
-    manquantes = preuves_manquantes(livraison)
-    exigences = " ; ".join(
-        " ou ".join(LIBELLES_PREUVE.get(moyen, moyen).lower() for moyen in exigence)
-        for exigence in manquantes
-    )
-    return f"Preuve manquante : {exigences}."
+    return f"Preuve manquante : {libelle_exigences(preuves_manquantes(livraison))}."
 
 
 @transaction.atomic

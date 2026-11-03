@@ -3,7 +3,7 @@
 sauf pendant une saisie.{% endcomment %}
 {% block titre %}Contrôle du chargement{% endblock %}
 {% block sur_titre %}{% if tournee %}Tournée {{ tournee.numero }} · {{ tournee.livreur }}{% if pour_le_prestataire %} (saisie par {{ user }}){% endif %}{% else %}Ma tournée{% endif %}{% endblock %}
-{% block titre_terrain %}{% if tournee.statut == "en_cours" %}Tournée en cours{% else %}Contrôle du chargement{% endif %}{% endblock %}
+{% block titre_terrain %}Contrôle du chargement{% endblock %}
 {% block contenu %}
 {% include "composants/messages.html" %}
 {% if not tournee %}

@@ -1,0 +1,64 @@
+{% load format_fr %}
+{% comment %}Arrêts de la tournée en cours (maquette 5) : le prochain, ceux à venir, ceux déjà traités.{% endcomment %}
+<div class="flex flex-col gap-2.5">
+  {% if prochain %}
+    <section aria-labelledby="prochain" class="flex flex-col gap-2 rounded-xl border-2 border-lien bg-white p-4">
+      <div class="flex items-center justify-between gap-2">
+        <span class="text-[13px] font-semibold text-lien">Arrêt {{ prochain.chargement.ordre_passage }} · {% if prochain.statut == "sur_place" %}sur place depuis {{ prochain.arrivee_le|heure }}{% else %}prochain{% endif %}</span>
+        <span class="text-[13px] text-texte-secondaire">{{ prochain.commande.creneau }}</span>
+      </div>
+      <h2 id="prochain" class="text-lg font-semibold">{{ prochain.commande.client.nom }}</h2>
+      {% with adresse=prochain.commande.adresse %}
+        <span class="text-sm text-[#3D3A34]">{{ adresse.commune }}{% if adresse.adresse %}, {{ adresse.adresse }}{% endif %}{% if adresse.repere %} · {{ adresse.repere }}{% endif %}</span>
+        {% if adresse.consignes or prochain.commande.instructions %}<span class="text-sm text-[#3D3A34]">{% firstof prochain.commande.instructions adresse.consignes %}</span>{% endif %}
+      {% endwith %}
+      <span class="text-sm text-[#3D3A34]">{{ prochain.resume }} · preuve : {{ prochain.preuve }}</span>
+      <a href="{{ prochain.itineraire }}" target="_blank" rel="noopener" class="text-sm font-medium underline">Ouvrir l'itinéraire</a>
+      {% if prochain.statut == "en_attente" %}
+        <form method="post" action="{% url 'livraison_arriver' prochain.pk %}" x-data="avecPosition" x-on:submit.prevent="envoyer($el)">
+          {% csrf_token %}
+          <input type="hidden" name="latitude"><input type="hidden" name="longitude">
+          <button type="submit" x-bind:disabled="envoi" class="bouton-principal mt-1 h-12 disabled:cursor-wait disabled:bg-bordure">Je suis arrivé</button>
+        </form>
+      {% endif %}
+    </section>
+  {% elif tournee.statut == "en_cours" %}
+    <div class="carte text-texte-secondaire">Les arrêts restants attendent la décision d'un responsable.</div>
+  {% else %}
+    <div role="status" class="rounded-md bg-[#DCFCE7] px-3 py-2 text-sm text-[#166534]">Tous les arrêts sont traités : tournée terminée.</div>
+  {% endif %}
+
+  {% for livraison in a_venir %}
+    <div class="flex items-center justify-between gap-2 rounded-xl border border-trait bg-white px-4 py-3.5">
+      <div class="flex flex-col gap-0.5"><span class="text-[13px] text-texte-secondaire">Arrêt {{ livraison.chargement.ordre_passage }}</span><span class="font-semibold">{{ livraison.commande.client.nom }}</span></div>
+      <span class="shrink-0 rounded-full bg-[#E7E3DA] px-2.5 py-1 text-xs font-semibold text-[#3D3A34]">{% if livraison.en_validation %}Saisie à valider{% else %}À venir{% endif %}</span>
+    </div>
+  {% endfor %}
+
+  {% if traitees %}
+    <h2 class="mx-1 mt-1.5 text-sm font-semibold text-[#3D3A34]">Déjà traités</h2>
+    {% for livraison in traitees %}
+      <div class="flex items-center justify-between gap-2 rounded-xl border border-trait bg-white px-4 py-3">
+        <span>{{ livraison.chargement.ordre_passage }} · {{ livraison.commande.client.nom }}</span>
+        <span class="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold {% if livraison.pastille.1 == 'succes' %}bg-[#DCFCE7] text-[#166534]{% else %}bg-[#FFEDD5] text-alerte{% endif %}">{{ livraison.pastille.0 }}</span>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  {% if tournee.statut == "en_cours" %}
+    <details class="mt-2 rounded-lg border border-[#C2410C] bg-white">
+      <summary class="flex h-12 cursor-pointer list-none items-center justify-center font-medium text-alerte">Signaler un incident (panne, accident…)</summary>
+      <form method="post" action="{% url 'tournee_incident' tournee.pk %}" class="flex flex-col gap-2 border-t border-trait p-3">
+        {% csrf_token %}
+        <label for="type-incident" class="text-[13px] font-medium">Type d'incident</label>
+        <select id="type-incident" name="type" required class="champ">
+          {% for valeur, libelle in types_incident %}<option value="{{ valeur }}">{{ libelle }}</option>{% endfor %}
+        </select>
+        <label for="commentaire-incident" class="text-[13px] font-medium">Commentaire</label>
+        <textarea id="commentaire-incident" name="commentaire" rows="2" class="champ h-auto py-2"></textarea>
+        <button type="submit" class="flex h-12 cursor-pointer items-center justify-center rounded-md bg-alerte font-semibold text-white">Prévenir le gestionnaire</button>
+      </form>
+    </details>
+  {% endif %}
+</div>
+{% if fragment %}{% include "logistique/_progression.html" with oob=True %}{% endif %}

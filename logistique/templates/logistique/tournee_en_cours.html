@@ -1,0 +1,16 @@
+{% extends "base_terrain.html" %}
+{% load format_fr %}
+{% comment %}Tournée en cours du livreur (maquette 5). Rafraîchie toutes les 30 secondes, sauf pendant une saisie.{% endcomment %}
+{% block titre %}Ma tournée{% endblock %}
+{% block sur_titre %}<span class="flex items-center justify-between gap-2"><span>{{ tournee.numero }} · {% if tournee.statut == "terminee" %}terminée à {{ tournee.fin_le|heure }}{% else %}en cours depuis {{ tournee.depart_le|heure }}{% endif %}{% if pour_le_prestataire %} · {{ tournee.livreur }} (saisie par {{ user }}){% endif %}</span><span x-data="connexion" class="text-xs" x-bind:class="enLigne ? 'text-[#BBF7D0]' : 'text-[#FED7AA]'" x-text="enLigne ? '● En ligne' : '● Hors connexion'">● En ligne</span></span>{% endblock %}
+{% block titre_terrain %}Ma tournée{% endblock %}
+{% block entete %}{% include "logistique/_progression.html" %}{% endblock %}
+{% block contenu %}
+{% include "composants/messages.html" %}
+<div id="arrets"
+     hx-get="{% url 'reception_tournee' tournee.pk %}"
+     hx-trigger="every 30s [!document.querySelector('#arrets :focus, #arrets details[open]')]"
+     hx-swap="innerHTML">
+  {% include "logistique/_arrets.html" %}
+</div>
+{% endblock %}

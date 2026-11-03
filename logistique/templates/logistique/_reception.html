@@ -8,12 +8,8 @@
     <div class="flex flex-col rounded-lg bg-white p-2"><span class="font-mono text-xl">{{ recap.recues }}</span><span class="text-xs text-texte-secondaire">Reçues</span></div>
   </div>
 
-  {% if tournee.statut == "en_cours" %}
-    <p role="status" class="rounded-md bg-[#DCFCE7] px-3 py-2 text-sm text-[#166534]">Tournée partie à {{ tournee.depart_le|heure }} avec {{ chargements|length }} commande{{ chargements|length|pluralize }}.</p>
-  {% endif %}
-
   {% for chargement in chargements %}
-    {% if chargement.statut == "verifiee_preparation" and tournee.statut != "en_cours" and not chargement.reception_en_attente %}
+    {% if chargement.statut == "verifiee_preparation" and not chargement.reception_en_attente %}
       <section aria-labelledby="arret-{{ chargement.pk }}" class="flex flex-col gap-3 rounded-xl border-2 border-lien bg-white p-4">
         <div class="flex items-start justify-between gap-2">
           <div class="flex flex-col">
@@ -66,7 +62,7 @@
     <div class="carte text-texte-secondaire">Aucune commande dans cette tournée.</div>
   {% endfor %}
 
-  {% if tournee.statut != "en_cours" and chargements %}
+  {% if chargements %}
     <form method="post" action="{% url 'reception_demarrer' tournee.pk %}">
       {% csrf_token %}
       <button type="submit" {% if not peut_demarrer %}disabled{% endif %} class="bouton-principal h-auto min-h-14 py-2 text-lg disabled:cursor-not-allowed disabled:bg-bordure">

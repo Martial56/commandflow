@@ -1,5 +1,6 @@
 from django.urls import path
 
+from . import views_livraison
 from . import views_reception as views
 
 urlpatterns = [
@@ -8,4 +9,7 @@ urlpatterns = [
     path("<int:pk>/", views.reception, name="reception_tournee"),
     path("<int:pk>/demarrer/", views.demarrer, name="reception_demarrer"),
     path("chargements/<int:pk>/recevoir/", views.recevoir, name="reception_recevoir"),
+    # Tournée partie (maquette 5).
+    path("<int:pk>/incident/", views_livraison.incident, name="tournee_incident"),
+    path("livraisons/<int:pk>/arriver/", views_livraison.arriver, name="livraison_arriver"),
 ]
