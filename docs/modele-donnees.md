@@ -287,8 +287,8 @@ Ces choix de modélisation dépendent des arbitrages du §23. Chacun modifie un 
 - [x] Heure limite de confirmation des récurrentes et heure de génération : génération la veille à 18 h, limite à 20 h, réglables par entreprise (voir 8.1)
 - [x] Profils autorisés à valider les modifications, les urgences et les annulations : Direction et Gestionnaire (voir 8.1)
 - [x] Preuves obligatoires par catégorie de client : photo du bordereau ou nom du réceptionnaire par défaut, réglable par catégorie (voir 8.4)
-- [ ] Une facture peut-elle couvrir plusieurs livraisons (modèle actuel, M2M) ou une seule
-- [ ] TVA appliquée et produits exonérés, pour fixer `montant_ht` / `montant_ttc`
+- [x] Une facture peut-elle couvrir plusieurs livraisons (modèle actuel, M2M) ou une seule : plusieurs, du même client (voir 8.5)
+- [x] TVA appliquée et produits exonérés, pour fixer `montant_ht` / `montant_ttc` : taux par produit, 0 % en attendant la confirmation de la comptabilité (voir 8.5)
 - [x] Quantités entières uniquement ou décimales (vente au poids) : décimales seulement pour les produits vendus au kg (voir 8.1)
 
 ### 8.1 Décisions validées le 18 octobre 2026 (Sprint 2)
@@ -379,3 +379,21 @@ Ces choix de modélisation dépendent des arbitrages du §23. Chacun modifie un 
 | Reliquat qui échoue (3 novembre 2026) | Le reliquat reste ouvert, la commande reste « Partiellement livrée » ; le gestionnaire fixe une nouvelle date ou le solde |
 | Reliquat livré partiellement (3 novembre 2026) | Un nouveau reliquat remplace l'ancien pour la quantité manquante ; la commande reste « Partiellement livrée » |
 | Reliquat et production (3 novembre 2026) | Compté dans le « commandé » du plan de sa nouvelle date, tant qu'il n'est pas soldé |
+
+### 8.5 Décisions validées le 4 novembre 2026 (Sprint 6 — facturation, paiements, pilotage)
+
+| Sujet | Décision |
+| --- | --- |
+| TVA | Prix du catalogue TTC. Un taux de TVA par produit, réglé dans l'administration, à 0 % tant que la comptabilité de Mie Doré n'a pas confirmé ; HT = TTC ÷ (1 + taux). À confirmer avec la comptabilité |
+| Facture et livraisons | Une facture (ou un autre document) peut couvrir plusieurs livraisons, toutes du même client (maquette 15) |
+| Choix FNE ou autre document | Facturation, Gestionnaire, Direction ; la Comptabilité consulte |
+| FNE : pièces exigées | Le numéro FNE est obligatoire à l'enregistrement ; le PDF peut être joint plus tard, avec une alerte « document manquant » en attendant (§16.1) |
+| Autre document | Types : Reçu, Bon de livraison valorisé, Autre ; motif obligatoire. ComandFlow ne fabrique jamais un document qui imite une FNE |
+| Montant facturé | Quantités livrées × prix figé de la ligne de commande. Les retours ne sont pas déduits automatiquement ; l'avoir est une procédure distincte, hors MVP (§12.3) : une erreur se corrige en annulant le document puis en en émettant un nouveau |
+| Annulation d'un document | Comptabilité ou Direction, motif obligatoire. Pour une FNE, la correction sur le portail de la DGI reste à faire à la main ; ComandFlow le rappelle |
+| Échéance | Calculée selon les conditions du client (comptant : date du document ; fin de mois : dernier jour du mois ; X jours : date + X), modifiable. Les « bons à payer de fin de mois » correspondent au relevé mensuel du client |
+| Statut « contesté / à vérifier » | Marquage manuel par la Comptabilité, avec motif ; il s'ajoute au statut de paiement calculé (non payé, partiel, payé, en retard) sans le remplacer |
+| Paiements | Enregistrés par la Comptabilité, le Gestionnaire et la Direction. Un montant non affecté reste en avance du client, affectable plus tard. Annulation par la Comptabilité ou la Direction, motif obligatoire |
+| Notifications | Dans l'application seulement au MVP (cloche et résumé quotidien) ; e-mail quand un serveur d'envoi sera configuré, WhatsApp en phase 3 (§21). Le code client à usage unique reste désactivé |
+| Tableau de bord du Commercial | Chiffres limités aux commandes qu'il a créées, sans les créances |
+| Écran Paramètres (maquette 17) | Reste « en préparation » ; les réglages (dont les preuves exigées) restent dans l'administration Django |
