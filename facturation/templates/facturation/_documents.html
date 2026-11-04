@@ -1,0 +1,32 @@
+{% load format_fr %}
+{% comment %}Documents émis (maquette 15, onglet « Documents émis ») : rechargé par la recherche.{% endcomment %}
+<div id="liste-documents" class="overflow-x-auto rounded-[10px] border border-trait bg-white">
+  <table class="w-full min-w-[720px] text-sm">
+    <thead>
+      <tr class="text-left text-[13px] text-texte-secondaire">
+        <th class="border-b border-trait px-4 py-3 font-medium">Document</th>
+        <th class="border-b border-trait px-4 py-3 font-medium">Date</th>
+        <th class="border-b border-trait px-4 py-3 font-medium">Client</th>
+        <th class="border-b border-trait px-4 py-3 font-medium">Type</th>
+        <th class="border-b border-trait px-4 py-3 text-right font-medium">Montant TTC</th>
+        <th class="border-b border-trait px-4 py-3 font-medium">Échéance</th>
+        <th class="border-b border-trait px-4 py-3 font-medium">État</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for facture in documents %}
+        <tr>
+          <td class="border-b border-[#EFECE6] px-4 py-3"><a href="{% url 'facture_detail' facture.pk %}" class="font-mono">{{ facture.numero_interne }}</a></td>
+          <td class="border-b border-[#EFECE6] px-4 py-3">{{ facture.date_document|date_courte }}</td>
+          <td class="border-b border-[#EFECE6] px-4 py-3">{{ facture.client.nom }}</td>
+          <td class="border-b border-[#EFECE6] px-4 py-3">{% if facture.est_fne %}FNE <span class="font-mono">{{ facture.numero_fne }}</span>{% else %}{{ facture.get_nature_display }}{% endif %}</td>
+          <td class="border-b border-[#EFECE6] px-4 py-3 text-right font-mono">{{ facture.montant_ttc|fcfa }}</td>
+          <td class="border-b border-[#EFECE6] px-4 py-3">{{ facture.echeance|date_courte }}</td>
+          <td class="border-b border-[#EFECE6] px-4 py-3">{% include "facturation/_etat.html" %}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7" class="px-4 py-6 text-texte-secondaire">Aucun document ne correspond à la recherche.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

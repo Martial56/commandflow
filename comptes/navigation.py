@@ -90,6 +90,7 @@ ECRANS = [
         "facturation/",
         a_le_role(R.DIRECTION, R.GESTIONNAIRE, R.FACTURATION, R.COMPTABILITE),
         sprint=6,
+        compteur="facturation.alertes.nombre_alertes",
     ),
     Ecran(
         "paiements",

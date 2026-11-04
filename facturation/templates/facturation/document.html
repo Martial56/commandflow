@@ -1,0 +1,73 @@
+{% extends "base_bureau.html" %}
+{% load format_fr %}
+{% comment %}Fiche d'un document (§14) : livraisons couvertes, PDF par lien signé, annulation, vérification.{% endcomment %}
+{% block titre %}{{ facture.numero_interne }}{% endblock %}
+{% block contenu %}
+<a href="{% url 'ecran_facturation' %}?vue=emis" class="text-sm">‹ Documents émis</a>
+<div class="flex flex-wrap items-center gap-3">
+  <h1 class="font-mono text-[28px] font-semibold">{{ facture.numero_interne }}</h1>
+  {% include "facturation/_etat.html" %}
+</div>
+<p class="text-texte-secondaire">{{ facture.client.nom }} · {% if facture.est_fne %}Facture normalisée (FNE) n° <span class="font-mono">{{ facture.numero_fne }}</span>{% else %}{{ facture.get_nature_display }} (sans FNE){% endif %} · {{ facture.date_document|date_courte }}</p>
+{% include "composants/messages.html" %}
+
+<div class="flex flex-wrap items-start gap-5">
+  <div class="flex min-w-0 flex-[2_1_420px] flex-col gap-5">
+    <section aria-labelledby="titre-livraisons" class="carte flex flex-col gap-2 text-sm">
+      <h2 id="titre-livraisons" class="text-base font-semibold">Livraisons couvertes</h2>
+      <table class="w-full">
+        <thead><tr class="text-left text-[13px] text-texte-secondaire"><th class="pb-2 font-medium">Commande</th><th class="pb-2 font-medium">Livrée le</th><th class="pb-2 text-right font-medium">HT</th><th class="pb-2 text-right font-medium">TTC</th></tr></thead>
+        <tbody>
+          {% for ligne in lignes %}
+            <tr class="border-t border-trait"><td class="py-2"><a href="{% url 'commande_detail' ligne.livraison.commande_id %}" class="font-mono">{{ ligne.livraison.commande.numero }}</a>{% if ligne.livraison.statut == "partiellement_livree" %} <span class="text-xs text-alerte">partielle</span>{% endif %}</td><td class="py-2">{{ ligne.livraison.traitee_le|date_courte }}</td><td class="py-2 text-right font-mono">{{ ligne.montant_ht|fcfa }}</td><td class="py-2 text-right font-mono">{{ ligne.montant_ttc|fcfa }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p class="flex justify-end gap-3"><span class="text-texte-secondaire">Total HT {{ facture.montant_ht|fcfa }} · TTC</span><span class="font-mono text-lg">{{ facture.montant_ttc|fcfa }} FCFA</span></p>
+    </section>
+  </div>
+
+  <section aria-labelledby="titre-suivi" class="carte flex min-w-0 flex-[1_1_320px] flex-col gap-3 text-sm">
+    <h2 id="titre-suivi" class="text-base font-semibold">Suivi</h2>
+    <div class="flex justify-between gap-3"><span class="text-texte-secondaire">Échéance</span><span>{{ facture.echeance|date_courte }}</span></div>
+    <div class="flex justify-between gap-3"><span class="text-texte-secondaire">Choix fait par</span><span class="text-right">{{ facture.choix_fait_par }} · {{ facture.choix_fait_le|jour_mois }} {{ facture.choix_fait_le|heure }}</span></div>
+    {% if not facture.est_fne %}<div class="flex justify-between gap-3"><span class="text-texte-secondaire">Motif sans FNE</span><span class="text-right">{{ facture.motif_sans_fne }}</span></div>{% endif %}
+    <div class="flex justify-between gap-3"><span class="text-texte-secondaire">Document</span>{% if lien_document %}<a href="{{ lien_document }}">{{ facture.piece.nom_original }}</a>{% else %}<span class="text-alerte">Pas encore joint</span>{% endif %}</div>
+    {% if facture.statut == "annulee" %}<p class="rounded-md bg-papier px-3 py-2">Annulé : {{ facture.motif_annulation }}{% if facture.est_fne %} · la correction de la FNE se fait sur la <a href="{{ portail_fne }}" target="_blank" rel="noopener">plateforme de la DGI</a>{% endif %}</p>{% endif %}
+    {% if facture.a_verifier %}<p class="rounded-md bg-[#FEF3C7] px-3 py-2 text-[#92400E]">Contesté / à vérifier : {{ facture.motif_verification }}</p>{% endif %}
+
+    {% if peut_joindre %}
+      <form method="post" action="{% url 'facture_joindre' facture.pk %}" enctype="multipart/form-data" class="flex flex-col gap-2 border-t border-trait pt-3">
+        {% csrf_token %}
+        <label for="fichier" class="text-[13px] font-medium">{% if facture.piece %}Remplacer le document{% else %}Joindre le {% if facture.est_fne %}PDF de la FNE{% else %}document{% endif %}{% endif %}</label>
+        <input id="fichier" type="file" name="fichier" accept="application/pdf,image/*" required class="text-sm">
+        <button type="submit" class="h-10 cursor-pointer self-start rounded-md border border-lien bg-white px-3 text-lien">Joindre</button>
+      </form>
+    {% endif %}
+    {% if peut_verifier %}
+      <form method="post" action="{% url 'facture_verifier' facture.pk %}" class="flex flex-col gap-2 border-t border-trait pt-3">
+        {% csrf_token %}
+        {% if facture.a_verifier %}
+          <button type="submit" name="action" value="lever" class="h-10 cursor-pointer self-start rounded-md border border-bordure bg-white px-3">Lever « à vérifier »</button>
+        {% else %}
+          <label for="motif-verification" class="text-[13px] font-medium">Marquer « contesté / à vérifier »</label>
+          <input id="motif-verification" name="motif" required maxlength="255" class="champ h-10">
+          <button type="submit" class="h-10 cursor-pointer self-start rounded-md border border-bordure bg-white px-3">Marquer</button>
+        {% endif %}
+      </form>
+    {% endif %}
+    {% if peut_annuler %}
+      <details class="border-t border-trait pt-3">
+        <summary class="cursor-pointer text-alerte">Annuler ce document…</summary>
+        <form method="post" action="{% url 'facture_annuler' facture.pk %}" class="mt-2 flex flex-col gap-2">
+          {% csrf_token %}
+          {% if facture.est_fne %}<p class="text-[13px] text-texte-secondaire">L'annulation dans ComandFlow ne corrige pas la FNE : faire aussi la correction sur la <a href="{{ portail_fne }}" target="_blank" rel="noopener">plateforme de la DGI</a>.</p>{% endif %}
+          <label for="motif-annulation" class="text-[13px] font-medium">Motif</label>
+          <input id="motif-annulation" name="motif" required maxlength="255" class="champ h-10">
+          <button type="submit" class="h-10 cursor-pointer self-start rounded-md border border-alerte-bordure bg-white px-3 text-alerte">Annuler le document</button>
+        </form>
+      </details>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

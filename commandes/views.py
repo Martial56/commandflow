@@ -167,10 +167,21 @@ def detail(request, pk):
             and utilisateur.has_perm("commandes.annuler_commande", commande),
             **_production(commande, utilisateur),
             **_tournee(commande, utilisateur, peut_saisir),
+            **_facturation(commande, utilisateur),
             "formulaire_note": NoteConfirmationForm(),
             "formulaire_motif": MotifForm(),
         },
     )
+
+
+def _facturation(commande, utilisateur):
+    """Ligne « Facture » de la fiche (Sprint 6) : documents qui couvrent ses livraisons."""
+    from facturation.fiche import factures
+
+    return {
+        "factures": factures(commande),
+        "voir_factures": utilisateur.has_perm("facturation.voir_factures"),
+    }
 
 
 def _production(commande, utilisateur):

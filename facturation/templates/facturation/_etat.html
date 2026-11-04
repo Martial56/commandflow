@@ -1,0 +1,10 @@
+{% comment %}Pastilles d'état d'un document : annulé, document manquant (§16.1), contesté / à vérifier.{% endcomment %}
+<span class="flex flex-wrap gap-1">
+  {% if facture.statut == "annulee" %}
+    <span class="rounded-full bg-[#E7E3DA] px-2 py-0.5 text-xs font-semibold text-[#3D3A34]">Annulé</span>
+  {% else %}
+    <span class="rounded-full bg-[#DCFCE7] px-2 py-0.5 text-xs font-semibold text-[#166534]">Émis</span>
+    {% if facture.document_manquant %}<span class="rounded-full bg-[#FFEDD5] px-2 py-0.5 text-xs font-semibold text-alerte">Document manquant</span>{% endif %}
+  {% endif %}
+  {% if facture.a_verifier %}<span class="rounded-full bg-[#FEF3C7] px-2 py-0.5 text-xs font-semibold text-[#92400E]">À vérifier</span>{% endif %}
+</span>

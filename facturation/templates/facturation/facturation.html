@@ -1,0 +1,140 @@
+{% extends "base_bureau.html" %}
+{% load format_fr %}
+{% comment %}Facturation (maquette 15) : livraisons à facturer et choix du document, documents émis.{% endcomment %}
+{% block titre %}Facturation{% endblock %}
+{% block contenu %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <h1 class="text-[28px] font-semibold">Facturation</h1>
+  <nav aria-label="Vue" class="flex flex-wrap gap-2">
+    <a href="{% url 'ecran_facturation' %}" {% if vue == "a_facturer" %}aria-current="page"{% endif %}
+       class="inline-flex h-10 items-center rounded-full px-3.5 text-sm no-underline {% if vue == 'a_facturer' %}bg-encre text-papier hover:text-papier{% else %}border border-bordure bg-white text-encre{% endif %}">À facturer · {{ a_facturer|length }}</a>
+    <a href="{% url 'ecran_facturation' %}?vue=emis" {% if vue == "emis" %}aria-current="page"{% endif %}
+       class="inline-flex h-10 items-center rounded-full px-3.5 text-sm no-underline {% if vue == 'emis' %}bg-encre text-papier hover:text-papier{% else %}border border-bordure bg-white text-encre{% endif %}">Documents émis</a>
+  </nav>
+</div>
+{% include "composants/messages.html" %}
+
+{% if vue == "a_facturer" %}
+<form method="post" action="{% url 'facture_emettre' %}" enctype="multipart/form-data"
+      x-data="{
+        lignes: {},
+        type: '{{ type_fne }}',
+        get choisies() { return Object.values(this.lignes).filter((l) => l.choisie) },
+        get client() { return this.choisies.length ? this.choisies[0].client : '' },
+        get total() { return this.choisies.reduce((s, l) => s + l.montant, 0) },
+      }"
+      x-effect="if (choisies.length) $refs.echeance.value = choisies[0].echeance"
+      class="flex flex-wrap items-start gap-5">
+  {% csrf_token %}
+  <div class="min-w-0 flex-[3_1_420px] overflow-x-auto rounded-[10px] border border-trait bg-white">
+    <table class="w-full min-w-[520px] text-sm">
+      <thead>
+        <tr class="text-left text-[13px] text-texte-secondaire">
+          <th class="w-10 border-b border-trait px-4 py-3"><span class="sr-only">Sélection</span></th>
+          <th class="border-b border-trait px-4 py-3 font-medium">Livraison</th>
+          <th class="border-b border-trait px-4 py-3 font-medium">Client</th>
+          <th class="border-b border-trait px-4 py-3 text-right font-medium">Montant livré</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for livraison in a_facturer %}
+          <tr x-init="lignes[{{ livraison.pk }}] = { choisie: false, client: '{{ livraison.commande.client_id }}', nom: '{{ livraison.commande.client.nom|escapejs }}', montant: {{ livraison.montant }}, echeance: '{{ livraison.echeance|date:'Y-m-d' }}' }"
+              x-bind:class="lignes[{{ livraison.pk }}]?.choisie && 'bg-[#EEF2FF]'">
+            <td class="border-b border-[#EFECE6] px-4 py-3">
+              <input type="checkbox" name="livraisons" value="{{ livraison.pk }}" class="h-[18px] w-[18px]"
+                     aria-label="Sélectionner {{ livraison.commande.numero }}"
+                     x-model="lignes[{{ livraison.pk }}].choisie"
+                     x-bind:disabled="!!client && client !== '{{ livraison.commande.client_id }}'">
+            </td>
+            <td class="border-b border-[#EFECE6] px-4 py-3"><a href="{% url 'commande_detail' livraison.commande_id %}" class="font-mono">{{ livraison.commande.numero }}</a>{% if livraison.traitee_le %} · {{ livraison.traitee_le|jour_mois }}{% endif %}{% if livraison.statut == "partiellement_livree" %} <span class="text-xs text-alerte">partielle</span>{% endif %}</td>
+            <td class="border-b border-[#EFECE6] px-4 py-3">{{ livraison.commande.client.nom }}</td>
+            <td class="border-b border-[#EFECE6] px-4 py-3 text-right font-mono">{{ livraison.montant|fcfa }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="4" class="px-4 py-6 text-texte-secondaire">Aucune livraison à facturer.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if peut_emettre and a_facturer %}
+  <section aria-labelledby="titre-document" class="flex min-w-0 flex-[2_1_300px] flex-col gap-3.5 rounded-[10px] border border-trait bg-white p-5">
+    <h2 id="titre-document" class="text-base font-semibold">Document pour la sélection</h2>
+    <p class="text-sm text-[#3D3A34]" x-show="choisies.length">
+      <span x-text="choisies[0]?.nom"></span> · <span x-text="choisies.length + (choisies.length > 1 ? ' livraisons' : ' livraison')"></span> ·
+      <span class="font-mono" x-text="total.toLocaleString('fr-FR') + ' FCFA'"></span>
+    </p>
+    <p class="text-sm text-texte-secondaire" x-show="!choisies.length">Cocher les livraisons d'un même client.</p>
+    <fieldset class="flex flex-col gap-2">
+      <legend class="pb-1.5 text-[13px] font-medium">Type de document</legend>
+      <label class="flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-3" x-bind:class="type === 'fne' ? 'border-2 border-lien bg-[#EEF2FF] font-semibold' : 'border border-bordure'">
+        <input type="radio" name="type_document" value="fne" x-model="type"> Facture normalisée (FNE)
+      </label>
+      <label class="flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-3" x-bind:class="type === 'autre' ? 'border-2 border-lien bg-[#EEF2FF] font-semibold' : 'border border-bordure'">
+        <input type="radio" name="type_document" value="autre" x-model="type"> Autre document (reçu, bon)
+      </label>
+    </fieldset>
+    <div class="flex flex-col gap-1.5" x-show="type === 'fne'">
+      <label for="numero_fne" class="text-[13px] font-medium">N° FNE (plateforme DGI)</label>
+      <input id="numero_fne" name="numero_fne" maxlength="60" class="champ h-11" x-bind:required="type === 'fne'">
+      <a href="{{ portail_fne }}" target="_blank" rel="noopener" class="text-[13px]">Ouvrir la plateforme FNE de la DGI</a>
+    </div>
+    <div class="flex flex-col gap-3" x-show="type === 'autre'" x-cloak>
+      <div class="flex flex-col gap-1.5">
+        <label for="nature" class="text-[13px] font-medium">Document</label>
+        <select id="nature" name="nature" class="champ h-11">
+          {% for valeur, libelle in natures %}<option value="{{ valeur }}">{{ libelle }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="flex flex-col gap-1.5">
+        <label for="motif" class="text-[13px] font-medium">Motif du traitement sans FNE</label>
+        <input id="motif" name="motif" maxlength="255" class="champ h-11" x-bind:required="type === 'autre'">
+      </div>
+    </div>
+    <label x-data="{ nom: '' }" class="flex min-h-16 cursor-pointer items-center justify-center rounded-md border border-dashed border-[#8F897D] bg-[#FAF9F6] px-3 text-center text-[#3D3A34]">
+      <span x-text="nom || (type === 'fne' ? 'Joindre le PDF de la FNE' : 'Joindre le document (PDF)')">Joindre le PDF de la FNE</span>
+      <input type="file" name="fichier" accept="application/pdf,image/*" class="sr-only" x-on:change="nom = $event.target.files[0]?.name || ''">
+    </label>
+    <div class="flex flex-col gap-1.5">
+      <label for="echeance" class="text-[13px] font-medium">Échéance de paiement</label>
+      <input id="echeance" type="date" name="echeance" x-ref="echeance" class="champ h-11">
+    </div>
+    <button type="submit" class="bouton-principal h-12 disabled:cursor-not-allowed disabled:bg-bordure" x-bind:disabled="!choisies.length">Enregistrer le document</button>
+    <p class="text-xs text-texte-secondaire">La FNE est émise sur la plateforme de la DGI ; ComandFlow archive le document et suit le paiement.</p>
+  </section>
+  {% endif %}
+</form>
+
+{% else %}
+<form id="recherche-documents" method="get" action="{% url 'ecran_facturation' %}"
+      hx-get="{% url 'ecran_facturation' %}" hx-trigger="change, input delay:300ms from:#recherche-texte"
+      hx-target="#liste-documents" hx-swap="outerHTML" hx-push-url="true"
+      class="flex flex-wrap items-end gap-3">
+  <input type="hidden" name="vue" value="emis">
+  <div class="flex min-w-60 flex-[2_1_260px] flex-col gap-1.5">
+    <label for="recherche-texte" class="text-[13px] font-medium">Rechercher</label>
+    <input id="recherche-texte" type="search" name="q" value="{{ recherche.q|default:'' }}" placeholder="Client, n° de document, n° FNE" class="champ h-11">
+  </div>
+  <div class="flex flex-col gap-1.5">
+    <label for="recherche-du" class="text-[13px] font-medium">Du</label>
+    <input id="recherche-du" type="date" name="du" value="{{ recherche.du|default:'' }}" class="champ h-11">
+  </div>
+  <div class="flex flex-col gap-1.5">
+    <label for="recherche-au" class="text-[13px] font-medium">Au</label>
+    <input id="recherche-au" type="date" name="au" value="{{ recherche.au|default:'' }}" class="champ h-11">
+  </div>
+  <div class="flex w-36 flex-col gap-1.5">
+    <label for="recherche-montant" class="text-[13px] font-medium">Montant (FCFA)</label>
+    <input id="recherche-montant" name="montant" inputmode="numeric" value="{{ recherche.montant|default:'' }}" class="champ h-11 font-mono">
+  </div>
+  <div class="flex flex-col gap-1.5">
+    <label for="recherche-etat" class="text-[13px] font-medium">État</label>
+    <select id="recherche-etat" name="etat" class="champ h-11">
+      {% for valeur, libelle in etats %}<option value="{{ valeur }}" {% if recherche.etat == valeur %}selected{% endif %}>{{ libelle }}</option>{% endfor %}
+    </select>
+  </div>
+  <noscript><button type="submit" class="h-11 rounded-md border border-bordure bg-white px-4">Rechercher</button></noscript>
+</form>
+{% include "facturation/_documents.html" %}
+{% endif %}
+{% endblock %}
