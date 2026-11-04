@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from django.core.validators import MinValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Q
 
@@ -32,6 +32,14 @@ class Produit(ModeleEntreprise, ModeleTrace):
         decimal_places=0,
         validators=[MinValueValidator(0)],
     )
+    # Prix TTC ; HT = TTC ÷ (1 + taux). 0 % tant que la comptabilité n'a pas confirmé (8.5).
+    taux_tva = models.DecimalField(
+        "taux de TVA (%)",
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal("0"),
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+    )
     notes_preparation = models.TextField("notes de préparation", blank=True)
     actif = models.BooleanField("actif", default=True)
 
@@ -45,6 +53,9 @@ class Produit(ModeleEntreprise, ModeleTrace):
             ),
             models.CheckConstraint(
                 condition=Q(prix_reference__gte=0), name="produit_prix_reference_positif"
+            ),
+            models.CheckConstraint(
+                condition=Q(taux_tva__gte=0, taux_tva__lte=100), name="produit_taux_tva_valide"
             ),
         ]
 

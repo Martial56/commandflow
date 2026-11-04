@@ -8,10 +8,10 @@ from .models import Produit
 
 @admin.register(Produit)
 class ProduitAdmin(AdminEntreprise):
-    list_display = ["code", "nom", "unite", "prix_reference", "actif"]
+    list_display = ["code", "nom", "unite", "prix_reference", "taux_tva", "actif"]
     list_filter = ["actif", "unite"]
     search_fields = ["code", "nom"]
-    fields = ["code", "nom", "unite", "prix_reference", "notes_preparation", "actif"]
+    fields = ["code", "nom", "unite", "prix_reference", "taux_tva", "notes_preparation", "actif"]
     readonly_fields = ["actif"]
     actions = ["desactiver", "reactiver"]
 

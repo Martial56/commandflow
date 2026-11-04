@@ -4,7 +4,7 @@ from noyau.contexte import entreprise_obligatoire
 
 from .models import Produit
 
-CHAMPS_MODIFIABLES = {"code", "nom", "unite", "prix_reference", "notes_preparation"}
+CHAMPS_MODIFIABLES = {"code", "nom", "unite", "prix_reference", "taux_tva", "notes_preparation"}
 
 
 @transaction.atomic

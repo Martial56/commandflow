@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "commandes",
     "production",
     "logistique",
+    "facturation",
 ]
 
 AUTH_USER_MODEL = "comptes.Utilisateur"

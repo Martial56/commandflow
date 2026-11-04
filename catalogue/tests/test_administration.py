@@ -50,7 +50,13 @@ def test_creation_rattachee_a_l_entreprise_et_tracee(client):
     client.force_login(gestionnaire)
     reponse = client.post(
         AJOUT,
-        {"code": "CRO", "nom": "Croissant", "unite": "piece", "prix_reference": "300"},
+        {
+            "code": "CRO",
+            "nom": "Croissant",
+            "unite": "piece",
+            "prix_reference": "300",
+            "taux_tva": "0",
+        },
     )
     assert reponse.status_code == 302
     produit = Produit.toutes_entreprises.get(code="CRO")
