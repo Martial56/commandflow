@@ -1,0 +1,87 @@
+{% extends "base_bureau.html" %}
+{% load format_fr %}
+{% comment %}Relevé de compte du client (§15) : documents émis, règlements, avance et solde.{% endcomment %}
+{% block titre %}Relevé · {{ client.nom }}{% endblock %}
+{% block contenu %}
+<a href="{% url 'ecran_paiements' %}" class="text-sm">‹ Paiements et créances</a>
+<div class="flex flex-wrap items-end justify-between gap-3">
+  <div class="flex flex-col gap-1">
+    <span class="font-mono text-[13px] text-texte-secondaire">{{ client.code }}</span>
+    <h1 class="text-[28px] font-semibold">Relevé de compte · {{ client.nom }}</h1>
+    <span class="text-texte-secondaire">Conditions : {{ client.libelle_conditions }}</span>
+  </div>
+  <div class="flex gap-3 text-right">
+    <div class="carte px-4 py-3"><div class="text-[13px] text-texte-secondaire">Reste dû</div><div class="font-mono text-xl">{{ total_du|fcfa }}</div></div>
+    <div class="carte px-4 py-3"><div class="text-[13px] text-texte-secondaire">Avance</div><div class="font-mono text-xl">{{ avance|fcfa }}</div></div>
+  </div>
+</div>
+{% include "composants/messages.html" %}
+
+<section aria-labelledby="titre-documents" class="overflow-x-auto rounded-[10px] border border-trait bg-white">
+  <h2 id="titre-documents" class="px-5 pt-4 pb-2 text-base font-semibold">Documents émis</h2>
+  <table class="w-full min-w-[640px] text-sm">
+    <thead><tr class="text-left text-[13px] text-texte-secondaire"><th class="border-b border-trait px-5 py-2.5 font-medium">Document</th><th class="border-b border-trait px-3 py-2.5 font-medium">Date</th><th class="border-b border-trait px-3 py-2.5 font-medium">Échéance</th><th class="border-b border-trait px-3 py-2.5 text-right font-medium">Montant</th><th class="border-b border-trait px-3 py-2.5 text-right font-medium">Solde</th><th class="border-b border-trait px-5 py-2.5 font-medium">Paiement</th></tr></thead>
+    <tbody>
+      {% for facture in documents %}
+        <tr>
+          <td class="border-b border-[#EFECE6] px-5 py-2.5"><a href="{% url 'facture_detail' facture.pk %}" class="font-mono">{{ facture.numero_interne }}</a></td>
+          <td class="border-b border-[#EFECE6] px-3 py-2.5">{{ facture.date_document|date_courte }}</td>
+          <td class="border-b border-[#EFECE6] px-3 py-2.5">{{ facture.echeance|date_courte }}</td>
+          <td class="border-b border-[#EFECE6] px-3 py-2.5 text-right font-mono">{{ facture.montant_ttc|fcfa }}</td>
+          <td class="border-b border-[#EFECE6] px-3 py-2.5 text-right font-mono">{{ facture.solde|fcfa }}</td>
+          <td class="border-b border-[#EFECE6] px-5 py-2.5">
+            <span class="rounded-full px-2 py-0.5 text-xs font-semibold {% if facture.statut_paiement == 'paye' %}bg-[#DCFCE7] text-[#166534]{% elif facture.statut_paiement == 'en_retard' %}bg-[#FFEDD5] text-alerte{% elif facture.statut_paiement == 'partiel' %}bg-[#DBEAFE] text-lien{% else %}bg-[#E7E3DA] text-[#3D3A34]{% endif %}">{{ facture.statut_paiement.label }}</span>
+            {% if facture.a_verifier %}<span class="rounded-full bg-[#FEF3C7] px-2 py-0.5 text-xs font-semibold text-[#92400E]">À vérifier</span>{% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="6" class="px-5 py-6 text-texte-secondaire">Aucun document émis.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section aria-labelledby="titre-reglements" class="flex flex-col gap-3 rounded-[10px] border border-trait bg-white p-5 text-sm">
+  <h2 id="titre-reglements" class="text-base font-semibold">Règlements</h2>
+  {% for paiement in paiements %}
+    <div class="flex flex-col gap-1.5 {% if not forloop.last %}border-b border-trait pb-3{% endif %}">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <span><strong class="font-mono">{{ paiement.montant|fcfa }} FCFA</strong> · {{ paiement.get_mode_display }} · {{ paiement.date|date_courte }}{% if paiement.reference %} · réf. <span class="font-mono">{{ paiement.reference }}</span>{% endif %}{% if paiement.lien %} · <a href="{{ paiement.lien }}">justificatif</a>{% endif %}</span>
+        {% if paiement.annule %}<span class="rounded-full bg-[#E7E3DA] px-2 py-0.5 text-xs font-semibold text-[#3D3A34]">Annulé</span>{% elif paiement.disponible %}<span class="text-[13px]">Avance : <span class="font-mono">{{ paiement.disponible|fcfa }}</span></span>{% endif %}
+      </div>
+      <span class="text-[13px] text-texte-secondaire">{% for affectation in paiement.affectations.all %}{{ affectation.montant|fcfa }} → {{ affectation.facture.numero_interne }}{% if not forloop.last %} ; {% endif %}{% empty %}Non affecté{% endfor %}</span>
+      {% if paiement.annule %}<span class="text-[13px]">Annulé par {{ paiement.annule_par }} : {{ paiement.motif_annulation }}</span>{% endif %}
+      {% if not paiement.annule %}
+        {% if peut_affecter and paiement.disponible and ouvertes %}
+          <details class="text-[13px]">
+            <summary class="cursor-pointer text-lien">Affecter l'avance…</summary>
+            <form method="post" action="{% url 'paiement_affecter' paiement.pk %}" class="mt-1.5 flex flex-wrap items-center gap-2">
+              {% csrf_token %}
+              <label for="affecter-facture-{{ paiement.pk }}" class="sr-only">Facture</label>
+              <select id="affecter-facture-{{ paiement.pk }}" name="facture" class="h-9 rounded-md border border-bordure bg-white px-2">
+                {% for facture in ouvertes %}<option value="{{ facture.pk }}">{{ facture.numero_interne }} · solde {{ facture.solde|fcfa }}</option>{% endfor %}
+              </select>
+              <label for="affecter-montant-{{ paiement.pk }}" class="sr-only">Montant</label>
+              <input id="affecter-montant-{{ paiement.pk }}" name="montant" required inputmode="numeric" placeholder="Montant" class="h-9 w-32 rounded-md border border-bordure px-2 font-mono">
+              <button type="submit" class="h-9 cursor-pointer rounded-md border border-lien bg-white px-3 text-lien">Affecter</button>
+            </form>
+          </details>
+        {% endif %}
+        {% if peut_annuler %}
+          <details class="text-[13px]">
+            <summary class="cursor-pointer text-alerte">Annuler ce paiement…</summary>
+            <form method="post" action="{% url 'paiement_annuler' paiement.pk %}" class="mt-1.5 flex flex-wrap items-center gap-2">
+              {% csrf_token %}
+              <label for="annuler-motif-{{ paiement.pk }}" class="sr-only">Motif</label>
+              <input id="annuler-motif-{{ paiement.pk }}" name="motif" required maxlength="255" placeholder="Motif (chèque rejeté, erreur de saisie…)" class="h-9 min-w-64 rounded-md border border-bordure px-2">
+              <button type="submit" class="h-9 cursor-pointer rounded-md border border-alerte-bordure bg-white px-3 text-alerte">Annuler le paiement</button>
+            </form>
+          </details>
+        {% endif %}
+      {% endif %}
+    </div>
+  {% empty %}
+    <p class="text-texte-secondaire">Aucun règlement enregistré.</p>
+  {% endfor %}
+</section>
+{% endblock %}

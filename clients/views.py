@@ -45,6 +45,7 @@ def _rendre(request, client=None, **contexte):
         "peut_commander": request.user.has_perm("commandes.creer_commande"),
         "peut_gerer": request.user.has_perm("clients.gerer_client"),
         "peut_ajouter_adresse": request.user.has_perm("clients.creer_client"),
+        "voir_releve": request.user.has_perm("paiements.voir_paiements"),
         **contexte,
     }
     if request.headers.get("HX-Request") and request.headers.get("HX-Target") == "liste-clients":

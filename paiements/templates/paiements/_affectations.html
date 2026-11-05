@@ -1,0 +1,17 @@
+{% load format_fr %}
+{% comment %}Affectation aux factures ouvertes du client (maquette 16) ; rechargé au choix du client.{% endcomment %}
+<fieldset class="flex flex-col gap-2">
+  <legend class="pb-1.5 text-[13px] font-medium">Affectation aux factures</legend>
+  {% for facture in ouvertes %}
+    <div class="grid grid-cols-[minmax(0,1fr)_9rem] items-center gap-2 text-sm">
+      <span><span class="font-mono">{{ facture.numero_interne }}</span> · solde <span class="font-mono">{{ facture.solde|fcfa }}</span>{% if facture.statut_paiement == "en_retard" %} <span class="text-xs text-alerte">en retard</span>{% endif %}</span>
+      <label for="affecte-{{ facture.pk }}" class="sr-only">Montant affecté {{ facture.numero_interne }}</label>
+      <input id="affecte-{{ facture.pk }}" name="affecte-{{ facture.pk }}" inputmode="numeric"
+             data-solde="{{ facture.solde }}" data-numero="{{ facture.numero_interne }}"
+             x-on:input="calculer()" class="champ h-10 text-right font-mono">
+    </div>
+  {% empty %}
+    <p class="text-sm text-texte-secondaire">{% if client %}Aucune facture ouverte : le paiement restera en avance du client.{% else %}Choisir le client pour voir ses factures ouvertes.{% endif %}</p>
+  {% endfor %}
+  <span class="text-[13px] text-texte-secondaire" x-text="message" x-show="message"></span>
+</fieldset>

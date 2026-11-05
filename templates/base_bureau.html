@@ -1,5 +1,7 @@
 {% extends "base.html" %}
+{% load static %}
 {% comment %}Écrans de bureau : barre de menus latérale (maquettes 8 à 17).{% endcomment %}
+{% block scripts %}<script src="{% static 'js/bureau.js' %}" defer></script>{% endblock %}
 {% block corps %}
 <div class="flex min-h-screen flex-col md:flex-row" x-data="{ menuOuvert: false }">
   <nav aria-label="Navigation principale"

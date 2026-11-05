@@ -1,0 +1,85 @@
+{% extends "base_bureau.html" %}
+{% load format_fr %}
+{% comment %}Paiements et créances (maquette 16) : créances par ancienneté, saisie d'un paiement.{% endcomment %}
+{% block titre %}Paiements et créances{% endblock %}
+{% block contenu %}
+<h1 class="text-[28px] font-semibold">Paiements et créances</h1>
+{% include "composants/messages.html" %}
+
+<div class="flex flex-wrap items-start gap-5">
+  <section aria-labelledby="titre-creances" class="min-w-0 flex-[3_1_480px] overflow-x-auto rounded-[10px] border border-trait bg-white">
+    <h2 id="titre-creances" class="px-5 pt-4 pb-2 text-base font-semibold">Créances par ancienneté (FCFA)</h2>
+    <table class="w-full min-w-[520px] text-sm">
+      <thead>
+        <tr class="text-left text-[13px] text-texte-secondaire">
+          <th class="border-b border-trait px-5 py-2.5 font-medium">Client</th>
+          <th class="border-b border-trait px-3 py-2.5 text-right font-medium">Non échu</th>
+          <th class="border-b border-trait px-3 py-2.5 text-right font-medium">1–30 j</th>
+          <th class="border-b border-trait px-3 py-2.5 text-right font-medium">+30 j</th>
+          <th class="border-b border-trait px-5 py-2.5 text-right font-medium">Total</th>
+        </tr>
+      </thead>
+      <tbody class="font-mono">
+        {% for client_creance, ligne in balance %}
+          <tr>
+            <td class="border-b border-[#EFECE6] px-5 py-2.5 font-sans"><a href="{% url 'releve_client' client_creance.pk %}">{{ client_creance.nom }}</a></td>
+            <td class="border-b border-[#EFECE6] px-3 py-2.5 text-right">{{ ligne.non_echu|fcfa }}</td>
+            <td class="border-b border-[#EFECE6] px-3 py-2.5 text-right {% if ligne.j30 %}text-alerte{% endif %}">{{ ligne.j30|fcfa }}</td>
+            <td class="border-b border-[#EFECE6] px-3 py-2.5 text-right {% if ligne.plus30 %}font-semibold text-alerte{% endif %}">{{ ligne.plus30|fcfa }}</td>
+            <td class="border-b border-[#EFECE6] px-5 py-2.5 text-right">{{ ligne.total|fcfa }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5" class="px-5 py-6 font-sans text-texte-secondaire">Aucune créance en cours.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  {% if peut_enregistrer %}
+  <section aria-labelledby="titre-paiement" class="flex min-w-0 flex-[2_1_320px] flex-col rounded-[10px] border border-trait bg-white p-5">
+    <h2 id="titre-paiement" class="pb-3 text-base font-semibold">Enregistrer un paiement</h2>
+    <form method="post" action="{% url 'paiement_enregistrer' %}" enctype="multipart/form-data" class="flex flex-col gap-3.5"
+          x-data="paiement" x-on:htmx:after-swap="repartir()">
+      {% csrf_token %}
+      <div class="flex flex-col gap-1.5">
+        <label for="paiement-client" class="text-[13px] font-medium">Client</label>
+        <select id="paiement-client" name="client" required class="champ h-11"
+                hx-get="{% url 'paiement_affectations' %}" hx-trigger="change" hx-target="#affectations" hx-swap="innerHTML">
+          <option value="">Choisir…</option>
+          {% for possible in clients %}<option value="{{ possible.pk }}" {% if possible.pk == client.pk %}selected{% endif %}>{{ possible.nom }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="flex flex-wrap gap-3">
+        <div class="flex min-w-0 flex-[1_1_140px] flex-col gap-1.5">
+          <label for="paiement-montant" class="text-[13px] font-medium">Montant (FCFA)</label>
+          <input id="paiement-montant" name="montant" required inputmode="numeric" class="champ h-11 font-mono"
+                 x-model="montant" x-on:input="repartir()">
+        </div>
+        <div class="flex min-w-0 flex-[1_1_140px] flex-col gap-1.5">
+          <label for="paiement-mode" class="text-[13px] font-medium">Mode</label>
+          <select id="paiement-mode" name="mode" class="champ h-11">
+            {% for valeur, libelle in modes %}<option value="{{ valeur }}">{{ libelle }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-3">
+        <div class="flex min-w-0 flex-[2_1_180px] flex-col gap-1.5">
+          <label for="paiement-reference" class="text-[13px] font-medium">Référence de transaction</label>
+          <input id="paiement-reference" name="reference" maxlength="120" class="champ h-11">
+        </div>
+        <div class="flex min-w-40 flex-[1_1_160px] flex-col gap-1.5">
+          <label for="paiement-date" class="text-[13px] font-medium">Date</label>
+          <input id="paiement-date" type="date" name="date" value="{{ aujourd_hui|date:'Y-m-d' }}" max="{{ aujourd_hui|date:'Y-m-d' }}" class="champ h-11">
+        </div>
+      </div>
+      <div id="affectations">{% include "paiements/_affectations.html" %}</div>
+      <label x-data="{ nom: '' }" class="flex min-h-12 cursor-pointer items-center justify-center rounded-md border border-dashed border-[#8F897D] bg-[#FAF9F6] px-3 text-center text-[#3D3A34]">
+        <span x-text="nom || 'Joindre le justificatif'">Joindre le justificatif</span>
+        <input type="file" name="justificatif" accept="application/pdf,image/*" class="sr-only" x-on:change="nom = $event.target.files[0]?.name || ''">
+      </label>
+      <button type="submit" class="bouton-principal h-12">Enregistrer le paiement</button>
+    </form>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

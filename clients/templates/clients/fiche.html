@@ -38,6 +38,9 @@
               <button type="submit" class="h-11 cursor-pointer rounded-md border border-bordure bg-white px-4">{% if client.actif %}Désactiver{% else %}Réactiver{% endif %}</button>
             </form>
           {% endif %}
+          {% if voir_releve %}
+            <a href="{% url 'releve_client' client.pk %}" class="inline-flex h-11 items-center rounded-md border border-bordure bg-white px-4 text-encre no-underline">Relevé de compte</a>
+          {% endif %}
           {% if peut_commander and client.actif %}
             <a href="{% url 'commande_nouvelle' %}?client={{ client.pk }}" class="inline-flex h-11 items-center rounded-md bg-lien px-4 font-semibold text-white no-underline hover:bg-lien-survol hover:text-white">Nouvelle commande</a>
           {% endif %}

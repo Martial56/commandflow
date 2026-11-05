@@ -98,6 +98,7 @@ ECRANS = [
         "paiements/",
         a_le_role(R.DIRECTION, R.GESTIONNAIRE, R.COMPTABILITE),
         sprint=6,
+        compteur="paiements.alertes.nombre_alertes",
     ),
     Ecran(
         "parametres",
