@@ -124,6 +124,62 @@ def ecran(request):
 
 
 @login_required
+def documents_excel(request):
+    """Documents émis de la recherche courante (§14, §16.2), avec solde et statut de
+    paiement."""
+    from noyau.exports import reponse_excel
+    from paiements.services import StatutPaiement, solde, statut_paiement
+
+    _exiger(request, "facturation.voir_factures")
+    lignes = []
+    for facture in _documents(request.GET):
+        reste = solde(facture)
+        emise = facture.statut == StatutFacture.EMISE
+        lignes.append(
+            (
+                facture.numero_interne,
+                facture.date_document,
+                facture.client.nom,
+                "FNE" if facture.est_fne else facture.get_nature_display(),
+                facture.numero_fne,
+                facture.montant_ht,
+                facture.montant_ttc,
+                facture.echeance,
+                reste,
+                StatutPaiement(statut_paiement(facture, reste=reste)).label if emise else "",
+                facture.get_statut_display(),
+                "oui" if emise and facture.document_manquant else "",
+                facture.motif_verification if facture.a_verifier else "",
+            )
+        )
+    return reponse_excel(
+        "documents",
+        [
+            (
+                "Documents émis",
+                [
+                    "Document",
+                    "Date",
+                    "Client",
+                    "Type",
+                    "N° FNE",
+                    "Montant HT",
+                    "Montant TTC",
+                    "Échéance",
+                    "Solde",
+                    "Paiement",
+                    "État",
+                    "Document manquant",
+                    "À vérifier",
+                ],
+                lignes,
+                {"Montant HT", "Montant TTC", "Solde"},
+            )
+        ],
+    )
+
+
+@login_required
 def document(request, pk):
     """Fiche d'un document : livraisons couvertes, PDF, annulation, vérification."""
     _exiger(request, "facturation.voir_factures")

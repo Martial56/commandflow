@@ -151,19 +151,40 @@ def marquer_pretes(request, pk):
     return _action(request, pk, services.marquer_plan_pret, message)
 
 
+def _fiche_atelier(plan):
+    return {
+        "plan": plan,
+        "besoins": plan.besoins.select_related("produit")
+        .filter(quantite_a_produire__gt=0)
+        .order_by("produit__nom"),
+        "imprime_le": timezone.localtime(),
+    }
+
+
 @login_required
 def fiche_atelier(request, pk):
-    """Fiche atelier imprimable (décision 8.2 : page HTML, PDF au Sprint 6)."""
+    """Fiche atelier imprimable (décision 8.2 : page HTML ; PDF ci-dessous)."""
     _exiger(request, "ecrans.production")
     plan = get_object_or_404(PlanProduction, pk=pk)
-    return render(
-        request,
-        "production/fiche_atelier.html",
+    return render(request, "production/fiche_atelier.html", _fiche_atelier(plan))
+
+
+@login_required
+def fiche_atelier_pdf(request, pk):
+    """Fiche atelier en PDF (décision 8.2, Sprint 6)."""
+    from noyau.exports import reponse_pdf
+
+    _exiger(request, "ecrans.production")
+    plan = get_object_or_404(PlanProduction, pk=pk)
+    contexte = _fiche_atelier(plan)
+    return reponse_pdf(
+        f"fiche-atelier-{plan.date_livraison:%Y-%m-%d}",
+        "pdf/fiche_atelier.html",
         {
-            "plan": plan,
-            "besoins": plan.besoins.select_related("produit")
-            .filter(quantite_a_produire__gt=0)
-            .order_by("produit__nom"),
-            "imprime_le": timezone.localtime(),
+            **contexte,
+            "entreprise": request.user.entreprise,
+            "edite_le": contexte["imprime_le"],
+            "edite_par": request.user,
         },
+        request,
     )

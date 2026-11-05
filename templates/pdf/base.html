@@ -1,0 +1,27 @@
+{% load format_fr %}<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>{% block titre %}{% endblock %}</title>
+  <style>
+    @page { size: A4 {% block orientation %}portrait{% endblock %}; margin: 16mm 14mm 18mm;
+            @bottom-right { content: "Page " counter(page) " / " counter(pages); font-family: "DejaVu Sans", sans-serif; font-size: 8pt; color: #5e5a52; } }
+    body { font-family: "DejaVu Sans", sans-serif; font-size: 9pt; color: #1c1b19; }
+    h1 { font-size: 15pt; margin: 0 0 2mm; }
+    h2 { font-size: 11pt; margin: 6mm 0 2mm; }
+    .sous-titre { color: #5e5a52; margin: 0 0 5mm; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-weight: bold; border-bottom: 1px solid #1c1b19; padding: 1.5mm 2mm; }
+    td { border-bottom: 1px solid #e2ded5; padding: 1.5mm 2mm; vertical-align: top; }
+    .nombre { text-align: right; white-space: nowrap; }
+    .alerte { color: #9a3412; }
+    .total td { font-weight: bold; border-top: 1px solid #1c1b19; }
+    .petit { font-size: 8pt; color: #5e5a52; }
+    .encadre { border: 1px solid #e2ded5; padding: 3mm; margin: 3mm 0; }
+  </style>
+</head>
+<body>
+  <p class="petit">{{ entreprise.nom }} · édité le {{ edite_le|date:"d/m/Y" }} à {{ edite_le|heure }}{% if edite_par %} par {{ edite_par }}{% endif %}</p>
+  {% block contenu %}{% endblock %}
+</body>
+</html>

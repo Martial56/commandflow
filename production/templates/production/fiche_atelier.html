@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% load format_fr %}
-{% comment %}Fiche atelier imprimable (décision 8.2 : page HTML ; PDF au Sprint 6).{% endcomment %}
+{% comment %}Fiche atelier imprimable (décision 8.2 : page HTML, et PDF depuis le Sprint 6).{% endcomment %}
 {% block titre %}Fiche atelier · {{ plan.date_livraison|date_courte }}{% endblock %}
 {% block corps %}
 <main class="mx-auto flex max-w-3xl flex-col gap-5 bg-white p-8 print:p-0">
@@ -10,7 +10,10 @@
       <h1 class="text-[24px] font-semibold">Production pour la livraison du {{ plan.date_livraison|date_courte }}</h1>
       <p class="text-[13px] text-texte-secondaire">Plan {{ plan.get_statut_display|lower }} · imprimé le {{ imprime_le|jour_mois }} à {{ imprime_le|heure }}</p>
     </div>
-    <button type="button" onclick="window.print()" class="h-10 cursor-pointer rounded-md border border-bordure bg-white px-4 print:hidden">Imprimer</button>
+    <div class="flex gap-2 print:hidden">
+      <a href="{% url 'production_fiche_atelier_pdf' plan.pk %}" class="inline-flex h-10 items-center rounded-md border border-bordure bg-white px-4 text-encre no-underline">PDF</a>
+      <button type="button" onclick="window.print()" class="h-10 cursor-pointer rounded-md border border-bordure bg-white px-4">Imprimer</button>
+    </div>
   </div>
   <table class="w-full border-collapse text-sm">
     <thead>

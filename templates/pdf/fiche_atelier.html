@@ -1,0 +1,17 @@
+{% extends "pdf/base.html" %}
+{% load format_fr %}
+{% block titre %}Fiche atelier · {{ plan.date_livraison|date:"d/m/Y" }}{% endblock %}
+{% block contenu %}
+<h1>Production pour la livraison du {{ plan.date_livraison|date:"d/m/Y" }}</h1>
+<p class="sous-titre">Fiche atelier · plan {{ plan.get_statut_display|lower }}</p>
+<table>
+  <thead><tr><th>Produit</th><th class="nombre">À produire</th><th>Unité</th><th>Notes de préparation</th><th style="width: 45mm">Lots / fours</th></tr></thead>
+  <tbody>
+    {% for besoin in besoins %}
+      <tr><td><strong>{{ besoin.produit.nom }}</strong></td><td class="nombre" style="font-size: 11pt">{{ besoin.quantite_a_produire|quantite }}</td><td>{{ besoin.produit.get_unite_display }}</td><td>{{ besoin.produit.notes_preparation }}</td><td style="height: 12mm"></td></tr>
+    {% empty %}
+      <tr><td colspan="5">Rien à produire.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

@@ -3,7 +3,24 @@
 {% comment %}Paiements et créances (maquette 16) : créances par ancienneté, saisie d'un paiement.{% endcomment %}
 {% block titre %}Paiements et créances{% endblock %}
 {% block contenu %}
-<h1 class="text-[28px] font-semibold">Paiements et créances</h1>
+<div class="flex flex-wrap items-center justify-between gap-3">
+  <h1 class="text-[28px] font-semibold">Paiements et créances</h1>
+  <details class="relative">
+    <summary class="inline-flex h-11 cursor-pointer list-none items-center rounded-md border border-bordure bg-white px-4">Exporter les créances</summary>
+    <div class="carte absolute right-0 z-10 mt-2 flex w-72 flex-col gap-2 p-4 text-sm shadow-lg">
+      <a href="{% url 'creances_excel' %}">État des créances (Excel)</a>
+      <a href="{% url 'creances_pdf' %}" target="_blank">État des créances (PDF)</a>
+      <form method="get" action="{% url 'paiements_excel' %}" class="flex flex-col gap-1.5 border-t border-trait pt-2">
+        <span class="font-medium">Paiements de la période (Excel)</span>
+        <div class="flex gap-2">
+          <label class="sr-only" for="export-du">Du</label><input id="export-du" type="date" name="du" value="{{ debut_mois|date:'Y-m-d' }}" class="h-9 min-w-0 flex-1 rounded-md border border-bordure px-2">
+          <label class="sr-only" for="export-au">Au</label><input id="export-au" type="date" name="au" value="{{ aujourd_hui|date:'Y-m-d' }}" class="h-9 min-w-0 flex-1 rounded-md border border-bordure px-2">
+        </div>
+        <button type="submit" class="h-9 cursor-pointer rounded-md border border-lien bg-white px-3 text-lien">Exporter</button>
+      </form>
+    </div>
+  </details>
+</div>
 {% include "composants/messages.html" %}
 
 <div class="flex flex-wrap items-start gap-5">

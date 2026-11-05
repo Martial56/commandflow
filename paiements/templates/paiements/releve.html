@@ -8,7 +8,7 @@
   <div class="flex flex-col gap-1">
     <span class="font-mono text-[13px] text-texte-secondaire">{{ client.code }}</span>
     <h1 class="text-[28px] font-semibold">Relevé de compte · {{ client.nom }}</h1>
-    <span class="text-texte-secondaire">Conditions : {{ client.libelle_conditions }}</span>
+    <span class="text-texte-secondaire">Conditions : {{ client.libelle_conditions }} · <a href="{% url 'releve_client_pdf' client.pk %}" target="_blank">Relevé en PDF</a></span>
   </div>
   <div class="flex gap-3 text-right">
     <div class="carte px-4 py-3"><div class="text-[13px] text-texte-secondaire">Reste dû</div><div class="font-mono text-xl">{{ total_du|fcfa }}</div></div>

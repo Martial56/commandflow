@@ -8,7 +8,12 @@ WORKDIR /app
 
 # git : nécessaire à pre-commit, lancé dans le conteneur (outils/hook-pre-commit.sh).
 # Le dépôt monté appartient à l'utilisateur du poste : git doit l'accepter.
-RUN apt-get update     && apt-get install -y --no-install-recommends git     && rm -rf /var/lib/apt/lists/*     && git config --global --add safe.directory /app
+# Pango, HarfBuzz et une police : nécessaires à WeasyPrint (exports PDF).
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git \
+       libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/* \
+    && git config --global --add safe.directory /app
 
 # dev (par défaut) ou prod
 ARG REQUIREMENTS=dev

@@ -10,6 +10,11 @@ urlpatterns = [
     path("plans/<int:pk>/cloturer/", views.cloturer, name="production_cloturer"),
     path("plans/<int:pk>/pretes/", views.marquer_pretes, name="production_pretes"),
     path("plans/<int:pk>/fiche-atelier/", views.fiche_atelier, name="production_fiche_atelier"),
+    path(
+        "plans/<int:pk>/fiche-atelier.pdf",
+        views.fiche_atelier_pdf,
+        name="production_fiche_atelier_pdf",
+    ),
     # Saisie sur téléphone (maquette 2).
     path("saisie/", views_saisie.saisie, name="production_saisie"),
     path(

@@ -62,6 +62,7 @@ def ecran(request):
             "ouvertes": _ouvertes(client),
             "modes": ModePaiement.choices,
             "aujourd_hui": timezone.localdate(),
+            "debut_mois": timezone.localdate().replace(day=1),
             "peut_enregistrer": request.user.has_perm("paiements.enregistrer_paiement"),
         },
     )
@@ -119,11 +120,8 @@ def enregistrer(request):
     return redirect("releve_client", client.pk)
 
 
-@login_required
-def releve(request, pk):
-    """Relevé de compte du client (§15) : documents émis, règlements, avance, solde."""
-    _exiger(request, "paiements.voir_paiements")
-    client = get_object_or_404(Client, pk=pk)
+def contexte_releve(client, utilisateur):
+    """Relevé de compte (§15) : documents émis et leur solde, règlements, avance."""
     aujourd_hui = timezone.localdate()
     documents = list(
         services.factures_avec_solde().filter(client=client).order_by("date_document", "pk")
@@ -141,19 +139,29 @@ def releve(request, pk):
     for paiement in paiements:
         paiement.disponible = services.disponible(paiement)
         paiement.lien = (
-            url_signee(paiement.justificatif, request.user) if paiement.justificatif else None
+            url_signee(paiement.justificatif, utilisateur) if paiement.justificatif else None
         )
+    return {
+        "client": client,
+        "documents": documents,
+        "paiements": paiements,
+        "total_du": sum(facture.solde for facture in documents),
+        "avance": sum(paiement.disponible for paiement in paiements),
+        "ouvertes": [facture for facture in documents if facture.solde > 0],
+    }
+
+
+@login_required
+def releve(request, pk):
+    """Relevé de compte du client (§15) : documents émis, règlements, avance, solde."""
+    _exiger(request, "paiements.voir_paiements")
+    client = get_object_or_404(Client, pk=pk)
     utilisateur = request.user
     return render(
         request,
         "paiements/releve.html",
         {
-            "client": client,
-            "documents": documents,
-            "paiements": paiements,
-            "total_du": sum(facture.solde for facture in documents),
-            "avance": sum(paiement.disponible for paiement in paiements),
-            "ouvertes": [facture for facture in documents if facture.solde > 0],
+            **contexte_releve(client, utilisateur),
             "peut_affecter": utilisateur.has_perm("paiements.affecter_paiement", client),
             "peut_annuler": utilisateur.has_perm("paiements.annuler_paiement", client),
         },

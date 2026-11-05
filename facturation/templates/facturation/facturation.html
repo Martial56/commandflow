@@ -134,6 +134,7 @@
     </select>
   </div>
   <noscript><button type="submit" class="h-11 rounded-md border border-bordure bg-white px-4">Rechercher</button></noscript>
+  <button type="submit" formaction="{% url 'factures_excel' %}" class="h-11 cursor-pointer rounded-md border border-bordure bg-white px-4">Exporter (Excel)</button>
 </form>
 {% include "facturation/_documents.html" %}
 {% endif %}

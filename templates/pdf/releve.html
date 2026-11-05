@@ -1,0 +1,32 @@
+{% extends "pdf/base.html" %}
+{% load format_fr %}
+{% block titre %}Relevé de compte · {{ client.nom }}{% endblock %}
+{% block contenu %}
+<h1>Relevé de compte · {{ client.nom }}</h1>
+<p class="sous-titre">{{ client.code }} · conditions : {{ client.libelle_conditions }} · au {{ edite_le|date:"d/m/Y" }}</p>
+<div class="encadre">Reste dû : <strong>{{ total_du|fcfa }} FCFA</strong>{% if avance %} · avance non affectée : <strong>{{ avance|fcfa }} FCFA</strong>{% endif %}</div>
+
+<h2>Documents émis</h2>
+<table>
+  <thead><tr><th>Document</th><th>Date</th><th>Échéance</th><th class="nombre">Montant</th><th class="nombre">Réglé</th><th class="nombre">Solde</th><th>Paiement</th></tr></thead>
+  <tbody>
+    {% for facture in documents %}
+      <tr><td>{{ facture.numero_interne }}{% if facture.est_fne %} (FNE {{ facture.numero_fne }}){% endif %}</td><td>{{ facture.date_document|date:"d/m/Y" }}</td><td>{{ facture.echeance|date:"d/m/Y" }}</td><td class="nombre">{{ facture.montant_ttc|fcfa }}</td><td class="nombre">{{ facture.regle|fcfa }}</td><td class="nombre">{{ facture.solde|fcfa }}</td><td{% if facture.statut_paiement == "en_retard" %} class="alerte"{% endif %}>{{ facture.statut_paiement.label }}</td></tr>
+    {% empty %}
+      <tr><td colspan="7">Aucun document émis.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>Règlements</h2>
+<table>
+  <thead><tr><th>Date</th><th>Mode</th><th>Référence</th><th class="nombre">Montant</th><th>Affectation</th></tr></thead>
+  <tbody>
+    {% for paiement in paiements %}
+      <tr><td>{{ paiement.date|date:"d/m/Y" }}</td><td>{{ paiement.get_mode_display }}</td><td>{{ paiement.reference }}</td><td class="nombre">{{ paiement.montant|fcfa }}</td><td>{% if paiement.annule %}Annulé : {{ paiement.motif_annulation }}{% else %}{% for affectation in paiement.affectations.all %}{{ affectation.montant|fcfa }} → {{ affectation.facture.numero_interne }}{% if not forloop.last %} ; {% endif %}{% endfor %}{% if paiement.disponible %}{% if paiement.affectations.all %} ; {% endif %}avance {{ paiement.disponible|fcfa }}{% endif %}{% endif %}</td></tr>
+    {% empty %}
+      <tr><td colspan="5">Aucun règlement enregistré.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
