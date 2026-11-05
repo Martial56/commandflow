@@ -9,6 +9,7 @@ import datetime
 CRENEAUX_PAR_DEFAUT = ["06h–08h", "08h–10h", "10h–12h", "16h–18h"]
 HEURE_GENERATION_PAR_DEFAUT = "18:00"
 HEURE_LIMITE_CONFIRMATION_PAR_DEFAUT = "20:00"
+HEURE_RESUME_PAR_DEFAUT = "07:00"
 
 
 def creneaux(entreprise):
@@ -29,6 +30,11 @@ def heure_generation_recurrentes(entreprise):
 def heure_limite_confirmation(entreprise):
     """Heure limite, la veille, de confirmation des commandes récurrentes."""
     return _heure(entreprise, "heure_limite_confirmation", HEURE_LIMITE_CONFIRMATION_PAR_DEFAUT)
+
+
+def heure_resume(entreprise):
+    """Heure du résumé quotidien et de l'alerte des paiements en retard (§16.1)."""
+    return _heure(entreprise, "heure_resume", HEURE_RESUME_PAR_DEFAUT)
 
 
 # Preuves exigées à la livraison (décision 8.4) : chaque exigence est une liste de moyens

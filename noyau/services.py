@@ -58,15 +58,23 @@ class ValidationPropreDemande(PermissionDenied):
 
 @transaction.atomic
 def demander_validation(objet, action, motif="", contenu=None):
-    """Crée une demande de validation (en attente) sur un objet de l'entreprise courante."""
+    """Crée une demande de validation (en attente) sur un objet de l'entreprise courante.
+
+    Les responsables (Direction, Gestionnaire) en sont notifiés, sauf l'auteur (§16.1).
+    """
+    # Import local : le noyau ne dépend de l'app notifications qu'au moment de l'appel.
+    from notifications.services import notifier_demande
+
     _verifier_meme_entreprise(objet)
-    return Validation.objects.create(
+    validation = Validation.objects.create(
         objet=objet,
         action=action,
         motif=motif,
         contenu=contenu or {},
         demandee_par=_utilisateur_obligatoire(),
     )
+    notifier_demande(validation)
+    return validation
 
 
 @transaction.atomic

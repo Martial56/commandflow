@@ -814,9 +814,34 @@ def _apres_reliquat(livraison, commande, reliquats):
     return commande
 
 
+def _notifier(type, texte, roles, tournee):
+    """Notification dans l'application (§16.1, 8.5), vers l'écran Tournées du jour."""
+    from django.urls import reverse
+
+    from notifications.services import notifier
+
+    lien = f"{reverse('ecran_tournees')}?date={tournee.date:%Y-%m-%d}"
+    notifier(type, texte, roles=roles, lien=lien)
+
+
+def _notifier_resultat(livraison, commande):
+    """Échec ou livraison partielle : le gestionnaire est prévenu (§16.1)."""
+    if livraison.statut not in (StatutLivraison.ECHOUEE, StatutLivraison.PARTIELLEMENT_LIVREE):
+        return
+    motif = livraison.get_motif_echec_display().lower()
+    resultat = "Échec" if livraison.statut == StatutLivraison.ECHOUEE else "Livraison partielle"
+    _notifier(
+        "livraison",
+        f"{resultat} · {commande.numero} · {commande.client.nom} : {motif}",
+        (Role.GESTIONNAIRE,),
+        livraison.chargement.tournee,
+    )
+
+
 def _apres_livraison(livraison):
-    """Cascade (§7) : reliquat, statut de la commande, fin de tournée."""
+    """Cascade (§7) : reliquat, statut de la commande, fin de tournée, notification."""
     commande = Commande.objects.select_for_update().get(pk=livraison.commande_id)
+    _notifier_resultat(livraison, commande)
     reliquats = list(
         Reliquat.objects.select_for_update().filter(chargement_id=livraison.chargement_id)
     )
@@ -991,9 +1016,17 @@ def declarer_retour(livraison, *, produit, quantite, motif, etat):
         raise ActionImpossible("Indiquer l'état de la marchandise.")
     if not (motif or "").strip():
         raise ActionImpossible("Indiquer le motif du retour.")
-    return Retour.objects.create(
+    retour = Retour.objects.create(
         livraison=livraison, produit=produit, quantite=quantite, motif=motif.strip(), etat=etat
     )
+    _notifier(
+        "retour",
+        f"Retour à décider · {quantite.normalize():f} {produit.nom} · "
+        f"{livraison.commande.client.nom} ({retour.get_etat_display().lower()})",
+        (Role.GESTIONNAIRE, Role.DIRECTION),
+        livraison.chargement.tournee,
+    )
+    return retour
 
 
 @transaction.atomic
@@ -1022,7 +1055,15 @@ def signaler_incident(tournee, type, commentaire=""):
         raise ActionImpossible("Incident à signaler pendant la tournée.")
     if type not in TypeIncident.values:
         raise ActionImpossible("Choisir le type d'incident.")
-    return Incident.objects.create(tournee=tournee, type=type, commentaire=commentaire.strip())
+    incident = Incident.objects.create(tournee=tournee, type=type, commentaire=commentaire.strip())
+    detail = f" : {incident.commentaire}" if incident.commentaire else ""
+    _notifier(
+        "incident",
+        f"Incident · {tournee.numero} · {incident.get_type_display().lower()}{detail}",
+        (Role.GESTIONNAIRE,),
+        tournee,
+    )
+    return incident
 
 
 # --- Reliquats (§12.3, décisions 8.4 et du 3 novembre 2026) --------------------------------

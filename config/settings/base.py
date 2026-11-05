@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "facturation",
     "paiements",
     "pilotage",
+    "notifications",
 ]
 
 AUTH_USER_MODEL = "comptes.Utilisateur"
@@ -79,6 +80,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "comptes.context_processors.navigation",
+                "notifications.views.nombre_non_lues",
             ],
         },
     },
@@ -159,6 +161,11 @@ CELERY_BEAT_SCHEDULE = {
     # Commandes récurrentes du lendemain, dès l'heure de génération de chaque entreprise.
     "generer-recurrentes": {
         "task": "commandes.tasks.generer_recurrentes",
+        "schedule": crontab(minute="*/15"),
+    },
+    # Résumé du jour, paiements en retard, récurrentes non confirmées (notifications).
+    "notifications-planifiees": {
+        "task": "notifications.tasks.notifications_planifiees",
         "schedule": crontab(minute="*/15"),
     },
 }

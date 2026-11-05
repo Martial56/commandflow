@@ -321,8 +321,24 @@ def integrer_commande(commande):
         commande.save()
         plan.ajouts_apres_validation += 1
         plan.save(update_fields=["ajouts_apres_validation"])
+        _notifier_production(plan, f"{commande.numero} ajoutée")
     recalculer_besoin(plan)
     return plan
+
+
+def _notifier_production(plan, evenement):
+    """Plan validé modifié : le responsable de production est prévenu (8.2, 8.5)."""
+    from django.urls import reverse
+
+    from comptes.models import Role
+    from notifications.services import notifier
+
+    notifier(
+        "production",
+        f"Plan du {plan.date_livraison:%d/%m} modifié après validation : {evenement}",
+        roles=(Role.PRODUCTION,),
+        lien=f"{reverse('ecran_production')}?date={plan.date_livraison:%Y-%m-%d}",
+    )
 
 
 @transaction.atomic
@@ -343,6 +359,7 @@ def commande_modifiee(commande, ancienne_date=None, signaler=True):
         if signaler and plan.statut == StatutPlan.VALIDE:
             plan.changements_apres_validation += 1
             plan.save(update_fields=["changements_apres_validation"])
+            _notifier_production(plan, f"{commande.numero} modifiée ou annulée")
     _aligner_sur_le_plan(commande)
 
 
