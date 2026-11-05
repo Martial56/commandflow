@@ -21,6 +21,19 @@ def fcfa(valeur):
 
 
 @register.filter
+def fcfa_court(valeur):
+    """Montant des cartes du tableau de bord : 2 400 000 → « 2,4 M », 415 500 → « 415 500 »."""
+    try:
+        montant = Decimal(valeur)
+    except (TypeError, ValueError, InvalidOperation):
+        return valeur
+    if abs(montant) < 1_000_000:
+        return fcfa(montant)
+    millions = (montant / 1_000_000).quantize(Decimal("0.1"))
+    return f"{format(millions.normalize(), 'f').replace('.', ',')}{ESPACE_FINE}M"
+
+
+@register.filter
 def quantite(valeur):
     """Decimal('120.000') → « 120 » ; Decimal('2.500') → « 2,5 »."""
     try:

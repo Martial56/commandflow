@@ -17,6 +17,7 @@ ECRANS_LIVRES = {
     "ma_tournee",
     "facturation",
     "paiements",
+    "tableau_de_bord",
 }
 
 # Écrans en attente de leur sprint : page « en préparation ».

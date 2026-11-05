@@ -14,5 +14,6 @@ urlpatterns = [
     path("ma-tournee/", include("logistique.urls_reception")),
     path("facturation/", include("facturation.urls")),
     path("paiements/", include("paiements.urls")),
+    path("tableau-de-bord/", include("pilotage.urls")),
     path("", include("comptes.urls")),
 ]

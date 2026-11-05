@@ -42,7 +42,7 @@ ECRANS = [
         "tableau_de_bord",
         "Tableau de bord",
         "tableau-de-bord/",
-        # Commercial : tableau de bord limité à ses propres commandes (contenu au sprint 6).
+        # Commercial : tableau de bord limité à ses propres commandes (décision 8.5).
         a_le_role(R.DIRECTION, R.GESTIONNAIRE, R.COMMERCIAL, R.COMPTABILITE),
         sprint=6,
     ),

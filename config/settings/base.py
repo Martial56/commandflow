@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     "logistique",
     "facturation",
     "paiements",
+    "pilotage",
 ]
 
 AUTH_USER_MODEL = "comptes.Utilisateur"

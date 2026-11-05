@@ -1,0 +1,96 @@
+{% extends "base_bureau.html" %}
+{% load format_fr %}
+{% comment %}Tableau de bord (maquette 8) : indicateurs du jour, avancement, tournées, alertes, créances.
+Le contenu dépend du rôle (décision 8.5).{% endcomment %}
+{% block titre %}Tableau de bord{% endblock %}
+{% block contenu %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div class="flex flex-col gap-1">
+    <span class="text-sm text-texte-secondaire">{{ date|date:"l j F Y"|capfirst }} · mise à jour {{ heure|heure }}{% if seulement_les_siennes %} · mes commandes{% endif %}</span>
+    <h1 class="text-[28px] font-semibold">Tableau de bord</h1>
+  </div>
+  <form method="get" class="flex flex-wrap items-center gap-2">
+    {% if date != aujourd_hui %}<a href="?" class="inline-flex h-10 items-center rounded-full border border-bordure bg-white px-3.5 text-sm text-encre no-underline">Aujourd'hui</a>{% else %}<span class="inline-flex h-10 items-center rounded-full bg-encre px-3.5 text-sm text-papier">Aujourd'hui</span>{% endif %}
+    <label for="date-tableau" class="sr-only">Date</label>
+    <input id="date-tableau" type="date" name="date" value="{{ date|date:'Y-m-d' }}" class="h-10 rounded-md border border-bordure bg-white px-2 text-sm" onchange="this.form.submit()">
+    <a href="{% url 'tableau_de_bord_export' %}?date={{ date|date:'Y-m-d' }}" class="inline-flex h-10 items-center rounded-full border border-bordure bg-white px-3.5 text-sm text-encre no-underline">Exporter</a>
+  </form>
+</div>
+
+<div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+  <div class="carte flex flex-col gap-1 p-4">
+    <span class="text-[13px] text-texte-secondaire">Commandes du jour</span>
+    <span class="font-mono text-[28px]">{{ commandes.total }}</span>
+    <span class="text-[13px] text-texte-secondaire">dont {{ commandes.recurrentes }} récurrente{{ commandes.recurrentes|pluralize }}</span>
+  </div>
+  <div class="carte flex flex-col gap-1 p-4">
+    <span class="text-[13px] text-texte-secondaire">Livrées</span>
+    <span class="font-mono text-[28px]">{{ commandes.livrees }}</span>
+    <span class="text-[13px] text-texte-secondaire">{{ commandes.partielles }} partielle{{ commandes.partielles|pluralize }}</span>
+  </div>
+  <div class="carte flex flex-col gap-1 p-4 {% if commandes.anomalies %}border-alerte-bordure bg-alerte-fond{% endif %}">
+    <span class="text-[13px] {% if commandes.anomalies %}text-alerte{% else %}text-texte-secondaire{% endif %}">En anomalie</span>
+    <span class="font-mono text-[28px] {% if commandes.anomalies %}text-alerte{% endif %}">{{ commandes.anomalies }}</span>
+    {% if commandes.anomalies %}<a href="{% url 'ecran_commandes' %}?statut=en_anomalie" class="text-[13px] font-medium">Traiter</a>{% else %}<span class="text-[13px] text-texte-secondaire">rien à traiter</span>{% endif %}
+  </div>
+  {% if creances %}
+    <div class="carte flex flex-col gap-1 p-4">
+      <span class="text-[13px] text-texte-secondaire">Créances échues</span>
+      <span class="font-mono text-[28px]">{{ creances.total|fcfa_court }}</span>
+      <span class="text-[13px] text-texte-secondaire">FCFA · {{ creances.clients }} client{{ creances.clients|pluralize }}</span>
+    </div>
+  {% endif %}
+</div>
+
+<div class="grid items-start gap-5 lg:grid-cols-2">
+  <section aria-labelledby="t-statuts" class="carte flex flex-col gap-3">
+    <h2 id="t-statuts" class="text-base font-semibold">Avancement des commandes du jour</h2>
+    <div class="grid grid-cols-[8rem_minmax(0,1fr)_3rem] items-center gap-x-3 gap-y-2.5 text-sm">
+      {% for barre in commandes.barres %}
+        <span>{{ barre.libelle }}</span>
+        <div class="h-2.5 rounded-full bg-papier" role="img" aria-label="{{ barre.libelle }} : {{ barre.nombre }}"><div class="h-full rounded-full {% if barre.libelle == 'En anomalie' %}bg-alerte{% else %}bg-lien{% endif %}" style="width: {{ barre.part }}%"></div></div>
+        <span class="text-right font-mono">{{ barre.nombre }}</span>
+      {% endfor %}
+    </div>
+  </section>
+
+  {% if tournees is not None %}
+    <section aria-labelledby="t-tournees" class="carte flex flex-col gap-2">
+      <h2 id="t-tournees" class="text-base font-semibold">Tournées en cours</h2>
+      {% for tournee in tournees %}
+        <a href="{% url 'ecran_tournees' %}?date={{ tournee.date|date:'Y-m-d' }}" class="flex items-center justify-between gap-3 rounded-lg border border-trait px-3 py-2.5 text-sm text-encre no-underline hover:bg-papier">
+          <span><strong>{{ tournee.numero }}</strong> · {{ tournee.livreur }}{% if tournee.prestataire_id %} (prestataire){% endif %}{% if tournee.commune %} · {{ tournee.commune }}{% endif %}</span>
+          <span class="font-mono">{{ tournee.traites }} / {{ tournee.total }}</span>
+        </a>
+      {% empty %}
+        <p class="text-sm text-texte-secondaire">Aucune tournée en cours.</p>
+      {% endfor %}
+    </section>
+  {% endif %}
+
+  <section aria-labelledby="t-alertes" class="carte flex flex-col gap-2">
+    <h2 id="t-alertes" class="text-base font-semibold">Alertes à traiter</h2>
+    {% for type, texte, lien in alertes %}
+      <a href="{{ lien }}" class="flex items-start gap-3 rounded-lg border border-trait px-3 py-2.5 text-sm text-encre no-underline hover:bg-papier">
+        <span class="shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold {% if type == 'Validation' %}bg-[#DBEAFE] text-lien{% else %}bg-alerte-fond text-alerte{% endif %}">{{ type }}</span>
+        <span>{{ texte }}</span>
+      </a>
+    {% empty %}
+      <p class="text-sm text-texte-secondaire">Aucune alerte.</p>
+    {% endfor %}
+  </section>
+
+  {% if creances %}
+    <section aria-labelledby="t-creances" class="carte flex flex-col gap-2">
+      <h2 id="t-creances" class="text-base font-semibold">Plus fortes créances échues</h2>
+      {% for client, montant in creances.plus_fortes %}
+        <a href="{% url 'releve_client' client.pk %}" class="flex items-center justify-between gap-3 rounded-lg border border-trait px-3 py-2.5 text-sm text-encre no-underline hover:bg-papier">
+          <span>{{ client.nom }}</span><span class="font-mono">{{ montant|fcfa }}</span>
+        </a>
+      {% empty %}
+        <p class="text-sm text-texte-secondaire">Aucune créance échue.</p>
+      {% endfor %}
+    </section>
+  {% endif %}
+</div>
+{% endblock %}
