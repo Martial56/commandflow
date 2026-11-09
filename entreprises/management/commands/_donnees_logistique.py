@@ -85,11 +85,15 @@ def charger(fiches, produits, sortie):
         logistique.confirmer_reception(
             recue, {ligne: ligne.quantite_preparee for ligne in recue.lignes.all()}
         )
-    en_cours = _tournee_en_cours(jour, pretes[5:], personne, produits)
+    en_cours, livree = _tournee_en_cours(jour, pretes[5:], personne, produits)
     sortie.write(
         f"Tournées du {jour:%d/%m} : {konan} (Konan K.) et {express} (prestataire), "
         f"une commande à affecter, un écart à décider ; {en_cours} (Yao S.) en livraison."
     )
+    # Sprint 6 : facturation et paiements à partir des livraisons de Yao S.
+    from . import _donnees_facturation
+
+    _donnees_facturation.charger(livree, jour, fiches, personne, sortie)
 
 
 def _tournee_en_cours(jour, pretes, personne, produits):
@@ -149,7 +153,7 @@ def _tournee_en_cours(jour, pretes, personne, produits):
         logistique.signaler_incident(
             tournee, TypeIncident.PANNE, "Crevaison à Marcory, 20 minutes de retard"
         )
-    return tournee
+    return tournee, livree
 
 
 def _vehicules():

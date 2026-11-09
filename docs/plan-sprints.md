@@ -43,8 +43,8 @@ Coche les cases au fur et à mesure.
 
 ## Sprint 6 — Facturation, paiements, pilotage
 
-- [ ] Choix FNE / non-FNE + archivage, paiements, affectations, créances
-- [ ] Tableau de bord essentiel, exports Excel/PDF
+- [x] Choix FNE / non-FNE + archivage, paiements, affectations, créances
+- [x] Tableau de bord essentiel, exports Excel/PDF
 
 ## Recette
 

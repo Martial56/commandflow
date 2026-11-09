@@ -162,6 +162,31 @@ def test_tournee_en_cours_de_livraison(mode_developpement):
     assert Incident.toutes_entreprises.filter(tournee=tournee).count() == 1
 
 
+def test_facturation_et_paiements(mode_developpement):
+    """Sprint 6 : FNE en retard réglée en partie, livraison partielle à facturer, avance."""
+    from facturation.models import Facture
+    from facturation.services import livraisons_a_facturer
+    from noyau.contexte import activer_entreprise
+    from paiements import services as paiements
+
+    call_command("charger_demo")
+    mie_dore = Entreprise.objects.get(slug="mie-dore")
+    with activer_entreprise(mie_dore):
+        (fne,) = Facture.objects.all()
+        assert (fne.numero_fne, fne.client.nom) == ("FNE-2026-DEMO-0412", "Café Le Plateau")
+        assert fne.document_manquant and paiements.solde(fne) == fne.montant_ttc - 10000
+        assert paiements.statut_paiement(fne) == paiements.StatutPaiement.EN_RETARD
+        a_facturer = list(livraisons_a_facturer())
+        assert [livraison.commande.client.nom for livraison in a_facturer] == [
+            "Traiteur Saveurs d'Akwaba"
+        ]
+        prosuma = fne.client.__class__.objects.get(nom="Supermarché Prosuma Riviera")
+        assert paiements.avances(prosuma) == 50000
+    call_command("charger_demo")
+    with activer_entreprise(mie_dore):
+        assert Facture.objects.count() == 1
+
+
 def test_pas_de_tournees_si_le_plan_du_jour_est_cloture(mode_developpement):
     """Relance sur une base où le plan du jour est clôturé : rien n'est créé pour ce jour."""
     from commandes.models import Commande
