@@ -52,7 +52,7 @@ Scénarios §22 joués dans Chromium (`pytest -m recette`, dossier `recette/`), 
 
 - [x] Outillage : Playwright dans l'image de développement, marqueur `recette`, connexion réelle par profil (code de vérification compris), job « Recette » de la CI
 - [x] Commandes, récurrentes et production (§22-13 à 16)
-- [ ] Chargement au format téléphone (§22-17, 18, 25)
+- [x] Chargement au format téléphone (§22-17, 18, 25)
 - [ ] Livraison : arrivée avec position, photo, signature, partielle, échec, retour (§22-19 à 21)
 - [ ] Facturation et paiements (§22-22 à 24)
 - [ ] Isolation des entreprises dans le navigateur (§22-26)
