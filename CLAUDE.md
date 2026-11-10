@@ -112,6 +112,7 @@ Les tests utilisent `config/settings/test.py`, qui installe l'app `noyau.tests` 
 - Chaque service a un test de cascade (les statuts liés évoluent ensemble) et un test d'annulation complète en cas d'erreur.
 - Un test d'isolation multi-entreprise par app (un utilisateur de l'entreprise A ne voit rien de B).
 - Les scénarios de recette du §22 du cahier des charges deviennent des tests d'intégration.
+- Recette dans un vrai navigateur : dossier `recette/`, modules marqués `pytestmark = pytest.mark.recette`. Fixtures de `recette/conftest.py` : `personne(Role.X)` (code de vérification activé pour Direction et Comptabilité) et `ouvrir(utilisateur, telephone=True)` (session Chromium connectée par le formulaire ; Pixel 7 avec position GPS à Abidjan, ou bureau). Tests transactionnels (serveur dans un autre fil) : les groupes de rôles sont recréés automatiquement.
 
 ## Commandes utiles
 
@@ -121,6 +122,7 @@ docker compose exec web python manage.py makemigrations && docker compose exec w
 docker compose exec web pytest                       # tous les tests
 docker compose exec web pytest noyau/tests/test_compteur.py::test_numerotation_annuelle   # un seul test
 docker compose exec web pytest commandes/ -k transition                                    # ciblé
+docker compose exec web pytest -m recette            # recette §22 dans Chromium (exclue de `pytest`)
 docker compose exec web ruff check . && docker compose exec web ruff format .
 docker compose exec web python manage.py tailwind build   # sous Windows, après ajout de classes Tailwind
 docker compose exec web python manage.py charger_demo     # comptes et données de démonstration (mot de passe affiché)

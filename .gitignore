@@ -37,3 +37,6 @@ node_modules/
 # Tailwind : exécutable téléchargé et CSS généré
 /.django_tailwind_cli/
 /static/css/comandflow.css
+
+# Recette Playwright : traces des scénarios en échec
+/test-results/

@@ -15,4 +15,6 @@ select = ["E", "F", "W", "I", "B", "UP", "DJ"]
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings.test"
 python_files = ["test_*.py"]
-addopts = "--strict-markers"
+# La recette dans un vrai navigateur est lente : elle se lance à part (pytest -m recette).
+addopts = "--strict-markers -m 'not recette'"
+markers = ["recette: scénario de recette joué dans Chromium (Playwright)"]
