@@ -9,7 +9,6 @@
   {% include "facturation/_etat.html" %}
 </div>
 <p class="text-texte-secondaire">{{ facture.client.nom }} · {% if facture.est_fne %}Facture normalisée (FNE) n° <span class="font-mono">{{ facture.numero_fne }}</span>{% else %}{{ facture.get_nature_display }} (sans FNE){% endif %} · {{ facture.date_document|date_courte }}</p>
-{% include "composants/messages.html" %}
 
 <div class="flex flex-wrap items-start gap-5">
   <div class="flex min-w-0 flex-[2_1_420px] flex-col gap-5">

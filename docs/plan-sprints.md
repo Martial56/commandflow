@@ -54,7 +54,7 @@ Scénarios §22 joués dans Chromium (`pytest -m recette`, dossier `recette/`), 
 - [x] Commandes, récurrentes et production (§22-13 à 16)
 - [x] Chargement au format téléphone (§22-17, 18, 25)
 - [x] Livraison : arrivée avec position, photo, signature, partielle, échec, retour (§22-19 à 21)
-- [ ] Facturation et paiements (§22-22 à 24)
+- [x] Facturation et paiements (§22-22 à 24)
 - [ ] Isolation des entreprises dans le navigateur (§22-26)
 - [ ] Déploiement : préparation puis production (Docker Compose, Caddy, Gunicorn, sauvegardes `pg_dump` et restic) ; choix du VPS, du domaine et du stockage R2 ou B2 à faire
 - [ ] Préparation du pilote (`docs/pilote.md`) et pilote d'une semaine en parallèle de l'existant
