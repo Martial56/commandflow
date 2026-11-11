@@ -6,7 +6,8 @@
 {% block contenu %}
 {% include "composants/messages.html" %}
 <p class="text-[13px] text-texte-secondaire">{{ chargement.commande.numero }} · {{ lignes|length }} produit{{ lignes|length|pluralize }} · {{ chargement.commande.adresse.commune }} · {{ chargement.commande.creneau }}</p>
-{% include "logistique/_controle.html" %}
+{# Cadre stable : les réponses htmx remplacent #controle, jamais ce cadre (hx-sync). #}
+<div id="zone-controle">{% include "logistique/_controle.html" %}</div>
 <nav class="flex flex-wrap justify-between gap-2 pt-2 text-sm">
   <a href="{{ retour }}">Toutes les commandes</a>
   {% if suivant %}<a href="{% url 'chargement_controle' suivant.pk %}">Arrêt suivant · {{ suivant.commande.client.nom }} →</a>{% endif %}

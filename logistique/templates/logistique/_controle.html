@@ -1,5 +1,8 @@
 {% load format_fr %}
-{% comment %}Lignes à compter et actions du préparateur ; renvoyé par htmx à chaque ligne comptée.{% endcomment %}
+{% comment %}Lignes à compter et actions du préparateur ; renvoyé par htmx à chaque ligne comptée.
+Un comptage à la fois (hx-sync sur #zone-controle) : une coche faite pendant
+l'enregistrement de la précédente est ignorée et s'affiche décochée, l'écran reste
+conforme à ce qui est enregistré.{% endcomment %}
 <div id="controle" class="flex flex-col gap-3">
   {% if erreur %}<p role="alert" class="rounded-md border border-alerte-bordure bg-alerte-fond px-3 py-2 text-sm text-alerte">{{ erreur }}</p>{% endif %}
   {% if chargement.statut == "a_preparer" or chargement.statut == "en_verification" %}
@@ -8,7 +11,7 @@
 
   {% for ligne in lignes %}
     <form class="flex flex-col gap-2 rounded-[10px] border bg-white p-3.5 {% if ligne.quantite_preparee is None %}border-trait{% elif ligne.conforme %}border-[#86EFAC]{% else %}border-alerte-bordure{% endif %}"
-          {% if chargement.statut == "a_preparer" or chargement.statut == "en_verification" %}hx-post="{% url 'chargement_compter' ligne.pk %}" hx-trigger="change" hx-target="#controle" hx-swap="outerHTML"{% endif %}
+          {% if chargement.statut == "a_preparer" or chargement.statut == "en_verification" %}hx-post="{% url 'chargement_compter' ligne.pk %}" hx-trigger="change" hx-target="#controle" hx-swap="outerHTML" hx-sync="closest #zone-controle:drop"{% endif %}
           method="post" action="{% url 'chargement_compter' ligne.pk %}">
       {% csrf_token %}
       <div class="flex items-center justify-between gap-2">

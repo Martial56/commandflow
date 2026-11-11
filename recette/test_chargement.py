@@ -14,7 +14,15 @@ from clients.tests.factories import AdresseFactory
 from commandes import services as commandes
 from commandes.models import Canal, Commande, Statut
 from comptes.models import Role
-from logistique.models import Chargement, Livraison, StatutChargement, StatutTournee, Tournee
+from logistique import services as logistique
+from logistique.models import (
+    Chargement,
+    LigneChargement,
+    Livraison,
+    StatutChargement,
+    StatutTournee,
+    Tournee,
+)
 from noyau.contexte import activer_entreprise, activer_utilisateur
 from production import services as production
 from production.models import PlanProduction
@@ -179,3 +187,34 @@ def test_22_17_18_25_du_chargement_au_depart(ouvrir, entreprise, acteurs, pretes
         "Konan K.",
     ):
         expect(historique).to_contain_text(attendu)
+
+
+def test_coches_rapides_l_ecran_reste_conforme_a_l_enregistrement(
+    ouvrir, entreprise, acteurs, pretes
+):
+    """Deux lignes cochées dans le même instant : un seul comptage part à la fois, et
+    l'écran affiche exactement ce qui est enregistré (aucune coche affichée à tort)."""
+    with activer_entreprise(entreprise), activer_utilisateur(acteurs["aminata"]):
+        tournee = logistique.creer_tournee(date=demain(), chauffeur=acteurs["konan"])
+        logistique.affecter_commande(tournee, pretes[0])
+        chargement = Chargement.objects.get(tournee=tournee)
+
+    preparation = ouvrir(acteurs["awa"], telephone=True)
+    preparation.goto(reverse("chargement_controle", args=[chargement.pk]))
+    preparation.evaluate(
+        "() => document.querySelectorAll('#controle input[type=checkbox]')"
+        ".forEach((coche) => coche.click())"
+    )
+    preparation.wait_for_load_state("networkidle")
+
+    comptees = LigneChargement.toutes_entreprises.filter(
+        chargement=chargement, quantite_preparee__isnull=False
+    ).count()
+    assert comptees == 1  # la seconde coche, faite pendant l'enregistrement, est ignorée
+    expect(preparation.get_by_text("Conforme")).to_have_count(comptees)
+    expect(preparation.locator("#controle input[type=checkbox]:checked")).to_have_count(comptees)
+
+    # La préparatrice voit la ligne restée décochée et la coche à nouveau.
+    preparation.locator("#controle input[type=checkbox]:not(:checked)").check()
+    expect(preparation.get_by_text("Conforme")).to_have_count(2)
+    expect(preparation.get_by_role("button", name="Valider le chargement")).to_be_visible()
