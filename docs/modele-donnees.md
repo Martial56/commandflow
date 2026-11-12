@@ -418,3 +418,4 @@ Ces choix de modélisation dépendent des arbitrages du §23. Chacun modifie un 
 | Grille des preuves | Par catégorie : moyens cochés et règle « au moins un » (une exigence à plusieurs moyens) ou « tous » (une exigence par moyen) ; au moins un moyen par catégorie |
 | Interrupteurs de la maquette 17 (double validation, GPS continu, prestataires) | Non proposés : les règles des décisions 8.3 et 8.4 sont affichées en lecture seule. Le suivi GPS continu reste une question ouverte (§23) |
 | Heures et créneaux | Génération des récurrentes, heure limite (après la génération), résumé quotidien ; créneaux au format « 06h–08h », sans doublon |
+| Photo du bordereau (lot A4) | Réduite sur le téléphone avant l'envoi : 1600 px au plus sur le grand côté, JPEG qualité 0,7 ; la photo d'origine part si la réduction échoue ou n'apporte rien. Le serveur garde ses contrôles (image, 15 Mo au plus) |

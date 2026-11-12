@@ -5,6 +5,8 @@ l'accord du client, un retour de marchandise et un échec motivé."""
 # Fixtures reprises de la recette du chargement (pytest les injecte par leur nom).
 # ruff: noqa: F811
 
+import re
+
 import pytest
 from django.urls import reverse
 from playwright.sync_api import expect
@@ -170,3 +172,49 @@ def test_22_19_20_21_livraisons_depuis_le_telephone(
     # La photo s'ouvre par un lien signé, propre à l'utilisatrice connectée.
     lien = bureau.get_by_role("link", name="Photo du bordereau")
     assert bureau.request.get(lien.get_attribute("href")).status == 200
+
+
+def photo_de_telephone():
+    """Photo de 4000 × 3000 pixels, bruitée comme une vraie photo : plusieurs Mo en JPEG."""
+    import io
+    import os
+
+    from PIL import Image
+
+    image = Image.frombytes("RGB", (4000, 3000), os.urandom(4000 * 3000 * 3))
+    tampon = io.BytesIO()
+    image.save(tampon, "JPEG", quality=95)
+    return tampon.getvalue()
+
+
+def test_photo_reduite_sur_le_telephone_avant_l_envoi(ouvrir, acteurs, pretes, en_route):
+    """Lot A4 : la photo du bordereau part réduite (environ 1600 px, quelques centaines de
+    Ko) ; le chauffeur voit la taille envoyée."""
+    import io
+
+    from PIL import Image
+
+    from noyau.models import PieceJointe
+
+    originale = photo_de_telephone()
+    assert len(originale) > 3 * 1024 * 1024
+    konan = ouvrir(acteurs["konan"], telephone=True)
+    konan.goto(reverse("ecran_ma_tournee"))
+    konan.get_by_role("button", name="Je suis arrivé").click()
+    konan.locator("input[name=photo]").set_input_files(
+        {"name": "IMG_2041.jpg", "mimeType": "image/jpeg", "buffer": originale}
+    )
+    expect(konan.get_by_text("Photo prise : IMG_2041.jpg")).to_be_visible()
+    expect(konan.get_by_text(re.compile(r"^\d+ Ko$"))).to_be_visible()
+    konan.get_by_label("Nom du réceptionnaire").fill("M. Coulibaly")
+    konan.get_by_role("button", name="Valider la livraison").click()
+    expect(konan.get_by_text("Déjà traités")).to_be_visible()
+
+    livraison = livraison_de(pretes[0])
+    assert livraison.statut == StatutLivraison.LIVREE
+    preuve = Preuve.toutes_entreprises.get(livraison=livraison, type=TypePreuve.PHOTO_BORDEREAU)
+    piece = PieceJointe.toutes_entreprises.get(pk=preuve.piece_id)
+    with piece.fichier.open("rb") as fichier:
+        envoyee = fichier.read()
+    assert len(envoyee) < len(originale) / 4
+    assert max(Image.open(io.BytesIO(envoyee)).size) == 1600

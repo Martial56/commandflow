@@ -74,9 +74,10 @@ Heure et position enregistrées à la validation.{% endcomment %}
   <div class="flex flex-col gap-3 rounded-xl border border-trait bg-white px-4 py-3.5" x-show="resultat === 'livree' || resultat === 'partielle'">
     <h2 class="text-sm font-semibold">Preuve de livraison</h2>
     <p class="text-xs text-texte-secondaire">Exigée : {{ preuve }}.</p>
-    <label x-data="{ nom: '' }" class="flex min-h-18 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-lien bg-[#F5F8FF] px-3 text-center font-semibold text-lien">
+    <label x-data="photo" class="flex min-h-18 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-lien bg-[#F5F8FF] px-3 text-center font-semibold text-lien">
       <span x-text="nom ? 'Photo prise : ' + nom : 'Photographier le bordereau signé'">Photographier le bordereau signé</span>
-      <input type="file" name="photo" accept="image/*" capture="environment" class="sr-only" x-on:change="nom = $event.target.files[0]?.name || ''">
+      <span x-show="detail" x-text="detail" class="text-xs font-normal text-texte-secondaire"></span>
+      <input type="file" name="photo" accept="image/*" capture="environment" class="sr-only" x-on:change="choisir($event)">
     </label>
     <div class="flex flex-col gap-1.5">
       <label for="receptionnaire_nom" class="text-[13px] font-medium">Nom du réceptionnaire</label>
