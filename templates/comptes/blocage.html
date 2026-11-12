@@ -1,0 +1,13 @@
+{% extends "base_connexion.html" %}
+{% comment %}Compte bloqué par django-axes après trop d'échecs de connexion (AXES_LOCKOUT_TEMPLATE).
+Contexte fourni par axes : failure_limit, username, cooloff_timedelta.{% endcomment %}
+{% block titre %}Compte bloqué{% endblock %}
+{% block formulaire %}
+  <h1 class="text-[26px] font-semibold">Compte bloqué</h1>
+  <div role="alert" class="rounded-md border border-alerte-bordure bg-alerte-fond px-3.5 py-2.5 text-sm text-alerte">
+    Après {{ failure_limit }} tentatives incorrectes, ce compte est bloqué
+    {% if cooloff_timedelta %}{% widthratio cooloff_timedelta.total_seconds 60 1 %} minutes{% else %}temporairement{% endif %}.
+  </div>
+  <p class="text-sm leading-normal">Réessayez une fois ce délai passé. Si vous avez oublié votre mot de passe, demandez à votre gestionnaire ou à la Direction de le réinitialiser.</p>
+  <a href="{% url 'account_login' %}" class="inline-flex min-h-8 items-center self-start text-sm">Retour à la connexion</a>
+{% endblock %}

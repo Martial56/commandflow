@@ -77,6 +77,11 @@ def test_compte_bloque_apres_cinq_echecs(client, chauffeur):
     reponse = _se_connecter(client, "+2250700000001")
     assert reponse.status_code == 429
     assert not reponse.wsgi_request.user.is_authenticated
+    # Page au style de l'application, qui explique le délai et la marche à suivre.
+    page = " ".join(reponse.content.decode().split())
+    assert "Compte bloqué" in page and "ComandFlow" in page
+    assert "Après 5 tentatives incorrectes, ce compte est bloqué 15 minutes." in page
+    assert "demandez à votre gestionnaire ou à la Direction" in page
 
 
 def test_blocage_par_compte_et_non_par_poste(client, chauffeur):

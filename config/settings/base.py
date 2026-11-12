@@ -129,6 +129,8 @@ AXES_COOLOFF_TIME = timedelta(minutes=15)
 AXES_LOCKOUT_PARAMETERS = ["username"]
 AXES_USERNAME_CALLABLE = "comptes.axes.identifiant_connexion"
 AXES_RESET_ON_SUCCESS = True
+# Page de blocage au style des pages de connexion (au lieu du texte brut d'axes).
+AXES_LOCKOUT_TEMPLATE = "comptes/blocage.html"
 # Blocage par compte uniquement, pas par adresse IP : le personnel d'une entreprise
 # partage souvent la même connexion, un blocage par IP couperait toute l'équipe.
 SILENCED_SYSTEM_CHECKS = ["axes.W006"]
