@@ -57,11 +57,12 @@ def browser_type_launch_args(browser_type_launch_args):
 
 @pytest.fixture
 def personne(entreprise):
-    """Fabrique d'acteurs : `personne(Role.CHAUFFEUR, first_name="Yao")`. Les profils
-    Direction et Comptabilité reçoivent un code de vérification activé."""
+    """Fabrique d'acteurs : `personne(Role.CHAUFFEUR, first_name="Yao")`, dans l'entreprise
+    du test ou dans une autre (`dans=autre_entreprise`). Les profils Direction et
+    Comptabilité reçoivent un code de vérification activé."""
 
-    def creer(role, **champs):
-        utilisateur = UtilisateurFactory(entreprise=entreprise, roles=[role], **champs)
+    def creer(role, *, dans=None, **champs):
+        utilisateur = UtilisateurFactory(entreprise=dans or entreprise, roles=[role], **champs)
         if role in ROLES_AVEC_CODE:
             utilisateur.secret_totp = generate_totp_secret()
             TOTP.activate(utilisateur, utilisateur.secret_totp)
@@ -71,7 +72,14 @@ def personne(entreprise):
 
 
 def code_de_verification(secret):
-    """Code affiché à cet instant par l'application d'authentification."""
+    """Code affiché à cet instant par l'application d'authentification.
+
+    allauth n'accepte que le code de la période en cours (tolérance 0) : en fin de
+    période, on attend le code suivant, comme le ferait l'utilisateur, pour qu'il soit
+    encore valable quand le serveur le vérifie."""
+    reste = reglages_mfa.TOTP_PERIOD - time.time() % reglages_mfa.TOTP_PERIOD
+    if reste < 5:
+        time.sleep(reste + 0.5)
     compteur = int(time.time()) // reglages_mfa.TOTP_PERIOD
     return format_hotp_value(hotp_value(secret, compteur))
 
