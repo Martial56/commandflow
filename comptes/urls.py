@@ -18,6 +18,7 @@ ECRANS_LIVRES = {
     "facturation",
     "paiements",
     "tableau_de_bord",
+    "parametres",
 }
 
 # Écrans en attente de leur sprint : page « en préparation ».

@@ -1,6 +1,9 @@
+import pghistory
 from django.db import models
 
 
+# Historique des réglages (écran Paramètres, décision 8.6).
+@pghistory.track(model_name="HistoriqueEntreprise")
 class Entreprise(models.Model):
     """Entreprise cliente de ComandFlow (tenant)."""
 

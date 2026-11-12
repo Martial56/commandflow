@@ -61,6 +61,7 @@ MIDDLEWARE = [
     "allauth.account.middleware.AccountMiddleware",
     "entreprises.middleware.EntrepriseCouranteMiddleware",
     "comptes.middleware.DoubleAuthentificationObligatoireMiddleware",
+    "comptes.middleware.ChangementMotDePasseObligatoireMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     # En dernier : transforme un blocage en réponse « compte bloqué ».

@@ -16,5 +16,6 @@ urlpatterns = [
     path("paiements/", include("paiements.urls")),
     path("tableau-de-bord/", include("pilotage.urls")),
     path("notifications/", include("notifications.urls")),
+    path("parametres/", include("entreprises.urls")),
     path("", include("comptes.urls")),
 ]

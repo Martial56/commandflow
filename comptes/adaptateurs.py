@@ -38,6 +38,18 @@ class AdaptateurCompte(DefaultAccountAdapter):
     def phone_form_field(self, **kwargs):
         return ChampTelephone(**kwargs)
 
+    def set_password(self, user, password):
+        """Nouveau mot de passe choisi par la personne : le mot de passe provisoire donné
+        par un responsable n'est plus à changer (décision 8.6)."""
+        user.set_password(password)
+        user.doit_changer_mot_de_passe = False
+        user.save()
+
+    def get_password_change_redirect_url(self, request):
+        from django.urls import reverse
+
+        return reverse("accueil")
+
     def get_user_by_phone(self, phone):
         # Le formulaire de connexion transmet la saisie brute.
         return Utilisateur.objects.filter(telephone=normaliser_telephone(phone)).first()

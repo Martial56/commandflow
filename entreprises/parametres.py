@@ -1,7 +1,7 @@
 """Paramètres réglables par entreprise, lus dans `Entreprise.options` (décisions 8.1).
 
-Valeurs par défaut quand l'entreprise ne les a pas encore réglées (écran Paramètres
-à venir).
+Valeurs par défaut quand l'entreprise ne les a pas encore réglées ; réglage depuis
+l'écran Paramètres (`entreprises.services`, décision 8.6).
 """
 
 import datetime
@@ -59,6 +59,27 @@ def heure_resume(entreprise):
 # Preuves exigées à la livraison (décision 8.4) : chaque exigence est une liste de moyens
 # dont un seul suffit. Par défaut : photo du bordereau ou nom du réceptionnaire.
 PREUVES_PAR_DEFAUT = [["photo_bordereau", "receptionnaire"]]
+# Moyens proposés dans la grille de l'écran Paramètres (le code client reste désactivé).
+MOYENS_DE_PREUVE = [
+    ("photo_bordereau", "Photo bordereau"),
+    ("receptionnaire", "Réceptionnaire"),
+    ("signature", "Signature"),
+    ("gps", "GPS"),
+]
+
+
+def exigences_de_preuve(moyens, mode):
+    """Grille → exigences : « un » seul suffit = une exigence à plusieurs moyens ;
+    « tous » exigés = une exigence par moyen (décision 8.6)."""
+    return [list(moyens)] if mode == "un" else list(moyens)
+
+
+def reglage_de_preuve(entreprise, categorie):
+    """Exigences → grille : (moyens cochés, « un » ou « tous »)."""
+    exigences = preuves_obligatoires(entreprise, categorie)
+    moyens = [moyen for exigence in exigences for moyen in exigence]
+    mode = "un" if len(exigences) == 1 and len(exigences[0]) > 1 else "tous"
+    return moyens, mode
 
 
 def preuves_obligatoires(entreprise, categorie):

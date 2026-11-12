@@ -18,6 +18,27 @@ _PREFIXES_AUTORISES = (
 )
 
 
+class ChangementMotDePasseObligatoireMiddleware:
+    """Après une création de compte ou une réinitialisation par un responsable (8.6), la
+    personne doit remplacer son mot de passe provisoire avant d'utiliser l'application.
+    À placer après `DoubleAuthentificationObligatoireMiddleware`."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        utilisateur = request.user
+        if (
+            utilisateur.is_authenticated
+            and getattr(utilisateur, "doit_changer_mot_de_passe", False)
+            and not request.path.startswith(
+                (*_PREFIXES_AUTORISES, reverse("account_change_password"))
+            )
+        ):
+            return redirect(reverse("account_change_password"))
+        return self.get_response(request)
+
+
 class DoubleAuthentificationObligatoireMiddleware:
     """Oblige les profils Direction et Comptabilité à activer le code de vérification.
 

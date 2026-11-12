@@ -39,3 +39,34 @@ def meme_entreprise(utilisateur, objet):
 def peut_gerer_utilisateurs(utilisateur):
     """Permission attribuée individuellement (admin Django, puis écran Paramètres)."""
     return utilisateur.has_perm("comptes.gerer_utilisateurs")
+
+
+# Gestion des comptes (écran Paramètres, décision 8.6) : Direction et Gestionnaire par leur
+# rôle, ou un autre profil de confiance par la permission individuelle.
+gere_les_comptes = a_le_role(Role.DIRECTION, Role.GESTIONNAIRE) | peut_gerer_utilisateurs
+est_direction = a_le_role(Role.DIRECTION)
+
+
+def compte_sensible(cible):
+    """Compte avec code de vérification (Direction, Comptabilité) : géré par la Direction."""
+    from .models import ROLES_DOUBLE_AUTHENTIFICATION
+
+    noms = [Role(role).label for role in ROLES_DOUBLE_AUTHENTIFICATION]
+    return cible.role_principal in ROLES_DOUBLE_AUTHENTIFICATION or (
+        cible.pk is not None and cible.groups.filter(name__in=noms).exists()
+    )
+
+
+@rules.predicate
+def compte_gerable(utilisateur, cible):
+    """Un compte de la même entreprise, autre que le sien ; un compte sensible seulement
+    par la Direction."""
+    if cible is None or cible.pk == utilisateur.pk:
+        return False
+    if cible.entreprise_id is None or cible.entreprise_id != utilisateur.entreprise_id:
+        return False
+    return not compte_sensible(cible) or est_direction(utilisateur)
+
+
+rules.add_perm("comptes.gerer_comptes", gere_les_comptes)
+rules.add_perm("comptes.gerer_compte", gere_les_comptes & compte_gerable)

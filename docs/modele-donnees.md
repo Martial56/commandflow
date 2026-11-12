@@ -411,3 +411,10 @@ Ces choix de modélisation dépendent des arbitrages du §23. Chacun modifie un 
 | Résumé quotidien | Complété par la production du jour (produits complets sur produits à produire) et les livraisons de la veille (livrées, partielles, en échec) |
 | Preuve de livraison manquante | Pas d'alerte : une livraison ne peut pas être clôturée sans les preuves exigées |
 | Mot de passe oublié (lot B1) | Réinitialisé par le Gestionnaire ou la Direction depuis l'application ; pas d'envoi par e-mail ni par SMS pour l'instant |
+| Écran Paramètres (maquette 17) | Livré (remplace la décision 8.5) : comptes, preuves exigées, heures et créneaux. Les autres réglages restent dans l'administration |
+| Gestion des comptes | Direction et Gestionnaire par leur rôle, ou un autre profil par la permission individuelle « gérer les utilisateurs ». « Ajouter un utilisateur » (pas d'invitation) : mot de passe provisoire affiché une seule fois, à changer à la première connexion. Comptes des prestataires : avec leur fiche, dans l'administration |
+| Comptes sensibles | Seule la Direction crée, réinitialise ou désactive un compte Direction ou Comptabilité. Personne n'agit sur son propre compte depuis l'écran. Aucun compte supprimé : désactivé |
+| Code de vérification perdu | Une réinitialisation faite par la Direction efface aussi le code ; la personne le réactive à sa prochaine connexion. Toute réinitialisation lève le blocage après échecs |
+| Grille des preuves | Par catégorie : moyens cochés et règle « au moins un » (une exigence à plusieurs moyens) ou « tous » (une exigence par moyen) ; au moins un moyen par catégorie |
+| Interrupteurs de la maquette 17 (double validation, GPS continu, prestataires) | Non proposés : les règles des décisions 8.3 et 8.4 sont affichées en lecture seule. Le suivi GPS continu reste une question ouverte (§23) |
+| Heures et créneaux | Génération des récurrentes, heure limite (après la génération), résumé quotidien ; créneaux au format « 06h–08h », sans doublon |

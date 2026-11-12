@@ -1,3 +1,4 @@
+import pghistory
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import RegexValidator
 from django.db import models
@@ -27,6 +28,9 @@ class Role(models.TextChoices):
 ROLES_DOUBLE_AUTHENTIFICATION = [Role.DIRECTION, Role.COMPTABILITE]
 
 
+# Historique des comptes (création, désactivation, réinitialisation) : ni le mot de passe
+# ni la date de dernière connexion ne sont copiés dans l'historique.
+@pghistory.track(model_name="HistoriqueUtilisateur", exclude=["password", "last_login"])
 class Utilisateur(AbstractUser):
     """Compte individuel. Désactivé (is_active=False) au lieu d'être supprimé."""
 
@@ -51,6 +55,12 @@ class Utilisateur(AbstractUser):
             "Rôle affiché ; les droits viennent des groupes "
             "(un utilisateur peut en avoir plusieurs)."
         ),
+    )
+
+    doit_changer_mot_de_passe = models.BooleanField(
+        "doit changer son mot de passe",
+        default=False,
+        help_text="Mot de passe provisoire donné par un responsable : à changer à la connexion.",
     )
 
     REQUIRED_FIELDS = ["telephone"]

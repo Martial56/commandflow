@@ -1,0 +1,142 @@
+{% extends "base_bureau.html" %}
+{% load format_fr %}
+{% comment %}Paramètres (maquette 17, décision 8.6) : comptes, preuves de livraison exigées, règles.{% endcomment %}
+{% block titre %}Paramètres{% endblock %}
+{% block contenu %}
+<h1 class="text-[28px] font-semibold">Paramètres</h1>
+
+{% if provisoire %}
+  <div role="status" class="flex flex-col gap-1 rounded-[10px] border-2 border-lien bg-[#EEF2FF] px-4 py-3 text-sm">
+    <span>Mot de passe provisoire de <strong class="font-semibold">{{ provisoire.0 }}</strong> ({{ provisoire.0.telephone }}) :</span>
+    <span class="font-mono text-xl tracking-wide" data-mot-de-passe>{{ provisoire.1 }}</span>
+    <span class="text-texte-secondaire">Affiché une seule fois : transmettez-le à la personne. Elle devra le remplacer à sa première connexion.</span>
+  </div>
+{% endif %}
+
+<section aria-labelledby="s-comptes" class="carte flex flex-col gap-3">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <h2 id="s-comptes" class="text-base font-semibold">Utilisateurs et rôles</h2>
+    {% if peut_gerer_comptes %}
+      <details class="relative" {% if nouveau_ouvert %}open{% endif %}>
+        <summary class="inline-flex h-10 cursor-pointer list-none items-center rounded-md border border-lien bg-white px-3.5 text-sm text-lien">+ Ajouter un utilisateur</summary>
+        <form method="post" action="{% url 'parametres_ajouter_compte' %}" class="carte absolute right-0 z-10 mt-2 flex w-80 flex-col gap-3 shadow-lg">
+          {% csrf_token %}
+          {% for erreur in nouveau.non_field_errors %}<p role="alert" class="rounded-md border border-alerte-bordure bg-alerte-fond px-3 py-2 text-sm text-alerte">{{ erreur }}</p>{% endfor %}
+          {% include "composants/champ.html" with champ=nouveau.prenom %}
+          {% include "composants/champ.html" with champ=nouveau.nom %}
+          {% include "composants/champ.html" with champ=nouveau.telephone %}
+          {% include "composants/champ.html" with champ=nouveau.email %}
+          {% include "composants/champ.html" with champ=nouveau.role %}
+          <p class="text-[13px] text-texte-secondaire">Un mot de passe provisoire s'affichera une seule fois après la création.</p>
+          <button type="submit" class="bouton-principal h-11">Créer le compte</button>
+        </form>
+      </details>
+    {% endif %}
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full min-w-[640px] text-sm">
+      <thead>
+        <tr class="text-left text-[13px] text-texte-secondaire">
+          <th class="border-b border-trait px-2 py-2.5 font-medium">Nom</th>
+          <th class="border-b border-trait px-2 py-2.5 font-medium">Rôle</th>
+          <th class="border-b border-trait px-2 py-2.5 font-medium">Dernière connexion</th>
+          <th class="border-b border-trait px-2 py-2.5 font-medium">État</th>
+          {% if peut_gerer_comptes %}<th class="border-b border-trait px-2 py-2.5"><span class="sr-only">Actions</span></th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for ligne in comptes %}
+          {% with compte=ligne.compte %}
+            <tr class="{% if not compte.is_active %}text-texte-secondaire{% endif %}">
+              <td class="border-b border-[#EFECE6] px-2 py-2.5">{{ compte }}<span class="block text-[13px] text-texte-secondaire">{{ compte.telephone }}</span></td>
+              <td class="border-b border-[#EFECE6] px-2 py-2.5">{{ ligne.role }}</td>
+              <td class="border-b border-[#EFECE6] px-2 py-2.5">{% if ligne.moment %}{% if ligne.jour %}{{ ligne.jour }}{% else %}{{ ligne.moment|date_courte }}{% endif %} {{ ligne.moment|heure }}{% else %}jamais{% endif %}</td>
+              <td class="border-b border-[#EFECE6] px-2 py-2.5">
+                {% if compte.is_active %}Actif{% else %}Désactivé{% endif %}{% if ligne.code %} · 2FA{% endif %}{% if compte.role_principal == "prestataire" %} · accès limité à ses tournées{% endif %}{% if compte.doit_changer_mot_de_passe and compte.is_active %} · mot de passe provisoire{% endif %}
+              </td>
+              {% if peut_gerer_comptes %}
+                <td class="border-b border-[#EFECE6] px-2 py-2.5">
+                  {% if ligne.gerable %}
+                    <div class="flex flex-wrap justify-end gap-2">
+                      {% if compte.is_active %}
+                        <form method="post" action="{% url 'parametres_reinitialiser' compte.pk %}" onsubmit="return confirm('Réinitialiser le mot de passe de {{ compte|escapejs }} ?')">{% csrf_token %}<button type="submit" class="h-9 cursor-pointer rounded-md border border-bordure bg-white px-3 text-[13px]">Réinitialiser le mot de passe</button></form>
+                        <form method="post" action="{% url 'parametres_desactiver' compte.pk %}" onsubmit="return confirm('Désactiver le compte de {{ compte|escapejs }} ?')">{% csrf_token %}<button type="submit" class="h-9 cursor-pointer rounded-md border border-alerte-bordure bg-white px-3 text-[13px] text-alerte">Désactiver</button></form>
+                      {% else %}
+                        <form method="post" action="{% url 'parametres_reactiver' compte.pk %}">{% csrf_token %}<button type="submit" class="h-9 cursor-pointer rounded-md border border-lien bg-white px-3 text-[13px] text-lien">Réactiver</button></form>
+                      {% endif %}
+                    </div>
+                  {% endif %}
+                </td>
+              {% endif %}
+            </tr>
+          {% endwith %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="text-[13px] text-texte-secondaire">Les comptes Direction et Comptabilité (code de vérification) sont gérés par la Direction. Un compte n'est jamais supprimé : il est désactivé. Les comptes des prestataires se créent avec leur fiche, dans l'administration.</p>
+</section>
+
+<div class="flex flex-wrap items-start gap-5">
+  <section aria-labelledby="s-preuves" class="carte flex min-w-0 flex-[3_1_420px] flex-col gap-3">
+    <h2 id="s-preuves" class="text-base font-semibold">Preuves de livraison obligatoires</h2>
+    <form method="post" action="{% url 'parametres_preuves' %}" class="flex flex-col gap-3">
+      {% csrf_token %}
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[620px] text-center text-sm">
+          <thead>
+            <tr class="text-[13px] text-texte-secondaire">
+              <th class="border-b border-trait p-2 text-left font-medium">Catégorie</th>
+              {% for moyen, libelle in moyens %}<th class="border-b border-trait p-2 font-medium">{{ libelle }}</th>{% endfor %}
+              <th class="border-b border-trait p-2 font-medium">Règle</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for ligne in preuves %}
+              <tr>
+                <td class="border-b border-[#EFECE6] p-2 text-left">{{ ligne.categorie.label }}</td>
+                {% for moyen, libelle, coche in ligne.cases %}
+                  <td class="border-b border-[#EFECE6] p-2">
+                    <input type="checkbox" name="preuve-{{ ligne.categorie.value }}-{{ moyen }}" value="1" {% if coche %}checked{% endif %}
+                           {% if not peut_modifier %}disabled{% endif %}
+                           aria-label="{{ ligne.categorie.label }} : {{ libelle|lower }}" class="h-[18px] w-[18px]">
+                  </td>
+                {% endfor %}
+                <td class="border-b border-[#EFECE6] p-2">
+                  <label for="mode-{{ ligne.categorie.value }}" class="sr-only">Règle pour {{ ligne.categorie.label|lower }}</label>
+                  <select id="mode-{{ ligne.categorie.value }}" name="mode-{{ ligne.categorie.value }}" class="h-9 rounded-md border border-bordure bg-white px-2 text-[13px]" {% if not peut_modifier %}disabled{% endif %}>
+                    {% for valeur, libelle in modes %}<option value="{{ valeur }}" {% if ligne.mode == valeur %}selected{% endif %}>{{ libelle }}</option>{% endfor %}
+                  </select>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="text-[13px] text-texte-secondaire">« Au moins un » : le chauffeur fournit au moins un des moyens cochés. « Tous » : chaque moyen coché est obligatoire pour clôturer la livraison.</p>
+      {% if peut_modifier %}<button type="submit" class="bouton-principal h-11 w-auto self-end px-5">Enregistrer les preuves</button>{% endif %}
+    </form>
+  </section>
+
+  <section aria-labelledby="s-regles" class="carte flex min-w-0 flex-[2_1_300px] flex-col gap-3.5">
+    <h2 id="s-regles" class="text-base font-semibold">Règles de fonctionnement</h2>
+    <form method="post" action="{% url 'parametres_regles' %}" class="flex flex-col gap-3.5">
+      {% csrf_token %}
+      {% for erreur in regles.non_field_errors %}<p role="alert" class="rounded-md border border-alerte-bordure bg-alerte-fond px-3 py-2 text-sm text-alerte">{{ erreur }}</p>{% endfor %}
+      <div class="grid grid-cols-2 gap-3">
+        {% include "composants/champ.html" with champ=regles.generation %}
+        {% include "composants/champ.html" with champ=regles.limite %}
+      </div>
+      {% include "composants/champ.html" with champ=regles.resume %}
+      {% include "composants/champ.html" with champ=regles.creneaux %}
+      {% if peut_modifier %}<button type="submit" class="bouton-principal h-12">Enregistrer</button>{% endif %}
+    </form>
+    <div class="flex flex-col gap-1.5 border-t border-trait pt-3 text-[13px] text-texte-secondaire">
+      <span class="font-medium text-encre">Règles fixées (décisions 8.3 et 8.4)</span>
+      <span>Double validation du chargement : toujours, par la préparation puis par le chauffeur.</span>
+      <span>Prestataire avec un compte : il confirme lui-même la réception ; sans compte, le gestionnaire saisit à sa place avec la validation d'un autre responsable.</span>
+      <span>Position GPS : enregistrée à l'arrivée chez le client ; pas de suivi continu pendant la tournée.</span>
+    </div>
+  </section>
+</div>
+{% endblock %}
