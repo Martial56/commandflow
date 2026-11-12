@@ -397,3 +397,17 @@ Ces choix de modélisation dépendent des arbitrages du §23. Chacun modifie un 
 | Notifications | Dans l'application seulement au MVP (cloche et résumé quotidien) ; e-mail quand un serveur d'envoi sera configuré, WhatsApp en phase 3 (§21). Le code client à usage unique reste désactivé |
 | Tableau de bord du Commercial | Chiffres limités aux commandes qu'il a créées, sans les créances |
 | Écran Paramètres (maquette 17) | Reste « en préparation » ; les réglages (dont les preuves exigées) restent dans l'administration Django |
+
+### 8.6 Décisions validées le 12 novembre 2026 (après la recette — alertes, mots de passe)
+
+| Sujet | Décision |
+| --- | --- |
+| Commande nouvelle (§16.1) | Pas de notification à chaque commande : pastille du menu Commandes avec le nombre de commandes « À confirmer », pour la Direction, le Gestionnaire et le Commercial |
+| Décision sur une demande | L'auteur de la demande est notifié quand elle est acceptée ou refusée (type « Décision ») |
+| Commande non prête | Après « Marquer les commandes prêtes », celles restées en préparation faute de disponible sont signalées au Gestionnaire |
+| Tournée non partie | Tournée du jour pas encore partie au début de son premier créneau : notification au Gestionnaire, avec le nombre de commandes non reçues, une fois par tournée |
+| Livraison en retard | Livraison non traitée à la fin de son créneau (ou d'une tournée d'un jour passé) : notification au Gestionnaire, une fois par livraison |
+| Facture à traiter | Notification quotidienne au service Facturation (heure du résumé) : livraisons à facturer et documents sans PDF, seulement s'il y en a |
+| Résumé quotidien | Complété par la production du jour (produits complets sur produits à produire) et les livraisons de la veille (livrées, partielles, en échec) |
+| Preuve de livraison manquante | Pas d'alerte : une livraison ne peut pas être clôturée sans les preuves exigées |
+| Mot de passe oublié (lot B1) | Réinitialisé par le Gestionnaire ou la Direction depuis l'application ; pas d'envoi par e-mail ni par SMS pour l'instant |

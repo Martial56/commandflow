@@ -12,11 +12,13 @@ from noyau.models import ModeleEntreprise, ModeleTrace
 
 class TypeNotification(models.TextChoices):
     DEMANDE = "demande", "Demande à décider"
+    DECISION = "decision", "Décision"
     PRODUCTION = "production", "Production"
     LIVRAISON = "livraison", "Livraison"
     RETOUR = "retour", "Retour"
     INCIDENT = "incident", "Incident"
     RECURRENTES = "recurrentes", "Récurrentes"
+    FACTURATION = "facturation", "Facturation"
     PAIEMENT = "paiement", "Paiements"
     RESUME = "resume", "Résumé du jour"
 

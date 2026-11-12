@@ -17,7 +17,7 @@
     <form method="post" action="{% url 'notification_ouvrir' notification.pk %}">
       {% csrf_token %}
       <button type="submit" class="flex w-full cursor-pointer items-start gap-3 rounded-lg border px-4 py-3 text-left text-sm {% if notification.lue_le %}border-trait bg-white text-texte-secondaire{% else %}border-lien bg-[#EEF2FF] text-encre{% endif %}">
-        <span class="shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold {% if notification.type == 'demande' %}bg-[#DBEAFE] text-lien{% elif notification.type == 'resume' %}bg-[#E7E3DA] text-[#3D3A34]{% else %}bg-alerte-fond text-alerte{% endif %}">{{ notification.get_type_display }}</span>
+        <span class="shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold {% if notification.type == 'demande' or notification.type == 'decision' %}bg-[#DBEAFE] text-lien{% elif notification.type == 'resume' %}bg-[#E7E3DA] text-[#3D3A34]{% else %}bg-alerte-fond text-alerte{% endif %}">{{ notification.get_type_display }}</span>
         <span class="flex min-w-0 flex-1 flex-col gap-0.5">
           <span class="{% if not notification.lue_le %}font-medium{% endif %}">{{ notification.texte }}</span>
           <span class="text-xs text-texte-secondaire">{{ notification.cree_le|jour_mois }} {{ notification.cree_le|heure }}{% if notification.cree_par %} · {{ notification.cree_par }}{% endif %}</span>

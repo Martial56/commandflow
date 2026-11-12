@@ -104,6 +104,32 @@ def notifier_demande(validation):
     )
 
 
+# Décision prise sur une demande, annoncée à son auteur : (acceptée, refusée).
+LIBELLES_DECISION = {
+    Validation.Action.MODIFICATION: ("Modification acceptée", "Modification refusée"),
+    Validation.Action.ANNULATION: ("Annulation acceptée", "Annulation refusée"),
+    Validation.Action.URGENCE: ("Commande urgente validée", "Commande urgente refusée"),
+    Validation.Action.SUBSTITUTION: ("Substitution acceptée", "Substitution refusée"),
+    Validation.Action.ECART: ("Écart accepté", "Écart refusé"),
+    Validation.Action.EXCEPTION: ("Exception acceptée", "Exception refusée"),
+}
+
+
+def notifier_decision(validation):
+    """L'auteur d'une demande est prévenu de la décision (§16.1, décision 8.6)."""
+    acceptee = validation.decision == Validation.Decision.ACCEPTEE
+    libelle = LIBELLES_DECISION.get(validation.action, ("Demande acceptée", "Demande refusée"))[
+        0 if acceptee else 1
+    ]
+    objet = validation.objet
+    return notifier(
+        TypeNotification.DECISION,
+        f"{libelle} · {_sujet(objet)}",
+        destinataires=[validation.demandee_par],
+        lien=lien_objet(objet),
+    )
+
+
 # --- Lecture -------------------------------------------------------------------------
 
 

@@ -52,6 +52,7 @@ ECRANS = [
         "commandes/",
         a_le_role(R.DIRECTION, R.GESTIONNAIRE, R.COMMERCIAL, R.FACTURATION),
         sprint=2,
+        compteur="commandes.alertes.nombre_alertes",
     ),
     Ecran(
         "recurrentes",

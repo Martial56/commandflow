@@ -300,7 +300,28 @@ def marquer_plan_pret(plan):
                 resultat.pretes.append(commandes.marquer_prete(commande))
         except commandes.ActionImpossible:
             resultat.restantes.append(commande)
+    if resultat.restantes:
+        _notifier_non_pretes(plan, resultat.restantes)
     return resultat
+
+
+def _notifier_non_pretes(plan, restantes):
+    """Commandes non prêtes faute de disponible : le gestionnaire est prévenu (§16.1, 8.6)."""
+    from django.urls import reverse
+
+    from comptes.models import Role
+    from notifications.services import notifier
+
+    nombre = len(restantes)
+    liste = ", ".join(f"{c.numero} · {c.client.nom}" for c in restantes[:3])
+    suite = f" et {nombre - 3} autre{'s' if nombre > 4 else ''}" if nombre > 3 else ""
+    notifier(
+        "production",
+        f"{nombre} commande{'s' if nombre > 1 else ''} du {plan.date_livraison:%d/%m} "
+        f"non prête{'s' if nombre > 1 else ''} au chargement : {liste}{suite}",
+        roles=(Role.GESTIONNAIRE,),
+        lien=f"{reverse('ecran_production')}?date={plan.date_livraison:%Y-%m-%d}",
+    )
 
 
 # --- Cascades depuis les commandes ------------------------------------------------

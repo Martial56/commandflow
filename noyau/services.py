@@ -86,6 +86,8 @@ def decider_validation(validation, *, accepter):
     l'effet d'une décision acceptée. Personne ne peut décider de sa propre demande
     (décision 8.1 du 19 octobre 2026).
     """
+    from notifications.services import notifier_decision
+
     utilisateur = _utilisateur_obligatoire()
     validation = Validation.objects.select_for_update().get(pk=validation.pk)
     if validation.demandee_par_id == utilisateur.pk:
@@ -95,6 +97,7 @@ def decider_validation(validation, *, accepter):
     else:
         validation.refuser(par=utilisateur)
     validation.save()
+    notifier_decision(validation)
     return validation
 
 

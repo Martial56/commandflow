@@ -5,6 +5,7 @@ Valeurs par défaut quand l'entreprise ne les a pas encore réglées (écran Par
 """
 
 import datetime
+import re
 
 CRENEAUX_PAR_DEFAUT = ["06h–08h", "08h–10h", "10h–12h", "16h–18h"]
 HEURE_GENERATION_PAR_DEFAUT = "18:00"
@@ -15,6 +16,24 @@ HEURE_RESUME_PAR_DEFAUT = "07:00"
 def creneaux(entreprise):
     """Créneaux de livraison proposés dans les commandes."""
     return list((entreprise.options or {}).get("creneaux") or CRENEAUX_PAR_DEFAUT)
+
+
+CRENEAU = re.compile(r"^\s*(\d{1,2})h(\d{2})?\s*[–-]\s*(\d{1,2})h(\d{2})?\s*$")
+
+
+def bornes_creneau(creneau):
+    """« 06h–08h » → (06:00, 08:00) ; None si le texte n'est pas un créneau horaire."""
+    trouve = CRENEAU.match(creneau or "")
+    if not trouve:
+        return None
+    debut_h, debut_m, fin_h, fin_m = trouve.groups()
+    try:
+        return (
+            datetime.time(int(debut_h), int(debut_m or 0)),
+            datetime.time(int(fin_h), int(fin_m or 0)),
+        )
+    except ValueError:  # « 25h–26h »
+        return None
 
 
 def _heure(entreprise, cle, defaut):
