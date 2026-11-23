@@ -3,6 +3,7 @@
 import json
 
 import pytest
+from django.conf import settings
 from django.contrib.staticfiles import finders
 from django.templatetags.static import static
 from django.urls import reverse
@@ -87,3 +88,27 @@ def test_pages_liees_au_manifeste(client, entreprise, settings):
     contenu = client.get(reverse("ecran_ma_tournee")).content.decode()
     assert f'<link rel="manifest" href="{reverse("noyau:manifeste")}">' in contenu
     assert static("js/terrain.js") in contenu  # enregistre le service worker
+
+
+def test_polices_servies_par_l_application():
+    """Les polices sont dans les fichiers statiques et en cache sur le téléphone : aucune
+    page ne dépend de Google Fonts (chargement bloquant sur un réseau lent)."""
+    source = (settings.BASE_DIR / "assets/css/source.css").read_text(encoding="utf-8")
+    for chemin in (
+        "vendor/fonts/ibm-plex-sans-latin.woff2",
+        "vendor/fonts/ibm-plex-mono-500-latin.woff2",
+    ):
+        fichier = finders.find(chemin)
+        assert fichier, chemin
+        with open(fichier, "rb") as contenu:
+            assert contenu.read(4) == b"wOF2"
+        assert chemin in pwa.FICHIERS_STATIQUES
+        # Chemin relatif à la feuille compilée static/css/comandflow.css.
+        assert f'url("../{chemin}")' in source
+
+
+def test_aucune_page_ne_charge_google_fonts(client):
+    utilisateur = UtilisateurFactory(roles=[Role.GESTIONNAIRE])
+    assert "fonts.googleapis.com" not in client.get(reverse("account_login")).text
+    client.force_login(utilisateur)
+    assert "fonts.googleapis.com" not in client.get(reverse("ecran_commandes")).text

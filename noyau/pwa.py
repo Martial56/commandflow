@@ -23,6 +23,8 @@ FICHIERS_STATIQUES = [
     "vendor/alpinejs-3.14.9.min.js",
     "vendor/signature_pad-5.0.4.min.js",
     "js/terrain.js",
+    "vendor/fonts/ibm-plex-sans-latin.woff2",
+    "vendor/fonts/ibm-plex-mono-500-latin.woff2",
     "icones/comandflow-192.png",
     "icones/comandflow-512.png",
 ]

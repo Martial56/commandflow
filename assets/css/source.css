@@ -4,6 +4,25 @@
 @source "../../*/templates";
 @source "../../comptes";
 
+/* Polices servies par l'application (static/vendor/fonts, licence OFL) : aucune dépendance
+   à Google Fonts, dont le chargement bloquait l'affichage sur un réseau lent. Sous-ensemble
+   latin (accents français, tirets, €). Plex Sans est une police variable (400 à 600). Les
+   chemins sont relatifs à la feuille compilée static/css/comandflow.css. */
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url("../vendor/fonts/ibm-plex-sans-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("../vendor/fonts/ibm-plex-mono-500-latin.woff2") format("woff2");
+}
+
 /* Couleurs et polices des maquettes (docs/maquettes). */
 @theme {
   --font-sans: "IBM Plex Sans", "Helvetica Neue", sans-serif;
