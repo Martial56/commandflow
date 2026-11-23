@@ -1,0 +1,11 @@
+{% comment %}Champs d'un produit (création ou modification) ; `formulaire` est un FormulaireProduit.{% endcomment %}
+<div class="grid grid-cols-[7rem_1fr] gap-3">
+  {% include "composants/champ.html" with champ=formulaire.code %}
+  {% include "composants/champ.html" with champ=formulaire.nom %}
+</div>
+{% include "composants/champ.html" with champ=formulaire.unite %}
+<div class="grid grid-cols-2 gap-3">
+  {% include "composants/champ.html" with champ=formulaire.prix_reference %}
+  {% include "composants/champ.html" with champ=formulaire.taux_tva %}
+</div>
+{% include "composants/champ.html" with champ=formulaire.notes_preparation %}

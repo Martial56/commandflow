@@ -64,3 +64,44 @@ def test_compte_cree_puis_mot_de_passe_remplace(
     expect(bureau.get_by_text("Preuves de livraison enregistrées.")).to_be_visible()
     reglees = Entreprise.objects.get(pk=entreprise.pk)
     assert preuves_obligatoires(reglees, "restaurant") == [["photo_bordereau"], ["signature"]]
+
+
+def test_produit_cree_puis_propose_dans_une_commande(ouvrir, personne, entreprise):
+    """Décision 8.6 : le gestionnaire crée un produit dans Paramètres ; il est aussitôt
+    proposé dans une nouvelle commande, à son prix ; désactivé, il ne l'est plus."""
+    bureau = ouvrir(personne(Role.GESTIONNAIRE))
+    bureau.goto(reverse("ecran_parametres"))
+    bureau.get_by_text("+ Ajouter un produit").click()
+    bureau.locator("#id_nouveau-produit-code").fill("PCHOC")
+    bureau.locator("#id_nouveau-produit-nom").fill("Pain au chocolat")
+    bureau.locator("#id_nouveau-produit-unite").select_option(label="pièce")
+    bureau.locator("#id_nouveau-produit-prix_reference").fill("350")
+    bureau.get_by_role("button", name="Créer le produit").click()
+    expect(bureau.get_by_text("Produit Pain au chocolat (PCHOC) créé.")).to_be_visible()
+    ligne = bureau.locator("#s-produits tr", has_text="PCHOC")
+    expect(ligne).to_contain_text("Actif")
+
+    # Proposé dans une nouvelle commande, avec son prix.
+    bureau.goto(reverse("commande_nouvelle"))
+    choix = bureau.locator("select[name^=produit_]").first
+    choix.select_option(label="Pain au chocolat")
+    bureau.locator("input[name^=quantite_]").first.fill("10")
+    bureau.locator("input[name^=quantite_]").first.press("Tab")
+    expect(bureau.locator("#total")).to_have_text(re.compile(r"^3\D500$"))
+
+    # Prix modifié puis produit désactivé : il disparaît des nouvelles commandes.
+    bureau.goto(reverse("ecran_parametres"))
+    ligne = bureau.locator("#s-produits tr", has_text="PCHOC")
+    ligne.get_by_text("Modifier").click()
+    ligne.get_by_label("Prix TTC (FCFA)").fill("375")
+    ligne.get_by_role("button", name="Enregistrer Pain au chocolat").click()
+    expect(bureau.get_by_text("Les commandes déjà saisies gardent leur prix.")).to_be_visible()
+    bureau.once("dialog", lambda dialogue: dialogue.accept())
+    bureau.locator("#s-produits tr", has_text="PCHOC").get_by_role(
+        "button", name="Désactiver"
+    ).click()
+    expect(bureau.locator("#s-produits tr", has_text="PCHOC")).to_contain_text("Désactivé")
+    bureau.goto(reverse("commande_nouvelle"))
+    expect(
+        bureau.locator("select[name^=produit_] option", has_text="Pain au chocolat")
+    ).to_have_count(0)

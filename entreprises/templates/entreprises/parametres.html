@@ -1,6 +1,6 @@
 {% extends "base_bureau.html" %}
 {% load format_fr %}
-{% comment %}Paramètres (maquette 17, décision 8.6) : comptes, preuves de livraison exigées, règles.{% endcomment %}
+{% comment %}Paramètres (maquette 17, décision 8.6) : comptes, produits, preuves de livraison exigées, règles.{% endcomment %}
 {% block titre %}Paramètres{% endblock %}
 {% block contenu %}
 <h1 class="text-[28px] font-semibold">Paramètres</h1>
@@ -76,6 +76,8 @@
   </div>
   <p class="text-[13px] text-texte-secondaire">Les comptes Direction et Comptabilité (code de vérification) sont gérés par la Direction. Un compte n'est jamais supprimé : il est désactivé. Les comptes des prestataires se créent avec leur fiche, dans l'administration.</p>
 </section>
+
+{% if voit_catalogue %}{% include "entreprises/_produits.html" %}{% endif %}
 
 <div class="flex flex-wrap items-start gap-5">
   <section aria-labelledby="s-preuves" class="carte flex min-w-0 flex-[3_1_420px] flex-col gap-3">

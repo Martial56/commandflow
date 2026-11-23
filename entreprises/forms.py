@@ -2,6 +2,7 @@
 
 from django import forms
 
+from catalogue.models import Produit
 from comptes.models import ROLES_DOUBLE_AUTHENTIFICATION
 from comptes.services import ROLES_CREABLES
 from noyau.forms import FormulaireStyle
@@ -41,3 +42,13 @@ class FormulaireRegles(FormulaireStyle, forms.Form):
 
     def liste_creneaux(self):
         return [ligne.strip() for ligne in self.cleaned_data["creneaux"].splitlines()]
+
+
+class FormulaireProduit(FormulaireStyle, forms.ModelForm):
+    """Création ou modification d'un produit ; enregistrement par `catalogue.services`."""
+
+    class Meta:
+        model = Produit
+        fields = ["code", "nom", "unite", "prix_reference", "taux_tva", "notes_preparation"]
+        labels = {"prix_reference": "Prix TTC (FCFA)", "taux_tva": "TVA (%)"}
+        widgets = {"notes_preparation": forms.Textarea(attrs={"rows": 2})}

@@ -1,0 +1,72 @@
+{% load format_fr %}
+{% comment %}Section « Produits » de l'écran Paramètres (décision 8.6) : création, modification,
+désactivation. Un prix modifié ne s'applique qu'aux nouvelles commandes (prix figé).{% endcomment %}
+<section id="s-produits" aria-labelledby="titre-produits" class="carte flex flex-col gap-3">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <h2 id="titre-produits" class="text-base font-semibold">Produits</h2>
+    {% if peut_ajouter_produit %}
+      <details class="relative" {% if nouveau_produit_ouvert %}open{% endif %}>
+        <summary class="inline-flex h-10 cursor-pointer list-none items-center rounded-md border border-lien bg-white px-3.5 text-sm text-lien">+ Ajouter un produit</summary>
+        <form method="post" action="{% url 'parametres_ajouter_produit' %}" class="carte absolute right-0 z-10 mt-2 flex w-80 flex-col gap-3 shadow-lg">
+          {% csrf_token %}
+          {% for erreur in nouveau_produit.non_field_errors %}<p role="alert" class="rounded-md border border-alerte-bordure bg-alerte-fond px-3 py-2 text-sm text-alerte">{{ erreur }}</p>{% endfor %}
+          {% include "entreprises/_champs_produit.html" with formulaire=nouveau_produit %}
+          <button type="submit" class="bouton-principal h-11">Créer le produit</button>
+        </form>
+      </details>
+    {% endif %}
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full min-w-[640px] text-sm">
+      <thead>
+        <tr class="text-left text-[13px] text-texte-secondaire">
+          <th class="border-b border-trait px-2 py-2.5 font-medium">Code</th>
+          <th class="border-b border-trait px-2 py-2.5 font-medium">Nom</th>
+          <th class="border-b border-trait px-2 py-2.5 font-medium">Unité</th>
+          <th class="border-b border-trait px-2 py-2.5 text-right font-medium">Prix TTC (FCFA)</th>
+          <th class="border-b border-trait px-2 py-2.5 text-right font-medium">TVA</th>
+          <th class="border-b border-trait px-2 py-2.5 font-medium">État</th>
+          {% if peut_modifier_produit %}<th class="border-b border-trait px-2 py-2.5"><span class="sr-only">Actions</span></th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for ligne in produits %}
+          {% with produit=ligne.produit %}
+            <tr class="{% if not produit.actif %}text-texte-secondaire{% endif %}">
+              <td class="border-b border-[#EFECE6] px-2 py-2.5 font-mono">{{ produit.code }}</td>
+              <td class="border-b border-[#EFECE6] px-2 py-2.5">{{ produit.nom }}</td>
+              <td class="border-b border-[#EFECE6] px-2 py-2.5">{{ produit.get_unite_display }}</td>
+              <td class="border-b border-[#EFECE6] px-2 py-2.5 text-right font-mono">{{ produit.prix_reference|fcfa }}</td>
+              <td class="border-b border-[#EFECE6] px-2 py-2.5 text-right font-mono">{{ produit.taux_tva|floatformat:"-2" }} %</td>
+              <td class="border-b border-[#EFECE6] px-2 py-2.5">{% if produit.actif %}Actif{% else %}Désactivé{% endif %}</td>
+              {% if peut_modifier_produit %}
+                <td class="border-b border-[#EFECE6] px-2 py-2.5">
+                  <div class="flex flex-wrap justify-end gap-2">
+                    <details class="relative" {% if produit_en_erreur == produit.pk %}open{% endif %}>
+                      <summary class="inline-flex h-9 cursor-pointer list-none items-center rounded-md border border-bordure bg-white px-3 text-[13px]">Modifier</summary>
+                      <form method="post" action="{% url 'parametres_modifier_produit' produit.pk %}" class="carte absolute right-0 z-10 mt-2 flex w-80 flex-col gap-3 text-left shadow-lg">
+                        {% csrf_token %}
+                        {% for erreur in ligne.formulaire.non_field_errors %}<p role="alert" class="rounded-md border border-alerte-bordure bg-alerte-fond px-3 py-2 text-sm text-alerte">{{ erreur }}</p>{% endfor %}
+                        {% include "entreprises/_champs_produit.html" with formulaire=ligne.formulaire %}
+                        <p class="text-[13px] text-texte-secondaire">Un nouveau prix s'applique aux nouvelles commandes ; les commandes déjà saisies gardent le leur.</p>
+                        <button type="submit" class="bouton-principal h-11">Enregistrer {{ produit.nom }}</button>
+                      </form>
+                    </details>
+                    {% if produit.actif %}
+                      <form method="post" action="{% url 'parametres_desactiver_produit' produit.pk %}" onsubmit="return confirm('Désactiver {{ produit.nom|escapejs }} ? Il ne sera plus proposé dans les commandes.')">{% csrf_token %}<button type="submit" class="h-9 cursor-pointer rounded-md border border-alerte-bordure bg-white px-3 text-[13px] text-alerte">Désactiver</button></form>
+                    {% else %}
+                      <form method="post" action="{% url 'parametres_reactiver_produit' produit.pk %}">{% csrf_token %}<button type="submit" class="h-9 cursor-pointer rounded-md border border-lien bg-white px-3 text-[13px] text-lien">Réactiver</button></form>
+                    {% endif %}
+                  </div>
+                </td>
+              {% endif %}
+            </tr>
+          {% endwith %}
+        {% empty %}
+          <tr><td colspan="7" class="px-2 py-6 text-texte-secondaire">Aucun produit : commencer par « Ajouter un produit ».</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="text-[13px] text-texte-secondaire">Prix TTC, copié sur chaque ligne de commande à sa création. Un produit n'est jamais supprimé : désactivé, il n'est plus proposé dans les nouvelles commandes.</p>
+</section>

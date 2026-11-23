@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+import pghistory
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Q
@@ -17,6 +18,8 @@ class Unite(models.TextChoices):
 UNITES_DECIMALES = {Unite.KG}
 
 
+# Historique des produits : changements de prix, de TVA, désactivations (décision 8.6).
+@pghistory.track(model_name="HistoriqueProduit")
 class Produit(ModeleEntreprise, ModeleTrace):
     """Produit du catalogue. Désactivé (`actif=False`) au lieu d'être supprimé.
 

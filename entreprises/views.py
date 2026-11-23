@@ -3,11 +3,14 @@
 from allauth.mfa.models import Authenticator
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from catalogue import services as catalogue
+from catalogue.models import Produit
 from clients.models import Categorie
 from comptes import services as comptes
 from comptes.models import Role, Utilisateur
@@ -15,7 +18,7 @@ from comptes.rules import est_direction
 
 from . import parametres
 from . import services as reglages
-from .forms import FormulaireNouveauCompte, FormulaireRegles
+from .forms import FormulaireNouveauCompte, FormulaireProduit, FormulaireRegles
 
 MODES = [("un", "Au moins un"), ("tous", "Tous")]
 
@@ -88,7 +91,30 @@ def _formulaire_regles(entreprise):
     )
 
 
-def _page(request, *, nouveau=None, regles=None, provisoire=None, status=200):
+def _produits(request, en_erreur=None):
+    """Produits de l'entreprise, chacun avec son formulaire de modification (préfixé)."""
+    if not request.user.has_perm("catalogue.view_produit"):
+        return []
+    lignes = []
+    for produit in Produit.objects.order_by("-actif", "nom"):
+        if en_erreur is not None and en_erreur.instance.pk == produit.pk:
+            formulaire = en_erreur
+        else:
+            formulaire = FormulaireProduit(instance=produit, prefix=f"produit-{produit.pk}")
+        lignes.append({"produit": produit, "formulaire": formulaire})
+    return lignes
+
+
+def _page(
+    request,
+    *,
+    nouveau=None,
+    regles=None,
+    provisoire=None,
+    nouveau_produit=None,
+    produit_en_erreur=None,
+    status=200,
+):
     entreprise = request.user.entreprise
     direction = est_direction(request.user)
     return render(
@@ -105,6 +131,13 @@ def _page(request, *, nouveau=None, regles=None, provisoire=None, status=200):
             "moyens": parametres.MOYENS_DE_PREUVE,
             "modes": MODES,
             "provisoire": provisoire,
+            "produits": _produits(request, produit_en_erreur),
+            "voit_catalogue": request.user.has_perm("catalogue.view_produit"),
+            "peut_ajouter_produit": request.user.has_perm("catalogue.add_produit"),
+            "peut_modifier_produit": request.user.has_perm("catalogue.change_produit"),
+            "nouveau_produit": nouveau_produit or FormulaireProduit(prefix="nouveau-produit"),
+            "nouveau_produit_ouvert": nouveau_produit is not None,
+            "produit_en_erreur": produit_en_erreur.instance.pk if produit_en_erreur else None,
         },
         status=status,
     )
@@ -237,3 +270,83 @@ def preuves(request):
     else:
         messages.success(request, "Preuves de livraison enregistrées.")
     return redirect("ecran_parametres")
+
+
+# --- Produits (décision 8.6) --------------------------------------------------------
+
+
+def _erreurs_produit(formulaire, erreur):
+    """Erreurs de `full_clean` du service, rattachées aux champs du formulaire."""
+    if hasattr(erreur, "error_dict"):
+        for champ, erreurs in erreur.error_dict.items():
+            formulaire.add_error(champ if champ in formulaire.fields else None, erreurs)
+    else:
+        formulaire.add_error(None, erreur)
+
+
+def _donnees_produit(formulaire):
+    return {champ: formulaire.cleaned_data[champ] for champ in catalogue.CHAMPS_MODIFIABLES}
+
+
+@login_required
+@require_POST
+def ajouter_produit(request):
+    _exiger(request)
+    _exiger(request, "catalogue.add_produit")
+    formulaire = FormulaireProduit(request.POST, prefix="nouveau-produit")
+    if formulaire.is_valid():
+        try:
+            produit = catalogue.creer_produit(**_donnees_produit(formulaire))
+        except ValidationError as erreur:
+            _erreurs_produit(formulaire, erreur)
+        else:
+            messages.success(request, f"Produit {produit} créé.")
+            return redirect(f"{reverse('ecran_parametres')}#s-produits")
+    return _page(request, nouveau_produit=formulaire, status=400)
+
+
+def _produit(request, pk):
+    return get_object_or_404(Produit, pk=pk)
+
+
+@login_required
+@require_POST
+def modifier_produit(request, pk):
+    _exiger(request)
+    _exiger(request, "catalogue.change_produit")
+    produit = _produit(request, pk)
+    formulaire = FormulaireProduit(request.POST, instance=produit, prefix=f"produit-{pk}")
+    if formulaire.is_valid():
+        try:
+            produit = catalogue.modifier_produit(produit, **_donnees_produit(formulaire))
+        except ValidationError as erreur:
+            _erreurs_produit(formulaire, erreur)
+        else:
+            messages.success(
+                request,
+                f"Produit {produit} modifié. Les commandes déjà saisies gardent leur prix.",
+            )
+            return redirect(f"{reverse('ecran_parametres')}#s-produits")
+    return _page(request, produit_en_erreur=formulaire, status=400)
+
+
+@login_required
+@require_POST
+def desactiver_produit(request, pk):
+    _exiger(request)
+    _exiger(request, "catalogue.change_produit")
+    produit = catalogue.desactiver_produit(_produit(request, pk))
+    messages.success(
+        request, f"Produit {produit} désactivé : il n'est plus proposé dans les commandes."
+    )
+    return redirect(f"{reverse('ecran_parametres')}#s-produits")
+
+
+@login_required
+@require_POST
+def reactiver_produit(request, pk):
+    _exiger(request)
+    _exiger(request, "catalogue.change_produit")
+    produit = catalogue.reactiver_produit(_produit(request, pk))
+    messages.success(request, f"Produit {produit} réactivé.")
+    return redirect(f"{reverse('ecran_parametres')}#s-produits")

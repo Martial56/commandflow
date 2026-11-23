@@ -219,3 +219,135 @@ def test_derniere_connexion_lisible(client, entreprise, gestionnaire):
     hier = timezone.now() - datetime.timedelta(days=1)
     UtilisateurFactory(entreprise=entreprise, roles=[R.CHAUFFEUR], last_login=hier)
     assert "hier " in texte(client.get(reverse(ECRAN)))
+
+
+# --- Produits (décision 8.6) ------------------------------------------------------------
+
+
+def champs_produit(prefixe="nouveau-produit", **valeurs):
+    donnees = {
+        "code": "CROI",
+        "nom": "Croissant",
+        "unite": "piece",
+        "prix_reference": "300",
+        "taux_tva": "0",
+        "notes_preparation": "",
+    }
+    donnees.update(valeurs)
+    return {f"{prefixe}-{cle}": valeur for cle, valeur in donnees.items()}
+
+
+def test_creation_d_un_produit(client, entreprise, gestionnaire):
+    from catalogue.models import Produit
+
+    reponse = client.post(reverse("parametres_ajouter_produit"), champs_produit())
+    assert reponse.url == f"{reverse(ECRAN)}#s-produits"
+    produit = Produit.toutes_entreprises.get(entreprise=entreprise, code="CROI")
+    assert (produit.nom, produit.prix_reference, produit.actif) == ("Croissant", 300, True)
+    assert produit.cree_par == gestionnaire
+    page = texte(client.get(reverse(ECRAN)))
+    assert "Produit Croissant (CROI) créé." in page and "CROI Croissant pièce 300" in page
+
+
+@pytest.mark.parametrize(
+    ("valeurs", "message"),
+    [
+        ({"prix_reference": "-5"}, "supérieure ou égale à 0"),
+        ({"taux_tva": "120"}, "inférieure ou égale à 100"),
+        ({"nom": ""}, "obligatoire"),
+    ],
+)
+def test_produit_refuse(client, entreprise, gestionnaire, valeurs, message):
+    from catalogue.models import Produit
+
+    reponse = client.post(reverse("parametres_ajouter_produit"), champs_produit(**valeurs))
+    assert reponse.status_code == 400 and message in texte(reponse)
+    assert not Produit.toutes_entreprises.filter(entreprise=entreprise).exists()
+
+
+def test_code_deja_utilise(client, entreprise, gestionnaire):
+    from catalogue.tests.factories import ProduitFactory
+
+    ProduitFactory(entreprise=entreprise, code="CROI")
+    reponse = client.post(reverse("parametres_ajouter_produit"), champs_produit())
+    assert reponse.status_code == 400 and "existe déjà" in texte(reponse)
+
+
+def test_modification_du_prix_sans_toucher_les_commandes(client, entreprise, gestionnaire):
+    from catalogue.models import HistoriqueProduit
+    from catalogue.tests.factories import ProduitFactory
+    from commandes.models import LigneCommande
+    from commandes.tests.factories import CommandeFactory, LigneCommandeFactory
+
+    produit = ProduitFactory(entreprise=entreprise, code="BAG", nom="Baguette", prix_reference=150)
+    ligne = LigneCommandeFactory(
+        commande=CommandeFactory(adresse__client__entreprise=entreprise),
+        produit=produit,
+        prix_unitaire=150,
+    )
+    reponse = client.post(
+        reverse("parametres_modifier_produit", args=[produit.pk]),
+        champs_produit(f"produit-{produit.pk}", code="BAG", nom="Baguette", prix_reference="175"),
+    )
+    assert reponse.url == f"{reverse(ECRAN)}#s-produits"
+    produit.refresh_from_db()
+    assert produit.prix_reference == 175 and produit.modifie_par == gestionnaire
+    assert LigneCommande.toutes_entreprises.get(pk=ligne.pk).prix_unitaire == 150
+    prix = HistoriqueProduit.objects.filter(pgh_obj=produit).values_list(
+        "prix_reference", flat=True
+    )
+    assert set(prix) == {150, 175}
+
+
+def test_modification_refusee_garde_le_formulaire_ouvert(client, entreprise, gestionnaire):
+    from catalogue.tests.factories import ProduitFactory
+
+    produit = ProduitFactory(entreprise=entreprise, code="BAG", nom="Baguette")
+    reponse = client.post(
+        reverse("parametres_modifier_produit", args=[produit.pk]),
+        champs_produit(f"produit-{produit.pk}", code="BAG", prix_reference="-1"),
+    )
+    assert reponse.status_code == 400
+    assert re.search(
+        r"<details class=\"relative\" open>\s*<summary[^>]*>Modifier", reponse.content.decode()
+    )
+
+
+def test_desactivation_et_reactivation(client, entreprise, gestionnaire):
+    from catalogue.tests.factories import ProduitFactory
+
+    produit = ProduitFactory(entreprise=entreprise)
+    client.post(reverse("parametres_desactiver_produit", args=[produit.pk]))
+    produit.refresh_from_db()
+    assert not produit.actif
+    # Un produit désactivé n'est plus proposé dans une nouvelle commande.
+    assert f'value="{produit.pk}"' not in client.get(reverse("commande_ligne")).content.decode()
+    client.post(reverse("parametres_reactiver_produit", args=[produit.pk]))
+    produit.refresh_from_db()
+    assert produit.actif
+
+
+def test_produits_reserves_a_la_direction_et_au_gestionnaire(client, entreprise):
+    from django.contrib.auth.models import Permission
+
+    from catalogue.tests.factories import ProduitFactory
+
+    produit = ProduitFactory(entreprise=entreprise, nom="Pain secret")
+    commercial = UtilisateurFactory(entreprise=entreprise, roles=[R.COMMERCIAL])
+    commercial.user_permissions.add(Permission.objects.get(codename="gerer_utilisateurs"))
+    client.force_login(commercial)
+    assert "Pain secret" not in texte(client.get(reverse(ECRAN)))
+    assert client.post(reverse("parametres_ajouter_produit"), champs_produit()).status_code == 403
+    for nom in ("parametres_desactiver_produit", "parametres_reactiver_produit"):
+        assert client.post(reverse(nom, args=[produit.pk])).status_code == 403
+
+
+def test_produit_d_une_autre_entreprise_introuvable(client, gestionnaire):
+    from catalogue.tests.factories import ProduitFactory
+
+    etranger = ProduitFactory(entreprise=EntrepriseFactory(), nom="Pain étranger")
+    assert "Pain étranger" not in texte(client.get(reverse(ECRAN)))
+    for nom in ("parametres_modifier_produit", "parametres_desactiver_produit"):
+        assert client.post(reverse(nom, args=[etranger.pk])).status_code == 404
+    etranger.refresh_from_db()
+    assert etranger.actif
