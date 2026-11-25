@@ -10,6 +10,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from catalogue import services as catalogue
+from catalogue.historique import DEBUT_HISTORIQUE, historique_des_prix
 from catalogue.models import Produit
 from clients.models import Categorie
 from comptes import services as comptes
@@ -96,12 +97,20 @@ def _produits(request, en_erreur=None):
     if not request.user.has_perm("catalogue.view_produit"):
         return []
     lignes = []
-    for produit in Produit.objects.order_by("-actif", "nom"):
+    produits = list(Produit.objects.order_by("-actif", "nom"))
+    historiques = historique_des_prix(produits)
+    for produit in produits:
         if en_erreur is not None and en_erreur.instance.pk == produit.pk:
             formulaire = en_erreur
         else:
             formulaire = FormulaireProduit(instance=produit, prefix=f"produit-{produit.pk}")
-        lignes.append({"produit": produit, "formulaire": formulaire})
+        lignes.append(
+            {
+                "produit": produit,
+                "formulaire": formulaire,
+                "historique": historiques[produit.pk],
+            }
+        )
     return lignes
 
 
@@ -132,6 +141,7 @@ def _page(
             "modes": MODES,
             "provisoire": provisoire,
             "produits": _produits(request, produit_en_erreur),
+            "debut_historique": DEBUT_HISTORIQUE,
             "voit_catalogue": request.user.has_perm("catalogue.view_produit"),
             "peut_ajouter_produit": request.user.has_perm("catalogue.add_produit"),
             "peut_modifier_produit": request.user.has_perm("catalogue.change_produit"),

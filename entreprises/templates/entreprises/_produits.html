@@ -36,7 +36,30 @@ désactivation. Un prix modifié ne s'applique qu'aux nouvelles commandes (prix 
               <td class="border-b border-[#EFECE6] px-2 py-2.5 font-mono">{{ produit.code }}</td>
               <td class="border-b border-[#EFECE6] px-2 py-2.5">{{ produit.nom }}</td>
               <td class="border-b border-[#EFECE6] px-2 py-2.5">{{ produit.get_unite_display }}</td>
-              <td class="border-b border-[#EFECE6] px-2 py-2.5 text-right font-mono">{{ produit.prix_reference|fcfa }}</td>
+              <td class="border-b border-[#EFECE6] px-2 py-2.5 text-right">
+                <span class="font-mono">{{ produit.prix_reference|fcfa }}</span>
+                <details class="relative" data-historique-prix>
+                  <summary class="cursor-pointer list-none text-[13px] text-lien">Historique des prix</summary>
+                  <div class="carte absolute right-0 z-10 mt-2 w-80 text-left shadow-lg">
+                    <h3 class="mb-2 text-sm font-semibold">Prix de {{ produit.nom }}</h3>
+                    {% if ligne.historique.prix %}
+                      <ol class="flex flex-col gap-1.5 text-[13px]">
+                        {% for prix in ligne.historique.prix %}
+                          <li class="flex items-baseline justify-between gap-3">
+                            <span class="text-texte-secondaire">{{ prix.le|date:"d/m/Y" }} {{ prix.le|heure }}{% if prix.auteur %} · {{ prix.auteur }}{% endif %}{% if prix.creation %} · création{% endif %}</span>
+                            <span class="font-mono">{{ prix.prix|fcfa }}</span>
+                          </li>
+                        {% endfor %}
+                      </ol>
+                    {% else %}
+                      <p class="text-[13px] text-texte-secondaire">Aucun changement de prix.</p>
+                    {% endif %}
+                    {% if not ligne.historique.complet %}
+                      <p class="mt-2 text-[13px] text-texte-secondaire">Historique tenu depuis le {{ debut_historique|date:"d/m/Y" }}.</p>
+                    {% endif %}
+                  </div>
+                </details>
+              </td>
               <td class="border-b border-[#EFECE6] px-2 py-2.5 text-right font-mono">{{ produit.taux_tva|floatformat:"-2" }} %</td>
               <td class="border-b border-[#EFECE6] px-2 py-2.5">{% if produit.actif %}Actif{% else %}Désactivé{% endif %}</td>
               {% if peut_modifier_produit %}

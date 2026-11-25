@@ -96,6 +96,14 @@ def test_produit_cree_puis_propose_dans_une_commande(ouvrir, personne, entrepris
     ligne.get_by_label("Prix TTC (FCFA)").fill("375")
     ligne.get_by_role("button", name="Enregistrer Pain au chocolat").click()
     expect(bureau.get_by_text("Les commandes déjà saisies gardent leur prix.")).to_be_visible()
+    # Historique des prix (lot B9) : le plus récent d'abord.
+    ligne = bureau.locator("#s-produits tr", has_text="PCHOC")
+    ligne.get_by_text("Historique des prix").click()
+    prix = ligne.locator("[data-historique-prix] li")
+    expect(prix).to_have_count(2)
+    expect(prix.nth(0)).to_contain_text("375")
+    expect(prix.nth(1)).to_contain_text("350")
+    expect(prix.nth(1)).to_contain_text("création")
     bureau.once("dialog", lambda dialogue: dialogue.accept())
     bureau.locator("#s-produits tr", has_text="PCHOC").get_by_role(
         "button", name="Désactiver"

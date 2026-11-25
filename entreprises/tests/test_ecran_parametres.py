@@ -351,3 +351,19 @@ def test_produit_d_une_autre_entreprise_introuvable(client, gestionnaire):
         assert client.post(reverse(nom, args=[etranger.pk])).status_code == 404
     etranger.refresh_from_db()
     assert etranger.actif
+
+
+def test_historique_des_prix_affiche(client, entreprise, gestionnaire):
+    """Lot B9 : chaque produit montre ses prix successifs, avec la date et l'auteur."""
+    from catalogue.tests.factories import ProduitFactory
+
+    produit = ProduitFactory(entreprise=entreprise, code="BAG", nom="Baguette", prix_reference=150)
+    client.post(
+        reverse("parametres_modifier_produit", args=[produit.pk]),
+        champs_produit(f"produit-{produit.pk}", code="BAG", nom="Baguette", prix_reference="175"),
+    )
+    page = texte(client.get(reverse(ECRAN)))
+    assert "Historique des prix" in page and "Prix de Baguette" in page
+    prix = page.split("Prix de Baguette", 1)[1]
+    assert prix.index("175") < prix.index("150")  # du plus récent au plus ancien
+    assert str(gestionnaire) in prix and "création" in prix

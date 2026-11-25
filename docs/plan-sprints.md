@@ -64,7 +64,7 @@ Scénarios §22 joués dans Chromium (`pytest -m recette`, dossier `recette/`), 
 Sujets validés le 23 novembre 2026, dans cet ordre : B9, B3, B10.
 
 - [x] B9 : indicatif +225 ajouté aux numéros à 10 chiffres (connexion, comptes, clients, import)
-- [ ] B9 : historique des prix de chaque produit dans Paramètres
+- [x] B9 : historique des prix de chaque produit dans Paramètres
 - [ ] B3 : urgence après le départ, dans une nouvelle tournée (« Ma tournée » enchaîne les tournées du jour)
 - [ ] B10 : modèles récurrents gérés depuis la fiche client (maquette d'abord)
 
