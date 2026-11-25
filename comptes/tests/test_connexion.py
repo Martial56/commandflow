@@ -145,3 +145,10 @@ def test_acces_apres_activation_2fa(client):
     reponse = client.get(reverse("accueil"), follow=True)
     assert reponse.redirect_chain == [(reverse("ecran_tableau_de_bord"), 302)]
     assert reponse.status_code == 200
+
+
+def test_connexion_par_numero_national_sans_indicatif(client, chauffeur):
+    """Lot B9 : « 07 00 00 00 01 » reçoit +225 ; le chauffeur n'a pas à taper l'indicatif."""
+    assert _se_connecter(client, "07 00 00 00 01").status_code == 302
+    client.logout()
+    assert _se_connecter(client, "0700000001").status_code == 302

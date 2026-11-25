@@ -1,16 +1,20 @@
 from allauth.account.adapter import DefaultAccountAdapter
 from allauth.account.fields import PhoneField
 
+from noyau.telephones import completer_indicatif
+
 from .models import Utilisateur
 
 
 def normaliser_telephone(valeur):
-    """« +225 07 00 00 00 01 » ou « +225-07… » → « +2250700000001 »."""
-    return (valeur or "").replace(" ", "").replace("-", "").replace(".", "")
+    """« +225 07 00 00 00 01 », « +225-07… » ou « 07 00 00 00 01 » → « +2250700000001 »
+    (indicatif +225 ajouté à un numéro national à 10 chiffres, lot B9)."""
+    return completer_indicatif(valeur).replace(" ", "").replace("-", "").replace(".", "")
 
 
 class ChampTelephone(PhoneField):
-    """Retire espaces, tirets et points avant de vérifier le format international."""
+    """Retire espaces, tirets et points, et ajoute +225 à un numéro national, avant de
+    vérifier le format international."""
 
     def to_python(self, value):
         return normaliser_telephone(super().to_python(value))

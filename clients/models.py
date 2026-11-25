@@ -6,6 +6,7 @@ from django.db import models
 from django.db.models import Q
 
 from noyau.models import ModeleEntreprise, ModeleTrace
+from noyau.telephones import completer_indicatif
 
 valider_telephone = RegexValidator(
     regex=r"^\+?[0-9 .\-]{8,20}$",
@@ -14,8 +15,16 @@ valider_telephone = RegexValidator(
 
 
 def normaliser_telephone(valeur):
-    """« +225 07 00-00.00 01 » → « +2250700000001 » (comparaison des doublons)."""
-    return re.sub(r"[ .\-]", "", valeur or "")
+    """« +225 07 00-00.00 01 » ou « 07 00 00 00 01 » → « +2250700000001 » (comparaison
+    des doublons ; indicatif +225 ajouté à un numéro national, lot B9)."""
+    return re.sub(r"[ .\-]", "", completer_indicatif(valeur))
+
+
+def telephone_avec_indicatif(valeur, longueur_max=20):
+    """Numéro enregistré : « 07 11 22 33 44 » devient « +225 07 11 22 33 44 » (lot B9) ;
+    forme compacte « +2250711223344 » si la présentation saisie dépasserait le champ."""
+    complete = completer_indicatif(valeur)
+    return complete if len(complete) <= longueur_max else normaliser_telephone(complete)
 
 
 def normaliser_nom(valeur):
@@ -79,6 +88,10 @@ class Client(ModeleEntreprise, ModeleTrace):
     def __str__(self):
         return self.nom
 
+    def clean(self):
+        super().clean()
+        self.telephone = telephone_avec_indicatif(self.telephone)
+
     @property
     def adresse_par_defaut(self):
         return self.adresses.filter(par_defaut=True, actif=True).first()
@@ -106,6 +119,10 @@ class ContactClient(ModeleEntreprise, ModeleTrace):
 
     def __str__(self):
         return self.nom
+
+    def clean(self):
+        super().clean()
+        self.telephone = telephone_avec_indicatif(self.telephone)
 
 
 class Adresse(ModeleEntreprise, ModeleTrace):

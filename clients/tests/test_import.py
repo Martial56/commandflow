@@ -76,7 +76,7 @@ def test_mise_a_jour_par_code_sans_effacer(tmp_path, entreprise):
     assert "1 mis à jour" in importer(classeur(tmp_path / "b.xlsx", [ligne]), entreprise)
     baobab = clients(entreprise)["Restaurant Le Baobab"]
     assert (baobab.conditions_paiement, baobab.delai_paiement_jours) == ("x_jours", 15)
-    assert baobab.telephone == "07 00 00 00 01"
+    assert baobab.telephone == "+225 07 00 00 00 01"  # indicatif ajouté (lot B9)
 
 
 def test_lignes_rejetees(tmp_path, entreprise):
@@ -120,3 +120,12 @@ def test_modele_de_fichier(tmp_path):
     entetes, exemple = list(load_workbook(chemin).active.iter_rows(values_only=True))
     assert entetes[:4] == ("code", "nom", "categorie", "telephone")
     assert exemple[1] == "Restaurant Le Baobab"
+
+
+def test_numero_national_complete_sans_fausse_mise_a_jour(tmp_path, entreprise):
+    """Lot B9 : le numéro importé reçoit +225 ; réimporter la même fiche ne la compte pas
+    comme modifiée."""
+    importer(classeur(tmp_path / "a.xlsx", [BAOBAB]), entreprise)
+    assert clients(entreprise)["Restaurant Le Baobab"].telephone == "+225 07 00 00 00 01"
+    ligne = ["CLI-000001", "", "", "07 00 00 00 01", "", "", "", "", "", "", ""]
+    assert "0 mis à jour" in importer(classeur(tmp_path / "b.xlsx", [ligne]), entreprise)

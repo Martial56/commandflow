@@ -16,7 +16,7 @@ class FormulaireNouveauCompte(FormulaireStyle, forms.Form):
     telephone = forms.CharField(
         label="Téléphone",
         max_length=20,
-        widget=forms.TextInput(attrs={"placeholder": "+2250700000000", "inputmode": "tel"}),
+        widget=forms.TextInput(attrs={"placeholder": "07 00 00 00 00", "inputmode": "tel"}),
     )
     email = forms.EmailField(label="E-mail (facultatif)", required=False)
     role = forms.ChoiceField(label="Rôle")

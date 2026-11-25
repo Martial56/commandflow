@@ -71,7 +71,7 @@ def test_comptes_sensibles_crees_par_la_direction_seule(gens, role):
 @pytest.mark.parametrize(
     ("champs", "message"),
     [
-        ({"telephone": "0711223344"}, "format international"),
+        ({"telephone": "07112233"}, "10 chiffres"),
         ({"prenom": " "}, "prénom et le nom"),
         ({"role": R.PRESTATAIRE}, "Choisir un rôle"),
     ],
@@ -208,3 +208,11 @@ def test_mot_de_passe_provisoire_a_changer(client, gens):
     compte = Utilisateur.objects.get(pk=compte.pk)
     assert not compte.doit_changer_mot_de_passe and compte.check_password("Baguette-2026!")
     assert client.get(reverse("ecran_ma_tournee")).status_code == 200
+
+
+def test_creation_avec_numero_national_sans_indicatif(gens):
+    """Lot B9 : un numéro à 10 chiffres saisi sans indicatif reçoit +225."""
+    compte, _ = creer(gens.gestionnaire, telephone="07 11 22 33 44")
+    assert Utilisateur.objects.get(pk=compte.pk).telephone == "+2250711223344"
+    with pytest.raises(services.ActionImpossible, match="déjà un compte"):
+        creer(gens.gestionnaire, telephone="+225 07 11 22 33 44")

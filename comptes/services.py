@@ -66,7 +66,7 @@ def creer_compte(*, prenom, nom, telephone, role, email=""):
         valider_telephone(telephone)
     except Exception as erreur:
         raise ActionImpossible(
-            "Téléphone au format international, par exemple +2250700000000."
+            "Téléphone à 10 chiffres (07 00 00 00 00) ou au format international (+…)."
         ) from erreur
     if Utilisateur.objects.filter(telephone=telephone).exists():
         raise ActionImpossible("Ce numéro de téléphone a déjà un compte.")

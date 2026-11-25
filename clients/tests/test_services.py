@@ -144,3 +144,36 @@ def test_isolation_entre_entreprises(contexte):
     with activer_entreprise(None):
         ClientFactory(entreprise=EntrepriseFactory(), nom="Ailleurs")
     assert list(Client.objects.values_list("nom", flat=True)) == ["Chez nous"]
+
+
+# --- Indicatif +225 (lot B9) ------------------------------------------------------------
+
+
+def test_numero_national_enregistre_avec_indicatif(contexte):
+    client = services.creer_client(
+        contact={"nom": "M. Koffi", "telephone": "05.06.07.08.09"}, **CLIENT
+    )
+    client.refresh_from_db()
+    assert client.telephone == "+225 07 00 00 00 01"
+    assert client.contacts.get().telephone == "+225 05.06.07.08.09"
+    services.modifier_client(client, telephone="0101010101")
+    client.refresh_from_db()
+    assert client.telephone == "+225 0101010101"
+
+
+def test_numero_international_inchange_et_forme_compacte_si_trop_long(contexte):
+    client = services.creer_client(**{**CLIENT, "telephone": "+33 6 12 34 56 78"})
+    assert client.telephone == "+33 6 12 34 56 78"
+    long = services.creer_client(**{**CLIENT, "nom": "Autre", "telephone": "07  11  22  33  44"})
+    long.refresh_from_db()
+    assert long.telephone == "+2250711223344"  # « +225 » + saisie dépasserait 20 caractères
+
+
+def test_doublon_reconnu_avec_ou_sans_indicatif(contexte):
+    services.creer_client(**CLIENT)
+    with pytest.raises(services.DoublonPotentiel):
+        services.creer_client(**{**CLIENT, "telephone": "+225 07 00 00 00 01"})
+    # Client enregistré avant le lot B9 sans indicatif : toujours reconnu (option a).
+    ancien = Client.objects.get()
+    Client.objects.filter(pk=ancien.pk).update(telephone="07 00 00 00 01")
+    assert services.doublons_potentiels(CLIENT["nom"], "+2250700000001") == [ancien]

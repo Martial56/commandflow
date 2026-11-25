@@ -9,7 +9,7 @@
 """
 
 from clients import services
-from clients.models import Categorie, Client, ConditionsPaiement
+from clients.models import Categorie, Client, ConditionsPaiement, telephone_avec_indicatif
 from noyau.commandes_import import CommandeImport
 from noyau.importation import LigneRejetee, choix, nombre
 
@@ -71,7 +71,7 @@ class Command(CommandeImport):
         champs = {
             "nom": donnees.get("nom", ""),
             "categorie": choix(donnees.get("categorie"), Categorie, "Catégorie"),
-            "telephone": donnees.get("telephone", ""),
+            "telephone": telephone_avec_indicatif(donnees.get("telephone", "")),
             "ncc": donnees.get("ncc", ""),
             "notes": donnees.get("notes", ""),
         }
