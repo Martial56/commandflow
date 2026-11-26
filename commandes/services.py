@@ -33,7 +33,9 @@ from .models import (
     STATUTS_MODIFICATION_LIBRE,
     STATUTS_MODIFICATION_VALIDEE,
     Commande,
+    JourSemaine,
     LigneCommande,
+    LigneModeleRecurrent,
     ModeleRecurrent,
     Statut,
 )
@@ -560,7 +562,7 @@ def generer_commandes_recurrentes(date_livraison):
             continue
         lignes = [
             (ligne.produit, ligne.quantite)
-            for ligne in modele.lignes.select_related("produit")
+            for ligne in modele.lignes.filter(actif=True).select_related("produit")
             if ligne.produit.actif
         ]
         if not lignes:
@@ -612,3 +614,116 @@ def marquer_pas_de_livraison(commandes):
         except (ActionImpossible, PermissionDenied) as erreur:
             refus.append((commande, str(erreur) or "Action non autorisée."))
     return annulees, refus
+
+
+# --- Modèles récurrents (lot B10) ----------------------------------------------
+# Gérés depuis la fiche client par la Direction et le Gestionnaire (décision 8.1). Un
+# changement vaut pour les prochaines générations ; une commande déjà générée n'est pas
+# modifiée (Q2 a). Un produit retiré garde sa ligne, désactivée (Q1 a).
+
+
+def _verifier_modele(client, adresse, jours_semaine, creneau, lignes):
+    """Contrôles communs à la création et à la modification ; renvoie (adresse, jours,
+    lignes normalisées)."""
+    if adresse is None:
+        raise ValidationError({"adresse": "Choisir l'adresse de livraison."})
+    adresse = _verifier_adresse(client, adresse)
+    jours = sorted({int(jour) for jour in jours_semaine or []})
+    if not jours:
+        raise ValidationError({"jours_semaine": "Cocher au moins un jour de livraison."})
+    if any(jour not in JourSemaine.values for jour in jours):
+        raise ValidationError({"jours_semaine": "Jour de livraison inconnu."})
+    _verifier_creneau(creneau)
+    voulues = _normaliser_lignes(lignes or [])
+    if not voulues:
+        raise ValidationError({"lignes": "Ajouter au moins un produit."})
+    _meme_entreprise(*voulues)
+    return adresse, jours, voulues
+
+
+def _ligne_de_modele(modele, produit, quantite, ligne=None):
+    if ligne is None:
+        if not produit.actif:
+            raise ValidationError({"lignes": f"{produit.nom} n'est plus au catalogue."})
+        ligne = LigneModeleRecurrent(entreprise=modele.entreprise, modele=modele, produit=produit)
+    ligne.quantite = quantite
+    ligne.actif = True
+    ligne.full_clean(exclude=["modele"])
+    ligne.save()
+
+
+@transaction.atomic
+def creer_modele_recurrent(
+    *, client, adresse, jours_semaine, creneau, date_debut, date_fin=None, lignes
+):
+    """Nouvelle commande récurrente d'un client ; `lignes` : [(produit, quantité)]."""
+    _exiger("commandes.add_modelerecurrent")
+    adresse, jours, voulues = _verifier_modele(client, adresse, jours_semaine, creneau, lignes)
+    modele = ModeleRecurrent(
+        entreprise=entreprise_obligatoire(),
+        client=client,
+        adresse=adresse,
+        jours_semaine=jours,
+        creneau=creneau,
+        date_debut=date_debut,
+        date_fin=date_fin,
+    )
+    modele.full_clean()
+    modele.save()
+    for produit, quantite in voulues.items():
+        _ligne_de_modele(modele, produit, quantite)
+    return modele
+
+
+@transaction.atomic
+def modifier_modele_recurrent(
+    modele, *, adresse, jours_semaine, creneau, date_debut, date_fin=None, lignes
+):
+    """Met le modèle à l'état voulu. `lignes` : les produits gardés et ajoutés ; un
+    produit absent est retiré (ligne désactivée), un produit retiré qu'on remet est
+    réactivé avec sa nouvelle quantité."""
+    modele = ModeleRecurrent.objects.select_for_update().get(pk=modele.pk)
+    _exiger("commandes.change_modelerecurrent", modele)
+    adresse, jours, voulues = _verifier_modele(
+        modele.client, adresse, jours_semaine, creneau, lignes
+    )
+    modele.adresse = adresse
+    modele.jours_semaine = jours
+    modele.creneau = creneau
+    modele.date_debut = date_debut
+    modele.date_fin = date_fin
+    modele.full_clean()
+    modele.save()
+    existantes = {ligne.produit_id: ligne for ligne in modele.lignes.select_related("produit")}
+    for produit, quantite in voulues.items():
+        ligne = existantes.pop(produit.pk, None)
+        if ligne is not None and ligne.actif and ligne.quantite == quantite:
+            continue
+        _ligne_de_modele(modele, produit, quantite, ligne)
+    for ligne in existantes.values():
+        if ligne.actif:
+            ligne.actif = False
+            ligne.save()
+    return modele
+
+
+@transaction.atomic
+def desactiver_modele_recurrent(modele):
+    """Plus aucune commande générée ; les commandes déjà générées ne changent pas."""
+    return _changer_activite_modele(modele, actif=False)
+
+
+@transaction.atomic
+def reactiver_modele_recurrent(modele):
+    return _changer_activite_modele(modele, actif=True)
+
+
+def _changer_activite_modele(modele, *, actif):
+    modele = ModeleRecurrent.objects.select_for_update().get(pk=modele.pk)
+    _exiger("commandes.change_modelerecurrent", modele)
+    if actif and not modele.lignes.filter(actif=True, produit__actif=True).exists():
+        raise ActionImpossible("Ce modèle n'a plus de produit actif : le modifier d'abord.")
+    if modele.actif != actif:
+        modele.actif = actif
+        modele.save()
+    return modele

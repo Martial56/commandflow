@@ -29,9 +29,9 @@ class ModeleRecurrentForm(forms.ModelForm):
 
 class LigneModeleRecurrentInline(admin.TabularInline):
     model = LigneModeleRecurrent
-    fields = ["produit", "quantite"]
+    fields = ["produit", "quantite", "actif"]  # actif : produit retiré (lot B10)
     extra = 3
-    can_delete = False  # retirer un produit : quantité modifiée ou modèle désactivé
+    can_delete = False  # retirer un produit : décocher « actif » (jamais de suppression)
     verbose_name = "produit habituel"
     verbose_name_plural = "produits habituels"
 

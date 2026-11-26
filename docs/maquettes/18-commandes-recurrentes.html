@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Commandes récurrentes du client</title>
+</head>
+<body>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1E3A8A}a:hover{color:#172554}
+</style>
+<div style="width: 100%; min-height: 1000px; display: flex; flex-wrap: wrap; background: #F6F4EF; color: #1C1B19; font-family: 'IBM Plex Sans', 'Helvetica Neue', sans-serif; font-size: 15px">
+  <div style="flex: 1 1 220px; max-width: 100%; display: flex"><nav aria-label="Navigation principale" style="width: 100%; box-sizing: border-box; background: #1C1B19; color: #F6F4EF; padding: 24px 16px; display: flex; flex-direction: column; gap: 4px; font-size: 15px">
+<div style="font-weight: 600; font-size: 18px; padding: 0 12px 4px">ComandFlow</div>
+<div style="font-size: 13px; color: #C9C5BC; padding: 0 12px 20px">Mie Doré</div>
+<a href="08-tableau-de-bord.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; text-decoration: none; background: transparent; color: #DDD9D0; font-weight: 400">Tableau de bord</a>
+<a href="09-liste-des-commandes.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; text-decoration: none; background: transparent; color: #DDD9D0; font-weight: 400">Commandes</a>
+<a href="11-recurrentes-a-confirmer.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; text-decoration: none; background: transparent; color: #DDD9D0; font-weight: 400">Récurrentes</a>
+<a href="12-fiche-client.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; text-decoration: none; background: #3A3833; color: #F6F4EF; font-weight: 600">Clients</a>
+<a href="13-plan-de-production.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; text-decoration: none; background: transparent; color: #DDD9D0; font-weight: 400">Production</a>
+<a href="14-tournees.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; text-decoration: none; background: transparent; color: #DDD9D0; font-weight: 400">Tournées</a>
+<a href="15-facturation-et-fne.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; text-decoration: none; background: transparent; color: #DDD9D0; font-weight: 400">Facturation</a>
+<a href="16-paiements-et-creances.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; text-decoration: none; background: transparent; color: #DDD9D0; font-weight: 400">Paiements</a>
+<a href="17-parametres.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; text-decoration: none; background: transparent; color: #DDD9D0; font-weight: 400">Paramètres</a>
+<div style="margin-top: auto; padding: 16px 12px 0; border-top: 1px solid #3A3833; display: flex; flex-direction: column; gap: 2px"><span style="font-weight: 500">Aminata K.</span><span style="font-size: 13px; color: #C9C5BC">Gestionnaire</span></div>
+</nav></div>
+  <main style="flex: 999 1 560px; min-width: 0; padding: 32px 40px; box-sizing: border-box; display: flex; flex-direction: column; gap: 20px">
+    <p style="margin: 0; font-size: 13px; color: #5E5A52">Maquette 18 (lot B10) : la fiche client de la maquette 12, complétée par ses commandes récurrentes. La liste des clients, à gauche, est inchangée et omise ici.</p>
+
+    <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px">
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <span style="font-size: 13px; color: #5E5A52; font-family: 'IBM Plex Mono', monospace">CLI-000042</span>
+        <h2 style="margin: 0; font-size: 28px; font-weight: 600">Restaurant Le Baobab</h2>
+      </div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap"><button style="height: 44px; padding: 0 16px; border: 1px solid #B8B3A8; background: #FFFFFF; border-radius: 6px; font: inherit; cursor: pointer">Modifier</button><a href="01-nouvelle-commande.html" style="display: inline-flex; align-items: center; height: 44px; padding: 0 16px; background: #1E3A8A; color: #FFFFFF; border-radius: 6px; text-decoration: none; font-weight: 600">Nouvelle commande</a></div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px">
+      <div style="background: #FFFFFF; border: 1px solid #E2DED5; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 13px; color: #5E5A52">Catégorie</span><span style="font-size: 18px; font-weight: 600">Restaurant</span></div>
+      <div style="background: #FFFFFF; border: 1px solid #E2DED5; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 13px; color: #5E5A52">Conditions</span><span style="font-size: 18px; font-weight: 600">Fin de mois</span></div>
+      <div style="background: #FFFFFF; border: 1px solid #E2DED5; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 13px; color: #5E5A52">Récurrence</span><span style="font-size: 18px; font-weight: 600">Lun → sam</span><span style="font-size: 13px; color: #5E5A52">06h–08h · 1 commande récurrente active</span></div>
+    </div>
+
+    <p style="margin: 0; font-size: 13px; color: #5E5A52">… Coordonnées et livraison, Contacts, Adresses de livraison : inchangés (maquette 12) …</p>
+
+    <section aria-labelledby="c-rec" style="background: #FFFFFF; border: 1px solid #E2DED5; border-radius: 10px; padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; font-size: 14px">
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap">
+        <h3 id="c-rec" style="margin: 0; font-size: 16px; font-weight: 600">Commandes récurrentes</h3>
+        <button style="height: 36px; padding: 0 12px; border: 1px solid #1E3A8A; color: #1E3A8A; background: #FFFFFF; border-radius: 6px; font: inherit; font-size: 13px; cursor: pointer">+ Ajouter une commande récurrente</button>
+      </div>
+      <p style="margin: 0; font-size: 13px; color: #5E5A52">Chaque veille à 18h00, une commande « À confirmer » est générée pour les jours cochés (écran Récurrentes). Un changement vaut pour les prochaines générations ; une commande déjà générée se corrige dans l'écran Récurrentes.</p>
+
+      <!-- Modèle actif -->
+      <div style="border: 1px solid #E2DED5; border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap">
+          <div style="display: flex; flex-direction: column; gap: 2px">
+            <span style="font-weight: 600">Lun, mar, mer, jeu, ven, sam · 06h–08h</span>
+            <span style="font-size: 13px; color: #5E5A52">Cuisine · Cocody Deux-Plateaux · depuis le 01/10/2026, sans fin</span>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center"><span style="font-size: 13px; padding: 2px 8px; border-radius: 999px; background: #DCFCE7; color: #166534">Active</span><button style="height: 36px; padding: 0 12px; border: 1px solid #B8B3A8; background: #FFFFFF; border-radius: 6px; font: inherit; font-size: 13px; cursor: pointer">Modifier</button><button style="height: 36px; padding: 0 12px; border: 1px solid #FDBA74; color: #9A3412; background: #FFFFFF; border-radius: 6px; font: inherit; font-size: 13px; cursor: pointer">Désactiver</button></div>
+        </div>
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px">
+          <tr style="color: #5E5A52; font-size: 13px; text-align: left"><th style="padding: 4px 0; font-weight: 500">Produit</th><th style="padding: 4px 0; font-weight: 500; text-align: right">Quantité</th></tr>
+          <tr><td style="padding: 4px 0; border-top: 1px solid #EFECE6">Pain baguette</td><td style="padding: 4px 0; border-top: 1px solid #EFECE6; text-align: right; font-family: 'IBM Plex Mono', monospace">120</td></tr>
+          <tr><td style="padding: 4px 0; border-top: 1px solid #EFECE6">Croissant</td><td style="padding: 4px 0; border-top: 1px solid #EFECE6; text-align: right; font-family: 'IBM Plex Mono', monospace">60</td></tr>
+          <tr style="color: #5E5A52"><td style="padding: 4px 0; border-top: 1px solid #EFECE6"><s>Pain au chocolat</s> · retiré</td><td style="padding: 4px 0; border-top: 1px solid #EFECE6; text-align: right; font-family: 'IBM Plex Mono', monospace"><s>30</s></td></tr>
+        </table>
+      </div>
+
+      <!-- Formulaire « Modifier », ouvert sous le modèle -->
+      <form style="border: 2px solid #1E3A8A; border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 12px; background: #FBFAF7">
+        <span style="font-weight: 600">Modifier la commande récurrente</span>
+        <fieldset style="border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 6px 14px">
+          <legend style="font-size: 13px; color: #5E5A52; margin-bottom: 6px">Jours de livraison</legend>
+          <label><input type="checkbox" checked> Lun</label><label><input type="checkbox" checked> Mar</label><label><input type="checkbox" checked> Mer</label><label><input type="checkbox" checked> Jeu</label><label><input type="checkbox" checked> Ven</label><label><input type="checkbox" checked> Sam</label><label><input type="checkbox"> Dim</label>
+        </fieldset>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px">
+          <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #5E5A52">Créneau<select style="height: 40px; border: 1px solid #B8B3A8; border-radius: 6px; font: inherit; color: #1C1B19"><option>06h–08h</option><option>08h–10h</option><option>10h–12h</option></select></label>
+          <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #5E5A52">Adresse<select style="height: 40px; border: 1px solid #B8B3A8; border-radius: 6px; font: inherit; color: #1C1B19"><option>Cuisine · Cocody</option><option>Salle · Cocody</option></select></label>
+          <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #5E5A52">Début<input type="date" value="2026-10-01" style="height: 40px; border: 1px solid #B8B3A8; border-radius: 6px; font: inherit; padding: 0 8px"></label>
+          <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #5E5A52">Fin (facultative)<input type="date" style="height: 40px; border: 1px solid #B8B3A8; border-radius: 6px; font: inherit; padding: 0 8px"></label>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <span style="font-size: 13px; color: #5E5A52">Produits habituels</span>
+          <div style="display: flex; gap: 8px; align-items: center"><select style="flex: 1; height: 40px; border: 1px solid #B8B3A8; border-radius: 6px; font: inherit"><option>Pain baguette</option></select><input value="120" style="width: 90px; height: 40px; border: 1px solid #B8B3A8; border-radius: 6px; font: inherit; text-align: right; padding: 0 8px"><label style="font-size: 13px"><input type="checkbox"> Retirer</label></div>
+          <div style="display: flex; gap: 8px; align-items: center"><select style="flex: 1; height: 40px; border: 1px solid #B8B3A8; border-radius: 6px; font: inherit"><option>Croissant</option></select><input value="60" style="width: 90px; height: 40px; border: 1px solid #B8B3A8; border-radius: 6px; font: inherit; text-align: right; padding: 0 8px"><label style="font-size: 13px"><input type="checkbox"> Retirer</label></div>
+          <div style="display: flex; gap: 8px; align-items: center"><select style="flex: 1; height: 40px; border: 1px solid #B8B3A8; border-radius: 6px; font: inherit; color: #5E5A52"><option>Ajouter un produit…</option></select><input placeholder="Qté" style="width: 90px; height: 40px; border: 1px solid #B8B3A8; border-radius: 6px; font: inherit; text-align: right; padding: 0 8px"><span style="width: 62px"></span></div>
+          <button type="button" style="align-self: flex-start; background: none; border: 0; color: #1E3A8A; font: inherit; font-size: 13px; text-decoration: underline; cursor: pointer; padding: 0">+ Une ligne de plus</button>
+        </div>
+        <div style="display: flex; gap: 8px"><button style="height: 44px; padding: 0 16px; background: #1E3A8A; color: #FFFFFF; border: 0; border-radius: 6px; font: inherit; font-weight: 600; cursor: pointer">Enregistrer</button><button type="button" style="height: 44px; padding: 0 16px; border: 1px solid #B8B3A8; background: #FFFFFF; border-radius: 6px; font: inherit; cursor: pointer">Annuler</button></div>
+        <span style="font-size: 13px; color: #5E5A52">Le formulaire « + Ajouter une commande récurrente » est le même, vide, avec l'adresse par défaut et le premier créneau présélectionnés et le début fixé à demain.</span>
+      </form>
+
+      <!-- Modèle désactivé -->
+      <div style="border: 1px solid #E2DED5; border-radius: 8px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; color: #5E5A52">
+        <div style="display: flex; flex-direction: column; gap: 2px">
+          <span style="font-weight: 600">Dim · 08h–10h</span>
+          <span style="font-size: 13px">Salle · Cocody Deux-Plateaux · du 01/06/2026 au 31/08/2026 · Pain baguette 40, Croissant 20</span>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center"><span style="font-size: 13px; padding: 2px 8px; border-radius: 999px; background: #E7E3DA; color: #3D3A34">Désactivée</span><button style="height: 36px; padding: 0 12px; border: 1px solid #1E3A8A; color: #1E3A8A; background: #FFFFFF; border-radius: 6px; font: inherit; font-size: 13px; cursor: pointer">Réactiver</button></div>
+      </div>
+
+      <p style="margin: 0; font-size: 13px; color: #5E5A52">Commercial : le bloc est visible en lecture seule (pas de bouton). Direction et Gestionnaire : ajout, modification, désactivation et réactivation.</p>
+    </section>
+  </main>
+</div>
+</body>
+</html>

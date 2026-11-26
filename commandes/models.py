@@ -65,6 +65,8 @@ class JourSemaine(models.IntegerChoices):
     DIMANCHE = 6, "dim"
 
 
+# Historique : qui a changé les jours, le créneau, les produits (lot B10).
+@pghistory.track(model_name="HistoriqueModeleRecurrent")
 class ModeleRecurrent(ModeleEntreprise, ModeleTrace):
     """Commande type livrée certains jours ; génère chaque veille une commande à confirmer."""
 
@@ -96,12 +98,15 @@ class ModeleRecurrent(ModeleEntreprise, ModeleTrace):
             raise ValidationError({"date_fin": "La fin précède le début."})
 
 
+@pghistory.track(model_name="HistoriqueLigneModeleRecurrent")
 class LigneModeleRecurrent(ModeleEntreprise, ModeleTrace):
     modele = models.ForeignKey(ModeleRecurrent, on_delete=models.PROTECT, related_name="lignes")
     produit = models.ForeignKey("catalogue.Produit", on_delete=models.PROTECT, related_name="+")
     quantite = models.DecimalField(
         "quantité", max_digits=10, decimal_places=3, validators=[MinValueValidator(0)]
     )
+    # Produit retiré du modèle (lot B10, Q1 a) : jamais supprimé, ignoré par la génération.
+    actif = models.BooleanField("actif", default=True)
 
     class Meta:
         verbose_name = "ligne de modèle récurrent"
