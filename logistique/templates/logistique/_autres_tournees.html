@@ -1,0 +1,15 @@
+{% comment %}Autres tournées du jour du livreur (lot B3) : une urgence confiée dans une nouvelle
+tournée alors que la première est partie. Un appui ouvre la tournée.{% endcomment %}
+{% if autres_tournees %}
+  <nav aria-label="Autres tournées aujourd'hui" class="carte flex flex-col gap-2 border-lien">
+    <h2 class="text-sm font-semibold">Autres tournées aujourd'hui</h2>
+    {% for autre in autres_tournees %}
+      <a href="{% url 'reception_tournee' autre.pk %}" class="flex min-h-11 items-center justify-between gap-3 rounded-md border border-bordure bg-white px-3 text-sm no-underline">
+        <span class="font-mono">{{ autre.numero }}</span>
+        <span class="text-texte-secondaire">
+          {% if autre.statut == "en_cours" %}En cours · {{ autre.arrets_restants }} arrêt{{ autre.arrets_restants|pluralize }} restant{{ autre.arrets_restants|pluralize }}{% elif autre.statut == "depart_autorise" %}Prête à partir{% else %}Chargement à recevoir{% endif %}
+        </span>
+      </a>
+    {% endfor %}
+  </nav>
+{% endif %}

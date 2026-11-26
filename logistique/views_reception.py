@@ -18,7 +18,7 @@ from django.views.decorators.http import require_POST
 from noyau.models import Validation
 
 from . import services
-from .etat import exceptions, recapitulatif
+from .etat import autres_tournees_du_jour, exceptions, recapitulatif
 from .models import Chargement, LigneChargement, StatutChargement, StatutTournee, Tournee
 from .services import STATUTS_MODIFIABLES
 
@@ -62,12 +62,18 @@ def _contexte(request, tournee):
 
 
 def _afficher(request, tournee):
+    # Bandeau « Autres tournées aujourd'hui » (lot B3), hors des zones rafraîchies par htmx.
+    autres = (
+        []
+        if request.headers.get("HX-Request")
+        else list(autres_tournees_du_jour(request.user, tournee))
+    )
     if tournee.statut in (StatutTournee.EN_COURS, StatutTournee.TERMINEE):
         # Tournée partie : les arrêts à livrer (maquette 5).
         from .views_livraison import afficher
 
-        return afficher(request, tournee)
-    contexte = _contexte(request, tournee)
+        return afficher(request, tournee, autres_tournees=autres)
+    contexte = {**_contexte(request, tournee), "autres_tournees": autres}
     if request.headers.get("HX-Request"):
         return render(request, "logistique/_reception.html", contexte)
     return render(request, "logistique/reception.html", contexte)

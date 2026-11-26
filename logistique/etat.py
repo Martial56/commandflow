@@ -3,10 +3,12 @@
 from decimal import Decimal
 
 from django.contrib.contenttypes.models import ContentType
+from django.db.models import Count, Q
+from django.utils import timezone
 
 from noyau.models import Validation
 
-from .models import Chargement, StatutChargement, StatutLivraison
+from .models import Chargement, StatutChargement, StatutLivraison, StatutTournee, Tournee
 
 
 def exceptions(chargement, objet, *decisions):
@@ -147,4 +149,31 @@ def reliquats_par_produit(date_livraison):
         .values("ligne_commande__produit")
         .annotate(total=Sum("quantite"))
         .values_list("ligne_commande__produit", "total")
+    )
+
+
+STATUTS_TOURNEE_OUVERTE = [
+    StatutTournee.PLANIFIEE,
+    StatutTournee.EN_CHARGEMENT,
+    StatutTournee.DEPART_AUTORISE,
+    StatutTournee.EN_COURS,
+]
+
+
+def autres_tournees_du_jour(livreur, tournee):
+    """Tournées du jour non terminées de ce livreur (chauffeur ou compte du prestataire),
+    sauf celle affichée : une urgence confiée dans une nouvelle tournée alors que la
+    première est partie (lot B3). Chacune porte `arrets_restants` (livraisons non
+    traitées, une fois partie)."""
+    return (
+        Tournee.objects.filter(Q(chauffeur=livreur) | Q(prestataire__compte=livreur))
+        .filter(date=timezone.localdate(), statut__in=STATUTS_TOURNEE_OUVERTE)
+        .exclude(pk=tournee.pk)
+        .annotate(
+            arrets_restants=Count(
+                "chargements__livraison",
+                filter=~Q(chargements__livraison__statut__in=STATUTS_LIVRAISON_TRAITEE),
+            )
+        )
+        .order_by("numero")
     )

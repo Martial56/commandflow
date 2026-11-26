@@ -7,6 +7,7 @@
 {% block entete %}{% include "logistique/_progression.html" %}{% endblock %}
 {% block contenu %}
 {% include "composants/messages.html" %}
+{% include "logistique/_autres_tournees.html" %}
 <div id="arrets"
      hx-get="{% url 'reception_tournee' tournee.pk %}"
      hx-trigger="every 30s [!document.querySelector('#arrets :focus, #arrets details[open]')]"

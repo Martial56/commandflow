@@ -1,10 +1,16 @@
-{% extends "base_bureau.html" %}
+{% extends gabarit %}
 {% load format_fr %}
-{% comment %}Notifications de l'utilisateur (§16.1) : non lues d'abord ; ouvrir une notification la marque lue.{% endcomment %}
+{% comment %}Notifications de l'utilisateur (§16.1) : non lues d'abord ; ouvrir une notification la marque lue.
+Profil de terrain : format téléphone (base_terrain), avec un retour vers son écran (lot B3).{% endcomment %}
 {% block titre %}Notifications{% endblock %}
+{% block titre_terrain %}Notifications{% endblock %}
 {% block contenu %}
 <div class="flex flex-wrap items-center justify-between gap-3">
-  <h1 class="text-[28px] font-semibold">Notifications</h1>
+  {% if terrain %}
+    {% if retour %}<a href="{{ retour }}" class="inline-flex min-h-11 items-center text-sm">← Retour à mon écran</a>{% endif %}
+  {% else %}
+    <h1 class="text-[28px] font-semibold">Notifications</h1>
+  {% endif %}
   {% if notifications_non_lues %}
     <form method="post" action="{% url 'notifications_tout_lire' %}">
       {% csrf_token %}

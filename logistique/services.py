@@ -149,12 +149,34 @@ def creer_tournee(*, date, chauffeur=None, prestataire=None, vehicule=None):
     """Nouvelle tournée planifiée, numérotée `TRN-AAAA-000123` (Gestionnaire, Direction)."""
     _exiger("logistique.gerer_tournees")
     _verifier_livreur(chauffeur, prestataire, vehicule)
-    return Tournee.objects.create(
+    tournee = Tournee.objects.create(
         numero=prochain_numero("TRN", date_reference=date),
         date=date,
         chauffeur=chauffeur,
         prestataire=prestataire,
         vehicule=vehicule,
+    )
+    _prevenir_livreur(tournee)
+    return tournee
+
+
+def _prevenir_livreur(tournee):
+    """Tournée du jour confiée à un livreur qui a un compte : il est notifié, par exemple
+    pour une urgence alors que sa première tournée est partie (lot B3). Une tournée
+    préparée pour un autre jour ne notifie pas."""
+    from django.urls import reverse
+
+    from notifications.models import TypeNotification
+    from notifications.services import notifier
+
+    livreur = tournee.compte_livreur
+    if livreur is None or tournee.date != timezone.localdate():
+        return
+    notifier(
+        TypeNotification.LIVRAISON,
+        f"Nouvelle tournée {tournee.numero} aujourd'hui : chargement à recevoir au dépôt.",
+        destinataires=[livreur],
+        lien=reverse("reception_tournee", args=[tournee.pk]),
     )
 
 
@@ -173,10 +195,13 @@ def changer_livreur(tournee, *, chauffeur=None, prestataire=None, vehicule=None)
         raise ActionImpossible(
             "Des commandes sont déjà reçues par le livreur : les retirer avant de le changer."
         )
+    ancien_livreur = tournee.compte_livreur
     tournee.chauffeur = chauffeur
     tournee.prestataire = prestataire
     tournee.vehicule = vehicule
     tournee.save()
+    if tournee.compte_livreur != ancien_livreur:
+        _prevenir_livreur(tournee)
     return tournee
 
 

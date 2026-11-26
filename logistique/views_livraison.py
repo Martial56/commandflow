@@ -126,11 +126,15 @@ def _contexte(tournee):
     }
 
 
-def afficher(request, tournee):
+def afficher(request, tournee, autres_tournees=()):
     contexte = _contexte(tournee)
     if request.headers.get("HX-Request"):
         return render(request, "logistique/_arrets.html", {**contexte, "fragment": True})
-    return render(request, "logistique/tournee_en_cours.html", contexte)
+    return render(
+        request,
+        "logistique/tournee_en_cours.html",
+        {**contexte, "autres_tournees": autres_tournees},
+    )
 
 
 @login_required

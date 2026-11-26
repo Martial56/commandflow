@@ -9,6 +9,7 @@ sauf pendant une saisie.{% endcomment %}
 {% if not tournee %}
   <div class="carte text-texte-secondaire">Aucune tournée ne vous est affectée pour le moment.</div>
 {% else %}
+  {% include "logistique/_autres_tournees.html" %}
   <div id="reception"
        hx-get="{% url 'reception_tournee' tournee.pk %}"
        hx-trigger="every 30s [!document.querySelector('#reception :focus, #reception details[open]')]"
